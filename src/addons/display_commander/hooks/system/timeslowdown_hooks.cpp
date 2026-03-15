@@ -1,4 +1,5 @@
 #include "timeslowdown_hooks.hpp"
+#include "../module_hook_entry.hpp"
 #include <MinHook.h>
 #include <windows.h>
 #include <atomic>
@@ -625,6 +626,43 @@ NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
     return result;
 }
 
+namespace {
+void* NtdllResolver(const char* name) {
+    HMODULE ntdll = GetModuleHandleA("ntdll.dll");
+    return ntdll ? GetProcAddress(ntdll, name) : nullptr;
+}
+}  // namespace
+
+static const display_commanderhooks::HookEntry kTimeslowdownKernel32Hooks[] = {
+    {HOOK_QUERY_PERFORMANCE_COUNTER, reinterpret_cast<void*>(&QueryPerformanceCounter_Detour),
+     reinterpret_cast<void**>(&QueryPerformanceCounter_Original)},
+    {"QueryPerformanceFrequency", reinterpret_cast<void*>(&QueryPerformanceFrequency_Detour),
+     reinterpret_cast<void**>(&QueryPerformanceFrequency_Original)},
+    {HOOK_GET_TICK_COUNT, reinterpret_cast<void*>(&GetTickCount_Detour),
+     reinterpret_cast<void**>(&GetTickCount_Original)},
+    {HOOK_GET_TICK_COUNT64, reinterpret_cast<void*>(&GetTickCount64_Detour),
+     reinterpret_cast<void**>(&GetTickCount64_Original)},
+    {HOOK_GET_SYSTEM_TIME, reinterpret_cast<void*>(&GetSystemTime_Detour),
+     reinterpret_cast<void**>(&GetSystemTime_Original)},
+    {HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, reinterpret_cast<void*>(&GetSystemTimeAsFileTime_Detour),
+     reinterpret_cast<void**>(&GetSystemTimeAsFileTime_Original)},
+    {HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
+     reinterpret_cast<void*>(&GetSystemTimePreciseAsFileTime_Detour),
+     reinterpret_cast<void**>(&GetSystemTimePreciseAsFileTime_Original)},
+    {HOOK_GET_LOCAL_TIME, reinterpret_cast<void*>(&GetLocalTime_Detour),
+     reinterpret_cast<void**>(&GetLocalTime_Original)},
+};
+
+static const display_commanderhooks::HookEntry kTimeslowdownWinmmHooks[] = {
+    {HOOK_TIME_GET_TIME, reinterpret_cast<void*>(&timeGetTime_Detour),
+     reinterpret_cast<void**>(&timeGetTime_Original)},
+};
+
+static const display_commanderhooks::HookEntry kTimeslowdownNtdllHooks[] = {
+    {HOOK_NT_QUERY_SYSTEM_TIME, reinterpret_cast<void*>(&NtQuerySystemTime_Detour),
+     reinterpret_cast<void**>(&NtQuerySystemTime_Original)},
+};
+
 bool InstallTimeslowdownHooks() {
     if (!enabled_experimental_features) {
         return true;
@@ -657,91 +695,34 @@ bool InstallTimeslowdownHooks() {
     // Initialize hook types to None by default (atomic variables are already initialized)
     // No mutex needed - atomic variables are thread-safe
 
-    // Hook QueryPerformanceCounter
-    if (!CreateAndEnableHook(QueryPerformanceCounter, QueryPerformanceCounter_Detour,
-                             (LPVOID*)&QueryPerformanceCounter_Original, HOOK_QUERY_PERFORMANCE_COUNTER)) {
-        LogError("Failed to create and enable QueryPerformanceCounter hook");
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (!hKernel32) {
+        LogError("kernel32.dll not found for timeslowdown hooks");
         return false;
     }
 
-    // Hook QueryPerformanceFrequency
-    if (!CreateAndEnableHook(QueryPerformanceFrequency, QueryPerformanceFrequency_Detour,
-                             (LPVOID*)&QueryPerformanceFrequency_Original, "QueryPerformanceFrequency")) {
-        LogError("Failed to create and enable QueryPerformanceFrequency hook");
+    constexpr std::size_t kKernel32Count = 8;
+    if (!display_commanderhooks::InstallHooksFromModule(hKernel32, kTimeslowdownKernel32Hooks, kKernel32Count)) {
+        display_commanderhooks::RemoveHooksByOriginalTable(kTimeslowdownKernel32Hooks, kKernel32Count);
+        display_commanderhooks::ResetOriginalsFromTable(kTimeslowdownKernel32Hooks, kKernel32Count);
         return false;
     }
 
-    // Hook GetTickCount
-    if (!CreateAndEnableHook(GetTickCount, GetTickCount_Detour, (LPVOID*)&GetTickCount_Original, HOOK_GET_TICK_COUNT)) {
-        LogError("Failed to create and enable GetTickCount hook");
-        return false;
-    }
-
-    // Hook GetTickCount64
-    if (!CreateAndEnableHook(GetTickCount64, GetTickCount64_Detour, (LPVOID*)&GetTickCount64_Original,
-                             HOOK_GET_TICK_COUNT64)) {
-        LogError("Failed to create and enable GetTickCount64 hook");
-        return false;
-    }
-
-    // Initialize timeGetTime direct function first
     InitializeTimeGetTimeDirect();
-
-    // Hook timeGetTime (only if we have the direct function)
-    if (timeGetTime_Direct) {
-        if (!CreateAndEnableHook(timeGetTime_Direct, timeGetTime_Detour, (LPVOID*)&timeGetTime_Original,
-                                 HOOK_TIME_GET_TIME)) {
-            LogError("Failed to create and enable timeGetTime hook");
-            return false;
+    HMODULE hWinmm = GetModuleHandleW(L"winmm.dll");
+    if (hWinmm) {
+        constexpr std::size_t kWinmmCount = 1;
+        if (!display_commanderhooks::InstallHooksFromModule(hWinmm, kTimeslowdownWinmmHooks, kWinmmCount)) {
+            display_commanderhooks::RemoveHooksByOriginalTable(kTimeslowdownWinmmHooks, kWinmmCount);
+            display_commanderhooks::ResetOriginalsFromTable(kTimeslowdownWinmmHooks, kWinmmCount);
+            LogInfo("timeGetTime not available - skipping hook installation");
         }
     } else {
         LogInfo("timeGetTime not available - skipping hook installation");
     }
 
-    // Hook GetSystemTime
-    if (!CreateAndEnableHook(GetSystemTime, GetSystemTime_Detour, (LPVOID*)&GetSystemTime_Original,
-                             HOOK_GET_SYSTEM_TIME)) {
-        LogError("Failed to create and enable GetSystemTime hook");
-        return false;
-    }
-
-    // Hook GetSystemTimeAsFileTime
-    if (!CreateAndEnableHook(GetSystemTimeAsFileTime, GetSystemTimeAsFileTime_Detour,
-                             (LPVOID*)&GetSystemTimeAsFileTime_Original, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME)) {
-        LogError("Failed to create and enable GetSystemTimeAsFileTime hook");
-        return false;
-    }
-
-    // Hook GetSystemTimePreciseAsFileTime
-    if (!CreateAndEnableHook(GetSystemTimePreciseAsFileTime, GetSystemTimePreciseAsFileTime_Detour,
-                             (LPVOID*)&GetSystemTimePreciseAsFileTime_Original,
-                             HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME)) {
-        LogError("Failed to create and enable GetSystemTimePreciseAsFileTime hook");
-        return false;
-    }
-
-    // Hook GetLocalTime
-    if (!CreateAndEnableHook(GetLocalTime, GetLocalTime_Detour, (LPVOID*)&GetLocalTime_Original, HOOK_GET_LOCAL_TIME)) {
-        LogError("Failed to create and enable GetLocalTime hook");
-        return false;
-    }
-
-    // Hook NtQuerySystemTime (dynamically loaded)
-    HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-    if (ntdll) {
-        LPVOID ntQuerySystemTime = GetProcAddress(ntdll, "NtQuerySystemTime");
-        if (ntQuerySystemTime) {
-            if (!CreateAndEnableHook(ntQuerySystemTime, NtQuerySystemTime_Detour, (LPVOID*)&NtQuerySystemTime_Original,
-                                     HOOK_NT_QUERY_SYSTEM_TIME)) {
-                LogError("Failed to create and enable NtQuerySystemTime hook");
-                return false;
-            }
-        } else {
-            LogInfo("NtQuerySystemTime not available on this system");
-        }
-    } else {
-        LogInfo("ntdll.dll not available for NtQuerySystemTime hook");
-    }
+    constexpr std::size_t kNtdllCount = 1;
+    display_commanderhooks::InstallHooksFromResolver(kTimeslowdownNtdllHooks, kNtdllCount, NtdllResolver);
 
     g_timeslowdown_hooks_installed.store(true);
     LogInfo("Timeslowdown hooks installed successfully");
@@ -759,45 +740,25 @@ void UninstallTimeslowdownHooks() {
         return;
     }
 
-    // Disable all hooks
-    MH_DisableHook(MH_ALL_HOOKS);
+    constexpr std::size_t kKernel32Count = 8;
+    constexpr std::size_t kWinmmCount = 1;
+    constexpr std::size_t kNtdllCount = 1;
 
-    // Remove hooks
-    MH_RemoveHook(QueryPerformanceCounter);
-    MH_RemoveHook(QueryPerformanceFrequency);
-    MH_RemoveHook(GetTickCount);
-    MH_RemoveHook(GetTickCount64);
-    if (timeGetTime_Direct) {
-        MH_RemoveHook(timeGetTime_Direct);
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (hKernel32) {
+        display_commanderhooks::RemoveHooksFromModule(hKernel32, kTimeslowdownKernel32Hooks, kKernel32Count);
     }
-    MH_RemoveHook(GetSystemTime);
-    MH_RemoveHook(GetSystemTimeAsFileTime);
-    MH_RemoveHook(GetSystemTimePreciseAsFileTime);
-    MH_RemoveHook(GetLocalTime);
-
-    // Remove NtQuerySystemTime hook if it was created
-    if (NtQuerySystemTime_Original) {
-        HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-        if (ntdll) {
-            LPVOID ntQuerySystemTime = GetProcAddress(ntdll, "NtQuerySystemTime");
-            if (ntQuerySystemTime) {
-                MH_RemoveHook(ntQuerySystemTime);
-            }
-        }
+    HMODULE hWinmm = GetModuleHandleW(L"winmm.dll");
+    if (hWinmm) {
+        display_commanderhooks::RemoveHooksFromModule(hWinmm, kTimeslowdownWinmmHooks, kWinmmCount);
     }
+    display_commanderhooks::RemoveHooksByOriginalTable(kTimeslowdownNtdllHooks, kNtdllCount);
 
-    // Clean up
-    QueryPerformanceCounter_Original = nullptr;
-    QueryPerformanceFrequency_Original = nullptr;
-    GetTickCount_Original = nullptr;
-    GetTickCount64_Original = nullptr;
-    timeGetTime_Original = nullptr;
+    display_commanderhooks::ResetOriginalsFromTable(kTimeslowdownKernel32Hooks, kKernel32Count);
+    display_commanderhooks::ResetOriginalsFromTable(kTimeslowdownWinmmHooks, kWinmmCount);
+    display_commanderhooks::ResetOriginalsFromTable(kTimeslowdownNtdllHooks, kNtdllCount);
+
     timeGetTime_Direct = nullptr;
-    GetSystemTime_Original = nullptr;
-    GetSystemTimeAsFileTime_Original = nullptr;
-    GetSystemTimePreciseAsFileTime_Original = nullptr;
-    GetLocalTime_Original = nullptr;
-    NtQuerySystemTime_Original = nullptr;
 
     // Clean up state
     g_timeslowdown_state.store(std::make_shared<TimeslowdownState>());

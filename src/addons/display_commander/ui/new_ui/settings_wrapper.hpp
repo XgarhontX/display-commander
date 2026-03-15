@@ -126,6 +126,27 @@ class BoolSetting : public SettingBase {
     bool default_value_;
 };
 
+// Boolean setting that reads via config (override then game) but saves to global_overrides.toml (for Advanced tab global overrides).
+class OverrideBoolSetting : public SettingBase {
+   public:
+    OverrideBoolSetting(const std::string& key, bool default_value, const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+    std::string GetValueAsString() const override;
+
+    bool GetValue() const { return value_.load(); }
+    void SetValue(bool value);
+    bool GetDefaultValue() const { return default_value_; }
+
+    std::atomic<bool>& GetAtomic() { return value_; }
+    const std::atomic<bool>& GetAtomic() const { return value_; }
+
+   private:
+    std::atomic<bool> value_;
+    bool default_value_;
+};
+
 // Boolean setting wrapper that references an external atomic variable
 class BoolSettingRef : public SettingBase {
    public:
@@ -422,6 +443,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
                       display_commander::ui::IImGuiWrapper& imgui);
 bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui);
+bool CheckboxSetting(OverrideBoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui);
 bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui,
                          float combo_width = 0.f);
 template <typename EnumType>

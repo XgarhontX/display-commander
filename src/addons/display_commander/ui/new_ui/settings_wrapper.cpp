@@ -1,5 +1,6 @@
 #include "settings_wrapper.hpp"
 #include "../../config/display_commander_config.hpp"
+#include "../../config/global_overrides_file.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
 #include "../../utils/logging.hpp"
@@ -132,6 +133,38 @@ void BoolSetting::SetValue(bool value) {
     Save();  // Auto-save when value changes
     std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
     display_commander::config::save_config(reason.c_str());  // Write to disk
+}
+
+// OverrideBoolSetting implementation (load from config = override then game, save to global_overrides.toml)
+OverrideBoolSetting::OverrideBoolSetting(const std::string& key, bool default_value, const std::string& section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value) {}
+
+void OverrideBoolSetting::Load() {
+    int loaded_value;
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
+        if (loaded_value == 0 || loaded_value == 1) {
+            value_.store(loaded_value != 0);
+        } else {
+            value_.store(default_value_);
+            Save();
+        }
+    } else {
+        bool effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                              &effective_default);
+        value_.store(effective_default);
+    }
+}
+
+void OverrideBoolSetting::Save() {
+    display_commander::config::SetGlobalOverrideValue(key_.c_str(), value_.load() ? "1" : "0");
+}
+
+std::string OverrideBoolSetting::GetValueAsString() const { return value_.load() ? "1" : "0"; }
+
+void OverrideBoolSetting::SetValue(bool value) {
+    value_.store(value);
+    Save();
 }
 
 // BoolSettingRef implementation
@@ -564,6 +597,31 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
 }
 
 bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
+    bool value = setting.GetValue();
+    bool changed = imgui.Checkbox(label, &value);
+    if (changed) {
+        setting.SetValue(value);
+    }
+    bool current = setting.GetValue();
+    bool def = setting.GetDefaultValue();
+    if (current != def) {
+        imgui.SameLine();
+        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            setting.SetValue(def);
+            changed = true;
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Reset to default (%s)", def ? "On" : "Off");
+        }
+        imgui.PopID();
+    }
+    imgui.EndGroup();
+    return changed;
+}
+
+bool CheckboxSetting(OverrideBoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
     imgui.BeginGroup();
     bool value = setting.GetValue();
     bool changed = imgui.Checkbox(label, &value);

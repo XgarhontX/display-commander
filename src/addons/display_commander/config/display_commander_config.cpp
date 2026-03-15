@@ -1,6 +1,16 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_commander_config.hpp"
+#include "chords_file.hpp"
 #include "default_overrides.hpp"
 #include "default_settings_file.hpp"
+#include "global_overrides_file.hpp"
+#include "hotkeys_file.hpp"
+#include "../globals.hpp"
+#include "../utils.hpp"
+#include "../utils/display_commander_logger.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -8,14 +18,6 @@
 #include <fstream>
 #include <sstream>
 #include <toml++/toml.hpp>
-#include "../globals.hpp"
-#include "../utils.hpp"
-#include "../utils/display_commander_logger.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "chords_file.hpp"
-#include "global_settings_file.hpp"
-#include "hotkeys_file.hpp"
 
 namespace display_commander::config {
 
@@ -309,9 +311,10 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         return GetHotkeyValue(key, value);
     }
-    // Global settings (e.g. WGI suppression) stored in global_settings.toml for sharing across games
-    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
-        return GetGlobalSettingValue(key, value);
+    // Global overrides: values in global_overrides.toml override game config even when it exists
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr &&
+        GetGlobalOverrideValue(key, value)) {
+        return true;
     }
     // Chords / gamepad remap settings are stored in chords.toml for sharing across games
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
@@ -462,10 +465,6 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
         SetHotkeyValue(key, value);
         return;
     }
-    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
-        SetGlobalSettingValue(key, value);
-        return;
-    }
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
         SetChordValue(section, key, value);
         return;
@@ -480,10 +479,6 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const char* value) {
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         SetHotkeyValue(key, value != nullptr ? value : "");
-        return;
-    }
-    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
-        SetGlobalSettingValue(key, value != nullptr ? value : "");
         return;
     }
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {

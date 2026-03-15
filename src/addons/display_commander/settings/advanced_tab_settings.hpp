@@ -9,6 +9,7 @@ namespace settings {
 // Bring setting types into scope
 using ui::new_ui::BoolSetting;
 using ui::new_ui::IntSetting;
+using ui::new_ui::OverrideBoolSetting;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
@@ -83,10 +84,10 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
-    /** When true, ReShade config backup is effectively enabled for all games (global_settings.toml). Default false. */
-    BoolSetting auto_enable_reshade_config_backup;
-    /** Global WGI suppression (global_settings.toml). When true, WGI suppression is on for all games. Default false. */
-    BoolSetting suppress_wgi_globally;
+    /** When true, ReShade config backup is effectively enabled for all games (global_overrides.toml). Default false. */
+    OverrideBoolSetting auto_enable_reshade_config_backup;
+    /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false. */
+    OverrideBoolSetting suppress_wgi_globally;
     /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */
     BoolSetting suppress_wgi_enabled;
     /** Only visible when UnityPlayer.dll is loaded. When true, suppress WGI for Unity games. Default false. */

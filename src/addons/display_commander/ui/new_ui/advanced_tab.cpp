@@ -972,7 +972,7 @@ void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    // Auto-enable ReShade config backup for all games (stored in global_settings.toml)
+    // Auto-enable ReShade config backup for all games (stored in global_overrides.toml; overrides per-game value)
     if (CheckboxSetting(settings::g_advancedTabSettings.auto_enable_reshade_config_backup,
                         "Auto-enable ReShade config backup", imgui)) {
         if (settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()) {
@@ -985,10 +985,10 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx(
             "When enabled, ReShade config backup is effectively on for all games (same as the per-game "
             "\"Auto ReShade config backup\" on the Main tab, but applied globally). Stored in the Display Commander "
-            "folder (global_settings.toml).");
+            "folder (global_overrides.toml). Overrides the per-game value even when the game config has it.");
     }
 
-    // Windows Gaming Input suppression globally (stored in global_settings.toml, same folder as hotkeys.toml)
+    // Windows Gaming Input suppression globally (stored in global_overrides.toml; overrides per-game value)
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_wgi_globally,
                         "Enable Windows Gaming Input suppression globally", imgui)) {
         LogInfo("Suppress WGI globally changed to: %s",
@@ -998,7 +998,7 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx(
             "When enabled, Windows Gaming Input is suppressed for all games (same effect as the per-game checkbox "
             "in the Controller tab, but applied everywhere). Stored in the Display Commander folder "
-            "(global_settings.toml, same location as hotkeys.toml). Restart each game to apply. "
+            "(global_overrides.toml, same location as hotkeys.toml). Overrides the per-game value even when the game config has it. Restart each game to apply. "
             "Warning: Suppressing Windows Gaming Input may break networking in some games.");
     }
     imgui.SameLine();
@@ -1094,8 +1094,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
         if (!hSteamOverlay) {
             hSteamOverlay = GetModuleHandleW(L"gameoverlayrenderer.dll");
         }
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "GameOverlayRenderer: %s",
-                         hSteamOverlay ? "Loaded" : "Not loaded");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "GameOverlayRenderer: %s", hSteamOverlay ? "Loaded" : "Not loaded");
     }
 
     imgui.Spacing();
@@ -1442,7 +1441,8 @@ void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     uint64_t now_ns = utils::get_now_ns();
 
-    // Minimal NVIDIA Reflex Controls (device runtime dependent); only when Reflex is available (64-bit + native or NVAPI init)
+    // Minimal NVIDIA Reflex Controls (device runtime dependent); only when Reflex is available (64-bit + native or
+    // NVAPI init)
     if (IsReflexAvailable() && imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
         // Native Reflex Status Indicator
