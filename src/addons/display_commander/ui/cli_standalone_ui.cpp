@@ -15,6 +15,7 @@
 #include "ui/new_ui/games_tab.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/main_new_tab_standalone.hpp"
+#include "ui/new_ui/notes_tab.hpp"
 #include "ui/new_ui/performance_tab.hpp"
 #include "ui/new_ui/vulkan_tab.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
@@ -445,6 +446,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         gui.SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
         gui.SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
         if (gui.Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            const bool show_all = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
             if (gui.BeginTabBar("NoReshadeSettingsTabs", 0)) {
                 if (gui.BeginTabItem("Main", nullptr, 0)) {
                     ui::new_ui::InitMainNewTab();
@@ -455,47 +457,72 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ui::new_ui::DrawGamesTab(gui);
                     gui.EndTabItem();
                 }
-                if (gui.BeginTabItem("Advanced", nullptr, 0)) {
-                    ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_advanced_tab.GetValue()) {
+                    if (gui.BeginTabItem("Advanced", nullptr, 0)) {
+                        ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
+                        gui.EndTabItem();
+                    }
                 }
                 if (gui.BeginTabItem("Hotkeys", nullptr, 0)) {
                     ui::new_ui::DrawHotkeysTab(gui);
                     gui.EndTabItem();
                 }
-                if (gui.BeginTabItem("Controller", nullptr, 0)) {
-                    display_commander::widgets::xinput_widget::InitializeXInputWidget();
-                    display_commander::widgets::remapping_widget::InitializeRemappingWidget();
-                    display_commander::widgets::xinput_widget::DrawXInputWidget(gui);
-                    gui.Spacing();
-                    display_commander::widgets::remapping_widget::DrawRemappingWidget(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_controller_tab.GetValue()) {
+                    if (gui.BeginTabItem("Controller", nullptr, 0)) {
+                        display_commander::widgets::xinput_widget::InitializeXInputWidget();
+                        display_commander::widgets::remapping_widget::InitializeRemappingWidget();
+                        display_commander::widgets::xinput_widget::DrawXInputWidget(gui);
+                        gui.Spacing();
+                        display_commander::widgets::remapping_widget::DrawRemappingWidget(gui);
+                        gui.EndTabItem();
+                    }
                 }
-                if (gui.BeginTabItem("Performance", nullptr, 0)) {
-                    ui::new_ui::DrawPerformanceTab(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_performance_tab.GetValue()) {
+                    if (gui.BeginTabItem("Performance", nullptr, 0)) {
+                        ui::new_ui::DrawPerformanceTab(gui);
+                        gui.EndTabItem();
+                    }
+                    if (gui.BeginTabItem("Performance Overlay", nullptr, 0)) {
+                        ui::new_ui::DrawPerformanceOverlayContent(gui, ui::new_ui::GetGraphicsApiFromLastDeviceApi(), true);
+                        gui.EndTabItem();
+                    }
                 }
-                if (gui.BeginTabItem("Performance Overlay", nullptr, 0)) {
-                    ui::new_ui::DrawPerformanceOverlayContent(gui, ui::new_ui::GetGraphicsApiFromLastDeviceApi(), true);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_vulkan_tab.GetValue()) {
+                    if (gui.BeginTabItem("Vulkan (Experimental)", nullptr, 0)) {
+                        ui::new_ui::DrawVulkanTab(gui);
+                        gui.EndTabItem();
+                    }
                 }
-                if (gui.BeginTabItem("Vulkan (Experimental)", nullptr, 0)) {
-                    ui::new_ui::DrawVulkanTab(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_reshade_tab.GetValue()) {
+                    if (gui.BeginTabItem("ReShade", nullptr, 0)) {
+                        ui::new_ui::DrawAddonsTab(gui);
+                        gui.EndTabItem();
+                    }
                 }
-                if (gui.BeginTabItem("ReShade", nullptr, 0)) {
-                    ui::new_ui::DrawAddonsTab(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_notes_tab.GetValue()) {
+                    if (gui.BeginTabItem("Notes", nullptr, 0)) {
+                        ui::new_ui::DrawNotesTab(gui);
+                        gui.EndTabItem();
+                    }
                 }
-                if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
-                    static bool s_noreshadeShowAdvancedProfile = false;
-                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
-                                                                &s_noreshadeShowAdvancedProfile);
-                    gui.EndTabItem();
-                }
-                if (gui.BeginTabItem("Debug", nullptr, 0)) {
-                    ui::new_ui::DrawExperimentalTab(gui, nullptr);
-                    gui.EndTabItem();
+                if (show_all) {
+                    if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
+                        static bool s_noreshadeShowAdvancedProfile = false;
+                        display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
+                                                                    &s_noreshadeShowAdvancedProfile);
+                        gui.EndTabItem();
+                    }
+                    if (gui.BeginTabItem("Debug", nullptr, 0)) {
+                        ui::new_ui::DrawExperimentalTab(gui, nullptr);
+                        gui.EndTabItem();
+                    }
+                } else {
+                    if (settings::g_mainTabSettings.show_experimental_tab.GetValue()) {
+                        if (gui.BeginTabItem("Debug", nullptr, 0)) {
+                            ui::new_ui::DrawExperimentalTab(gui, nullptr);
+                            gui.EndTabItem();
+                        }
+                    }
                 }
                 gui.EndTabBar();
             }
