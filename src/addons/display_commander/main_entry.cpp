@@ -49,6 +49,7 @@
 #include "utils/platform_api_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/reshade_load_path.hpp"
+#include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/safe_remove.hpp"
 #include "utils/steam_achievement_cache.hpp"
 #include "utils/timing.hpp"
@@ -2860,6 +2861,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             bool found_proxy = false;
             ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
+            if (IsReShadeRegisteredAsVulkanLayerForCurrentExe()) {
+                LogInfo("[main_entry] ReShade registered as Vulkan layer for this exe.");
+            }
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
                 ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy);
             }
