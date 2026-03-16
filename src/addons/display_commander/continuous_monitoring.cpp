@@ -27,6 +27,7 @@
 #include "utils/overlay_window_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/srwlock_registry.hpp"
+#include "utils/srwlock_wrapper.hpp"
 #include "utils/steam_achievement_cache.hpp"
 #include "utils/taskbar_helper.hpp"
 #include "utils/timing.hpp"
@@ -726,6 +727,9 @@ void ContinuousMonitoringThread() {
         g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
         g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
 
+        // Hold shared lock for entire loop body so FreeLibrary_Detour can wait (exclusive) until we sleep again
+        utils::SRWLockShared loop_lock(utils::g_continuous_monitoring_loop_lock);
+
         // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
         TrySetGameWindowFromForeground();
 
@@ -987,6 +991,7 @@ void ContinuousMonitoringThread() {
             }
         }
         g_continuous_monitoring_section.store("end_of_loop", std::memory_order_release);
+        // loop_lock released here; next iteration we sleep then re-acquire
     }
 
     LogInfo("Continuous monitoring thread stopped");

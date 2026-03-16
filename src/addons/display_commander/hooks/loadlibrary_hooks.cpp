@@ -1077,8 +1077,13 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
         // unregister_addon automatically unregisters all events and overlays registered by this addon
         reshade::unregister_addon(hLibModule);
         g_reshade_module.store(nullptr);
-        BOOL result = FreeLibrary_Original ? FreeLibrary_Original(hLibModule) : FreeLibrary(hLibModule);
-        return result;
+
+        // Wait until ContinuousMonitoring is in its sleep phase so it sees g_reshade_module == nullptr before we return
+        {
+            utils::SRWLockExclusive lock(utils::g_continuous_monitoring_loop_lock);
+        }
+
+        return TRUE;
     }
 
     // Check if this is the ReShade module being unloaded
