@@ -57,24 +57,31 @@ bool ReflexProvider::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     const bool result = reflex_manager_.SetMarker(marker);
     if (!result) return result;
 
+    const LONGLONG now_ns = utils::get_now_ns();
     switch (marker) {
         case SIMULATION_START:
             g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[0].store(now_ns, std::memory_order_relaxed);
             break;
         case SIMULATION_END:
             g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[1].store(now_ns, std::memory_order_relaxed);
             break;
         case RENDERSUBMIT_START:
             g_reflex_marker_rendersubmit_start_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[2].store(now_ns, std::memory_order_relaxed);
             break;
         case RENDERSUBMIT_END:
             g_reflex_marker_rendersubmit_end_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[3].store(now_ns, std::memory_order_relaxed);
             break;
         case PRESENT_START:
             g_reflex_marker_present_start_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[4].store(now_ns, std::memory_order_relaxed);
             break;
         case PRESENT_END:
             g_reflex_marker_present_end_count.fetch_add(1, std::memory_order_relaxed);
+            g_injected_reflex_last_marker_time_ns[5].store(now_ns, std::memory_order_relaxed);
             break;
         case INPUT_SAMPLE:
             g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed);
@@ -98,6 +105,7 @@ bool ReflexProvider::Sleep() {
 
     g_reflex_sleep_count.fetch_add(1, std::memory_order_relaxed);
     const LONGLONG sleep_start_ns = utils::get_now_ns();
+    g_injected_reflex_last_sleep_time_ns.store(sleep_start_ns, std::memory_order_relaxed);
     const bool result = reflex_manager_.Sleep();
     const LONGLONG sleep_end_ns = utils::get_now_ns();
     const LONGLONG sleep_duration_ns = sleep_end_ns - sleep_start_ns;

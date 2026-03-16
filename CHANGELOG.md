@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.565
+- [ui] **Injected Reflex status on same line as checkbox** - Next to the "Inject Reflex" checkbox the addon now shows "Status: OK" (green) or "Status: FAILED" (red). OK when all 6 Reflex markers (Sim Start/End, Render Submit Start/End, Present Start/End) and Reflex sleep were observed in the last 1 s. Tooltip explains the condition and shows Reflex sleep time (rolling average) in ms.
+
 ## v0.12.564
 - [bugfix] [hooks] **Fixed injected Reflex to call NvAPI_D3D_Sleep** - When using the addon's injected Reflex (FPS limiter mode Reflex + Reflex Enable Sleep), the addon now correctly invokes NvAPI_D3D_Sleep so the driver performs frame-pacing sleep. Users get proper low-latency frame pacing when the game has no native Reflex. Details: injected path uses ReflexProvider::Sleep() → ReflexManager::Sleep() → NvAPI_D3D_Sleep_Direct; GetReflexSleepEnabled() in swapchain_events.cpp.
 

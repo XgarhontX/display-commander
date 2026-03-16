@@ -61,6 +61,7 @@ static OnPresentReflexMode GetEffectiveReflexMode();
 static bool GetReflexLowLatency();
 static bool GetReflexBoost();
 static bool GetReflexSleepEnabled();
+static bool GetReflexSendMarkers();
 
 bool IsInjectedReflexEnabled() { return settings::g_mainTabSettings.inject_reflex.GetValue(); }
 
@@ -393,7 +394,7 @@ void HandleRenderStartAndEndTimes() {
                 UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
             if (s_reflex_enable_current_frame.load()) {
-                if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
+                if (GetReflexSendMarkers()) {
                     if (g_reflexProvider->IsInitialized()) {
                         g_reflexProvider->SetMarker(SIMULATION_END);
                         g_reflexProvider->SetMarker(RENDERSUBMIT_START);
@@ -1252,7 +1253,7 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
+        if (GetReflexSendMarkers()) {
             if (g_reflexProvider->IsInitialized()) {
                 g_reflexProvider->SetMarker(PRESENT_END);
             }
@@ -1382,7 +1383,7 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
     g_global_frame_id_last_updated_ns.store(utils::get_real_time_ns(), std::memory_order_release);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
+        if (GetReflexSendMarkers()) {
             g_reflexProvider->SetMarker(SIMULATION_START);
             if (g_pclstats_ping_signal.exchange(false, std::memory_order_acq_rel)) {
                 // Inject ping marker through the provider (which will emit both NVAPI and ETW markers)
@@ -1468,6 +1469,12 @@ bool GetReflexSleepEnabled() {
         // true if not native nvapi_d3d_sleep in last 1s
         return g_nvapi_last_sleep_timestamp_ns.load() < utils::get_now_ns() - 1 * utils::SEC_TO_NS;
     }
+    return false;
+}
+
+bool GetReflexSendMarkers() {
+    //    if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) return true;
+    if (IsInjectedReflexEnabled() && g_global_frame_id.load() > 500) return true;
     return false;
 }
 
@@ -1880,7 +1887,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     HandleEndRenderSubmit();
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
+        if (GetReflexSendMarkers()) {
             g_reflexProvider->SetMarker(RENDERSUBMIT_END);
         }
     }
@@ -2030,7 +2037,7 @@ void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
     HandleFpsLimiterPre(from_present_detour, frame_generation_aware);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
+        if (GetReflexSendMarkers()) {
             if (g_reflexProvider->IsInitialized()) {
                 g_reflexProvider->SetMarker(PRESENT_START);
             }

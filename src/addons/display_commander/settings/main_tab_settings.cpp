@@ -46,7 +46,7 @@ MainTabSettings::MainTabSettings()
                                  {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
       reflex_disabled_limiter_mode("reflex_disabled_limiter_mode", static_cast<int>(OnPresentReflexMode::kOff),
                                    {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
-      pcl_stats_enabled("pcl_stats_enabled.disabled2", false, "DisplayCommander"),
+      pcl_stats_enabled("pcl_stats_enabled", true, "DisplayCommander"),
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
       reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),

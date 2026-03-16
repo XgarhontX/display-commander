@@ -2354,14 +2354,12 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.Button(ICON_FK_FILE " Config")) {
         if (!config_path_row.empty()) {
             std::string path = config_path_row;
-            std::thread([path]() {
-                ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
-            }).detach();
+            std::thread([path]() { ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW); }).detach();
         }
     }
     if (imgui.IsItemHovered() && !config_path_row.empty()) {
         imgui.SetTooltipEx("Open this game's DisplayCommander.toml in the default editor.\n%s",
-                          config_path_row.c_str());
+                           config_path_row.c_str());
     }
     if (config_path_row.empty()) {
         imgui.EndDisabled();
@@ -2373,14 +2371,12 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.Button(ICON_FK_FILE_CODE " Default config")) {
         if (!default_settings_path.empty()) {
             std::string path = default_settings_path;
-            std::thread([path]() {
-                ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
-            }).detach();
+            std::thread([path]() { ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW); }).detach();
         }
     }
     if (imgui.IsItemHovered() && !default_settings_path.empty()) {
         imgui.SetTooltipEx("Open default_settings.toml (default config for all games).\n%s",
-                          default_settings_path.c_str());
+                           default_settings_path.c_str());
     }
     if (default_settings_path.empty()) {
         imgui.EndDisabled();
@@ -4521,17 +4517,51 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
     }
     // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
     // DrawPclStatsCheckbox
-    if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
-        imgui.Spacing();
-        if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-            LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
-                "latency.");
-        }
-    }
+    /* if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
+         imgui.Spacing();
+         if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
+             LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+         }
+         if (imgui.IsItemHovered()) {
+             imgui.SetTooltipEx(
+                 "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
+                 "latency.");
+         }
+         imgui.SameLine();
+         const LONGLONG now_ns = utils::get_now_ns();
+         const LONGLONG cutoff_ns = now_ns - static_cast<LONGLONG>(utils::SEC_TO_NS);
+         bool all_markers_in_1s = true;
+         for (int i = 0; i < 6; ++i) {
+             if (g_injected_reflex_last_marker_time_ns[i].load(std::memory_order_relaxed) < cutoff_ns) {
+                 all_markers_in_1s = false;
+                 break;
+             }
+         }
+         const LONGLONG last_sleep_ns = g_injected_reflex_last_sleep_time_ns.load(std::memory_order_relaxed);
+         const bool sleep_in_1s = (last_sleep_ns >= cutoff_ns);
+         const bool status_ok = all_markers_in_1s && sleep_in_1s;
+         const LONGLONG sleep_duration_ns = g_reflex_sleep_duration_ns.load(std::memory_order_relaxed);
+         const double sleep_ms = static_cast<double>(sleep_duration_ns) / static_cast<double>(utils::NS_TO_MS);
+         if (status_ok) {
+             imgui.TextColored(ui::colors::ICON_SUCCESS, "Status: OK");
+         } else {
+             imgui.TextColored(ui::colors::ICON_ERROR, "Status: FAILED");
+         }
+         if (imgui.IsItemHovered()) {
+             if (status_ok) {
+                 imgui.SetTooltipEx(
+                     "OK: All 6 Reflex markers (Sim Start/End, Render Submit Start/End, Present Start/End) and "
+                     "Reflex sleep were observed in the last 1 s.\nReflex sleep time: %.2f ms (rolling average).",
+                     sleep_ms);
+             } else {
+                 imgui.SetTooltipEx(
+                     "FAILED: In the last 1 s, either not all 6 markers were sent or Reflex sleep was not called.\n"
+                     "Reflex sleep time: %.2f ms (rolling average).",
+                     sleep_ms);
+             }
+         }
+     }
+     */
 
     // Suppress Reflex Sleep checkbox
     imgui.Spacing();
@@ -4696,22 +4726,66 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                 "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
                 "latency.");
         }
-        imgui.Spacing();
-        bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-        if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
-            settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
-            HWND game_window = display_commanderhooks::GetGameWindow();
-            if (game_window != nullptr && pcl_stats) {
-                display_commanderhooks::InstallWindowProcHooks(game_window);
+        if (settings::g_mainTabSettings.inject_reflex.GetValue()) {
+            {
+                imgui.SameLine();
+                const LONGLONG now_ns = utils::get_now_ns();
+                const LONGLONG cutoff_ns = now_ns - static_cast<LONGLONG>(utils::SEC_TO_NS);
+                static const char* const kReflexMarkerNames[] = {
+                    "Sim Start", "Sim End", "Render Submit Start", "Render Submit End", "Present Start", "Present End"};
+                bool all_markers_in_1s = true;
+                std::string markers_not_sent;
+                for (int i = 0; i < 6; ++i) {
+                    if (g_injected_reflex_last_marker_time_ns[i].load(std::memory_order_relaxed) < cutoff_ns) {
+                        all_markers_in_1s = false;
+                        if (!markers_not_sent.empty()) markers_not_sent += ", ";
+                        markers_not_sent += kReflexMarkerNames[i];
+                    }
+                }
+                const LONGLONG last_sleep_ns = g_injected_reflex_last_sleep_time_ns.load(std::memory_order_relaxed);
+                const bool sleep_in_1s = (last_sleep_ns >= cutoff_ns);
+                const bool status_ok = all_markers_in_1s && sleep_in_1s;
+                const LONGLONG sleep_duration_ns = g_reflex_sleep_duration_ns.load(std::memory_order_relaxed);
+                const double sleep_ms = static_cast<double>(sleep_duration_ns) / static_cast<double>(utils::NS_TO_MS);
+                if (status_ok) {
+                    imgui.TextColored(ui::colors::ICON_SUCCESS, "Status: OK");
+                } else {
+                    imgui.TextColored(ui::colors::ICON_ERROR, "Status: FAIL");
+                }
+                if (imgui.IsItemHovered()) {
+                    if (status_ok) {
+                        imgui.SetTooltipEx(
+                            "OK: All 6 Reflex markers (Sim Start/End, Render Submit Start/End, Present Start/End) and "
+                            "Reflex sleep were observed in the last 1 s.\nReflex sleep time: %.2f ms (rolling "
+                            "average).",
+                            sleep_ms);
+                    } else {
+                        imgui.SetTooltipEx(
+                            "FAILED\n"
+                            "Reflex sleep in last 1 s: %s\n"
+                            "Markers not sent in last 1 s: %s\n"
+                            "Reflex sleep time: %.2f ms (rolling average).",
+                            sleep_in_1s ? "yes" : "no", markers_not_sent.c_str(), sleep_ms);
+                    }
+                }
             }
-        }
-        if (imgui.IsItemHovered()) {
-            const uint64_t count = GetPCLStatsMarkerCallCount();
-            const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
-            imgui.SetTooltipEx(
-                "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
-                "initialized: %s",
-                static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
+            imgui.Spacing();
+            bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+            if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
+                settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
+                HWND game_window = display_commanderhooks::GetGameWindow();
+                if (game_window != nullptr && pcl_stats) {
+                    display_commanderhooks::InstallWindowProcHooks(game_window);
+                }
+            }
+            if (imgui.IsItemHovered()) {
+                const uint64_t count = GetPCLStatsMarkerCallCount();
+                const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
+                imgui.SetTooltipEx(
+                    "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
+                    "initialized: %s",
+                    static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
+            }
         }
     };
     if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {

@@ -1506,6 +1506,11 @@ extern std::atomic<uint32_t> g_reflex_marker_present_start_count;
 extern std::atomic<uint32_t> g_reflex_marker_present_end_count;
 extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
 
+// Injected Reflex status: last timestamp (ns) when each of the first 6 markers was sent, and when sleep was called (0 =
+// never)
+extern std::atomic<LONGLONG> g_injected_reflex_last_marker_time_ns[6];  // SIMULATION_START..PRESENT_END
+extern std::atomic<LONGLONG> g_injected_reflex_last_sleep_time_ns;
+
 // PCLStats ping signal (edge-triggered, cleared after injection on SIMULATION_START)
 extern std::atomic<bool> g_pclstats_ping_signal;
 

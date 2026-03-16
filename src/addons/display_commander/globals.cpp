@@ -266,7 +266,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::opengl_swapbuffers:               return "opengl_swapbuffers";
         case FpsLimiterCallSite::ddraw_flip:                       return "ddraw_flip";
         case FpsLimiterCallSite::reshade_addon_event:              return "reshade_addon_event";
-        case FpsLimiterCallSite::vk_queue_present_khr:              return "vk_queue_present_khr";
+        case FpsLimiterCallSite::vk_queue_present_khr:             return "vk_queue_present_khr";
         case FpsLimiterCallSite::dxgi_factory_wrapper:             return "dxgi_factory_wrapper";
         default:                                                   return "?";
     }
@@ -603,6 +603,9 @@ std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count{0};
 std::atomic<uint32_t> g_reflex_marker_present_start_count{0};
 std::atomic<uint32_t> g_reflex_marker_present_end_count{0};
 std::atomic<uint32_t> g_reflex_marker_input_sample_count{0};
+
+std::atomic<LONGLONG> g_injected_reflex_last_marker_time_ns[6] = {0, 0, 0, 0, 0, 0};
+std::atomic<LONGLONG> g_injected_reflex_last_sleep_time_ns{0};
 
 // PCLStats ping signal (edge-triggered, cleared after injection on SIMULATION_START)
 std::atomic<bool> g_pclstats_ping_signal{false};
