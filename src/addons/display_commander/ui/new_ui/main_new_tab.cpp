@@ -115,6 +115,9 @@ void DrawNvllNativeReflexStatusOnSameLine(display_commander::ui::IImGuiWrapper& 
     if (!AreNvLowLatencyVkHooksInstalled()) {
         return;
     }
+    if (IsInjectedReflexEnabled()) {
+        return;
+    }
     uint64_t hook_counts[static_cast<std::size_t>(NvllVkHook::Count)] = {};
     GetNvllVkHookCallCounts(hook_counts, static_cast<std::size_t>(NvllVkHook::Count));
     const uint64_t sleep_count = hook_counts[static_cast<std::size_t>(NvllVkHook::Sleep)];
@@ -159,6 +162,9 @@ constexpr uint64_t kDxgiNativeReflexStatusFrameWindow = 50;
 // combo; uses SameLine so it appears next to the previous widget. Shown when NvLL (Vulkan) status is not shown.
 // Status OK when all 6 markers and Sleep were seen within the last kDxgiNativeReflexStatusFrameWindow frames.
 void DrawDxgiNativeReflexStatusOnSameLine(display_commander::ui::IImGuiWrapper& imgui) {
+    if (IsInjectedReflexEnabled()) {
+        return;
+    }
     const reshade::api::device_api api = g_last_reshade_device_api.load();
     if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
         return;
