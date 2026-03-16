@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.564
+- [bugfix] [hooks] **Fixed injected Reflex to call NvAPI_D3D_Sleep** - When using the addon's injected Reflex (FPS limiter mode Reflex + Reflex Enable Sleep), the addon now correctly invokes NvAPI_D3D_Sleep so the driver performs frame-pacing sleep. Users get proper low-latency frame pacing when the game has no native Reflex. Details: injected path uses ReflexProvider::Sleep() → ReflexManager::Sleep() → NvAPI_D3D_Sleep_Direct; GetReflexSleepEnabled() in swapchain_events.cpp.
+
 ## v0.12.563
 - [settings] [ui] **Default settings template: more commented examples** - The template for `default_settings.toml` (created when the file does not exist) now includes commented examples and short explanations for: window mode (0–3), max anisotropic filtering (max_anisotropy, 0–16), PresentMon ETW tracing (EnablePresentMonTracing), and FPS limiter (fps_limiter_enabled, fps_limit, fps_limiter_mode, fps_limit_background). Makes it easier to set global defaults without hunting for config key names. Details: config/default_settings_file.cpp DEFAULT_SETTINGS_TEMPLATE.
 

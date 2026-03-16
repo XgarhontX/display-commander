@@ -60,6 +60,7 @@
 static OnPresentReflexMode GetEffectiveReflexMode();
 static bool GetReflexLowLatency();
 static bool GetReflexBoost();
+static bool GetReflexSleepEnabled();
 
 bool IsInjectedReflexEnabled() { return settings::g_mainTabSettings.inject_reflex.GetValue(); }
 
@@ -1348,8 +1349,7 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
             boost = GetReflexBoost();
             g_reflexProvider->ApplySleepMode(low_latency, boost,
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
-            if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
-                && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+            if (GetReflexSleepEnabled()) {
                 perf_timer.pause();
                 g_reflexProvider->Sleep();
                 perf_timer.resume();
@@ -1457,6 +1457,18 @@ bool GetReflexBoost() {
         return p.has_value ? p.boost : false;
     }
     return (mode == OnPresentReflexMode::kLowLatencyBoost);
+}
+
+bool GetReflexSleepEnabled() {
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+        // true if not native nvapi_d3d_sleep in last 1s
+        return g_nvapi_last_sleep_timestamp_ns.load() < utils::get_now_ns() - 1 * utils::SEC_TO_NS;
+    }
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
+        // true if not native nvapi_d3d_sleep in last 1s
+        return g_nvapi_last_sleep_timestamp_ns.load() < utils::get_now_ns() - 1 * utils::SEC_TO_NS;
+    }
+    return false;
 }
 
 bool ShouldReflexLowLatencyBeEnabled() { return GetReflexLowLatency(); }
