@@ -19,8 +19,35 @@ using HotkeyAction = std::function<void()>;
 // Internal storage is numeric: key_code (VK_*) + modifier flags.
 // Display strings are derived via FormatHotkeyString; no per-frame parsing.
 
-// Expected number of hotkey definitions (must match g_hotkey_definitions size in InitializeHotkeyDefinitions).
-static constexpr int kHotkeyDefinitionCount = 23;
+// Hotkey index enum; must match g_hotkey_definitions order in InitializeHotkeyDefinitions.
+enum class HotkeyId : int {
+    MuteUnmute = 0,
+    BackgroundToggle,
+    TimeSlowdown,
+    AdhdToggle,
+    Autoclick,
+    InputBlocking,
+    DisplayCommanderUi,
+    IndependentUi,
+    PerformanceOverlay,
+    Stopwatch,
+    VolumeUp,
+    VolumeDown,
+    SystemVolumeUp,
+    SystemVolumeDown,
+    AutoHdr,
+    BrightnessDown,
+    BrightnessUp,
+    WinDown,
+    WinUp,
+    WinLeft,
+    WinRight,
+    MoveToPrimary,
+    MoveToSecondary,
+    Count
+};
+
+static constexpr int kHotkeyDefinitionCount = static_cast<int>(HotkeyId::Count);
 
 // Parsed hotkey structure (canonical in-memory representation)
 struct ParsedHotkey {

@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.556
+- [bugfix] [ui] **Fixed hotkeys UI to not have out of bounds text** - Replaced magic indices (0–22) with a HotkeyId enum and use it when mapping hotkey definitions to settings. Ensures the hotkeys table and load/save logic stay in sync and avoids out-of-bounds or misaligned text. Details: hotkeys_tab.hpp HotkeyId enum; hotkeys_tab.cpp switch and index uses.
+
 ## v0.12.555
 - [bugfix] [compatibility] **ReShade unload: wait for continuous monitoring before returning** - When ReShade unloads Display Commander (FreeLibrary path), the addon now waits until the continuous monitoring thread is in its sleep phase before returning. This ensures the monitoring loop sees `g_reshade_module == nullptr` on its next iteration and avoids using ReShade/DC state during or after unload, reducing crash risk. Uses a shared SRWLOCK held by the monitoring thread while the loop body runs and released when sleeping; FreeLibrary_Detour acquires it exclusive to wait. Details: utils/srwlock_registry g_continuous_monitoring_loop_lock; continuous_monitoring.cpp holds shared lock for loop body; loadlibrary_hooks.cpp FreeLibrary_Detour waits exclusive then returns.
 

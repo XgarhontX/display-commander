@@ -3,8 +3,8 @@
 #include "../../audio/audio_management.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
+#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
@@ -686,39 +686,53 @@ void InitializeHotkeyDefinitions() {
     auto& settings = settings::g_hotkeysTabSettings;
     if (g_hotkey_definitions.size() >= kHotkeyDefinitionCount) {
         // Load from config: "0x11;0x10;0x65" or legacy "ctrl+shift+m"
-        g_hotkey_definitions[0].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_mute_unmute.GetValue());
-        g_hotkey_definitions[1].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::MuteUnmute)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_mute_unmute.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
         if (enabled_experimental_features) {
-            g_hotkey_definitions[2].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
-            g_hotkey_definitions[4].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_autoclick.GetValue());
+            g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed =
+                DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
+            g_hotkey_definitions[static_cast<size_t>(HotkeyId::Autoclick)].parsed =
+                DeserializeHotkeyFromConfigString(settings.hotkey_autoclick.GetValue());
         }
-        g_hotkey_definitions[3].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
-        g_hotkey_definitions[5].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_input_blocking.GetValue());
-        g_hotkey_definitions[6].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::InputBlocking)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_input_blocking.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::DisplayCommanderUi)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
-        g_hotkey_definitions[7].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::IndependentUi)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_independent_ui.GetValue());
-        g_hotkey_definitions[8].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
-        g_hotkey_definitions[9].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
-        g_hotkey_definitions[10].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
-        g_hotkey_definitions[11].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
-        g_hotkey_definitions[12].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeUp)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeDown)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
-        g_hotkey_definitions[13].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
-        g_hotkey_definitions[14].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
-        g_hotkey_definitions[15].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::AutoHdr)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_brightness_down.GetValue());
-        g_hotkey_definitions[16].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
-        g_hotkey_definitions[17].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
-        g_hotkey_definitions[18].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_up.GetValue());
-        g_hotkey_definitions[19].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
-        g_hotkey_definitions[20].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
-        g_hotkey_definitions[21].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessUp)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinUp)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_win_up.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinLeft)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinRight)].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToPrimary)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
-        g_hotkey_definitions[22].parsed =
+        g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToSecondary)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
     }
 }
@@ -854,31 +868,54 @@ void SyncHotkeySettingsFromParsed() {
     }
     auto& s = settings::g_hotkeysTabSettings;
     // Store in config as "0x11;0x10;0x65" (VK list: modifiers then key)
-    s.hotkey_mute_unmute.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[0].parsed));
-    s.hotkey_background_toggle.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[1].parsed));
+    s.hotkey_mute_unmute.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MuteUnmute)].parsed));
+    s.hotkey_background_toggle.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed));
     if (enabled_experimental_features) {
-        s.hotkey_timeslowdown.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[2].parsed));
-        s.hotkey_autoclick.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[4].parsed));
+        s.hotkey_timeslowdown.SetValue(
+            SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed));
+        s.hotkey_autoclick.SetValue(
+            SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Autoclick)].parsed));
     }
-    s.hotkey_adhd_toggle.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[3].parsed));
-    s.hotkey_input_blocking.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[5].parsed));
-    s.hotkey_display_commander_ui.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[6].parsed));
-    s.hotkey_independent_ui.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[7].parsed));
-    s.hotkey_performance_overlay.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[8].parsed));
-    s.hotkey_stopwatch.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[9].parsed));
-    s.hotkey_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[10].parsed));
-    s.hotkey_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[11].parsed));
-    s.hotkey_system_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[12].parsed));
-    s.hotkey_system_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[13].parsed));
-    s.hotkey_auto_hdr.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[14].parsed));
-    s.hotkey_brightness_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[15].parsed));
-    s.hotkey_brightness_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[16].parsed));
-    s.hotkey_win_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[17].parsed));
-    s.hotkey_win_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[18].parsed));
-    s.hotkey_win_left.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[19].parsed));
-    s.hotkey_win_right.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[20].parsed));
-    s.hotkey_move_to_primary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[21].parsed));
-    s.hotkey_move_to_secondary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[22].parsed));
+    s.hotkey_adhd_toggle.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed));
+    s.hotkey_input_blocking.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::InputBlocking)].parsed));
+    s.hotkey_display_commander_ui.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::DisplayCommanderUi)].parsed));
+    s.hotkey_independent_ui.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::IndependentUi)].parsed));
+    s.hotkey_performance_overlay.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed));
+    s.hotkey_stopwatch.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed));
+    s.hotkey_volume_up.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeUp)].parsed));
+    s.hotkey_volume_down.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeDown)].parsed));
+    s.hotkey_system_volume_up.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed));
+    s.hotkey_system_volume_down.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed));
+    s.hotkey_auto_hdr.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AutoHdr)].parsed));
+    s.hotkey_brightness_down.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessDown)].parsed));
+    s.hotkey_brightness_up.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessUp)].parsed));
+    s.hotkey_win_down.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed));
+    s.hotkey_win_up.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinUp)].parsed));
+    s.hotkey_win_left.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinLeft)].parsed));
+    s.hotkey_win_right.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinRight)].parsed));
+    s.hotkey_move_to_primary.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToPrimary)].parsed));
+    s.hotkey_move_to_secondary.SetValue(
+        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToSecondary)].parsed));
 }
 
 void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
@@ -902,10 +939,10 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
         // Create a table for hotkeys
         const int table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
         if (imgui.BeginTable("HotkeysTable", 4, table_flags)) {
-            imgui.TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthStretch);
+            imgui.TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
             imgui.TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 250.0f);
             imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-            imgui.TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            imgui.TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 250.0f);
             imgui.TableHeadersRow();
 
             // Draw each hotkey configuration
@@ -914,34 +951,35 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
 
                 // Get corresponding setting
                 settings::StringSetting* setting_ptr = nullptr;
-                switch (i) {
-                    case 0: setting_ptr = &settings.hotkey_mute_unmute; break;
-                    case 1: setting_ptr = &settings.hotkey_background_toggle; break;
-                    case 2:
+                const auto id = static_cast<HotkeyId>(i);
+                switch (id) {
+                    case HotkeyId::MuteUnmute: setting_ptr = &settings.hotkey_mute_unmute; break;
+                    case HotkeyId::BackgroundToggle: setting_ptr = &settings.hotkey_background_toggle; break;
+                    case HotkeyId::TimeSlowdown:
                         if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown;
                         break;
-                    case 3: setting_ptr = &settings.hotkey_adhd_toggle; break;
-                    case 4:
+                    case HotkeyId::AdhdToggle: setting_ptr = &settings.hotkey_adhd_toggle; break;
+                    case HotkeyId::Autoclick:
                         if (enabled_experimental_features) setting_ptr = &settings.hotkey_autoclick;
                         break;
-                    case 5:  setting_ptr = &settings.hotkey_input_blocking; break;
-                    case 6:  setting_ptr = &settings.hotkey_display_commander_ui; break;
-                    case 7:  setting_ptr = &settings.hotkey_independent_ui; break;
-                    case 8:  setting_ptr = &settings.hotkey_performance_overlay; break;
-                    case 9:  setting_ptr = &settings.hotkey_stopwatch; break;
-                    case 10: setting_ptr = &settings.hotkey_volume_up; break;
-                    case 11: setting_ptr = &settings.hotkey_volume_down; break;
-                    case 12: setting_ptr = &settings.hotkey_system_volume_up; break;
-                    case 13: setting_ptr = &settings.hotkey_system_volume_down; break;
-                    case 14: setting_ptr = &settings.hotkey_auto_hdr; break;
-                    case 15: setting_ptr = &settings.hotkey_brightness_down; break;
-                    case 16: setting_ptr = &settings.hotkey_brightness_up; break;
-                    case 17: setting_ptr = &settings.hotkey_win_down; break;
-                    case 18: setting_ptr = &settings.hotkey_win_up; break;
-                    case 19: setting_ptr = &settings.hotkey_win_left; break;
-                    case 20: setting_ptr = &settings.hotkey_win_right; break;
-                    case 21: setting_ptr = &settings.hotkey_move_to_primary; break;
-                    case 22: setting_ptr = &settings.hotkey_move_to_secondary; break;
+                    case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
+                    case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
+                    case HotkeyId::IndependentUi: setting_ptr = &settings.hotkey_independent_ui; break;
+                    case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
+                    case HotkeyId::Stopwatch: setting_ptr = &settings.hotkey_stopwatch; break;
+                    case HotkeyId::VolumeUp: setting_ptr = &settings.hotkey_volume_up; break;
+                    case HotkeyId::VolumeDown: setting_ptr = &settings.hotkey_volume_down; break;
+                    case HotkeyId::SystemVolumeUp: setting_ptr = &settings.hotkey_system_volume_up; break;
+                    case HotkeyId::SystemVolumeDown: setting_ptr = &settings.hotkey_system_volume_down; break;
+                    case HotkeyId::AutoHdr: setting_ptr = &settings.hotkey_auto_hdr; break;
+                    case HotkeyId::BrightnessDown: setting_ptr = &settings.hotkey_brightness_down; break;
+                    case HotkeyId::BrightnessUp: setting_ptr = &settings.hotkey_brightness_up; break;
+                    case HotkeyId::WinDown: setting_ptr = &settings.hotkey_win_down; break;
+                    case HotkeyId::WinUp: setting_ptr = &settings.hotkey_win_up; break;
+                    case HotkeyId::WinLeft: setting_ptr = &settings.hotkey_win_left; break;
+                    case HotkeyId::WinRight: setting_ptr = &settings.hotkey_win_right; break;
+                    case HotkeyId::MoveToPrimary: setting_ptr = &settings.hotkey_move_to_primary; break;
+                    case HotkeyId::MoveToSecondary: setting_ptr = &settings.hotkey_move_to_secondary; break;
                     default: setting_ptr = nullptr; break;
                 }
 
@@ -1082,7 +1120,8 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.Text(ICON_FK_WARNING);
                 ui::colors::PopIconColor(&imgui);
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
+                    imgui.SetTooltipEx(
+                        "ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
                 }
             }
         } else {
@@ -1221,7 +1260,8 @@ void ProcessExclusiveKeyGroups() {
         return;
     }
 
-    // Check if game is in foreground, overlay UI is open, or independent UI window is in foreground (same as ProcessHotkeys)
+    // Check if game is in foreground, overlay UI is open, or independent UI window is in foreground (same as
+    // ProcessHotkeys)
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
     HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
