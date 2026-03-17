@@ -3,6 +3,7 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ## v0.12.570 (unreleased)
+- [ui] [experimental] **Runtimes debug sub-tab** - Added a **Runtimes** sub-tab under Experimental (Debug) that lists all enumerated ReShade runtimes with per-runtime info: HWND, API (D3D9/D3D11/D3D12/OpenGL/Vulkan), back buffer size (width x height), back buffer count and current index, back buffer format (e.g. R8G8B8A8_UNORM, R10G10B10A2_UNORM), and color space (when available from the swapchain). Useful for debugging multi-swapchain games. Details: experimental_tab.hpp DrawRuntimesDebugSubTab; experimental_tab.cpp EnumerateReShadeRuntimes callback, RuntimeSnapshot, FormatToRuntimeFormatString, ColorSpaceToString.
 
 ## v0.12.569
 - [ui] **Notes tab: Open button and icons** - Notes tab now has an **Open** button that opens the current game's notes file in the default text editor (creates and saves the file first if it doesn't exist). Save, Open, and Open folder buttons use ForkAwesome icons (floppy, file, folder-open). Details: notes_tab.cpp; res/forkawesome.h.

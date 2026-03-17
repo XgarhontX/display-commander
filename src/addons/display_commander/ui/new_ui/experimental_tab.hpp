@@ -69,6 +69,9 @@ void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui);
 // Draw input test tab
 void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui);
 
+// Draw Runtimes debug sub-tab (all ReShade runtimes: backbuffer size, format, colorspace, etc.)
+void DrawRuntimesDebugSubTab(display_commander::ui::IImGuiWrapper& imgui);
+
 // Draw NVIDIA Profile tab (standalone top-level tab content)
 void DrawNvidiaProfileTab(reshade::api::effect_runtime* runtime);
 

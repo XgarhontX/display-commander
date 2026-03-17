@@ -35,6 +35,8 @@
 #include "updates_tab.hpp"
 #include "window_info_tab.hpp"
 
+#include <reshade.hpp>
+
 #include <psapi.h>
 #include <windows.h>
 
@@ -43,6 +45,8 @@
 #include <climits>
 #include <cstdint>
 #include <cstdlib>
+#include <string>
+#include <vector>
 
 namespace ui::new_ui {
 
@@ -337,7 +341,156 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         imgui.EndTabItem();
     }
 
+    if (!is_standalone && imgui.BeginTabItem("Runtimes", nullptr, 0)) {
+        DrawRuntimesDebugSubTab(imgui);
+        imgui.EndTabItem();
+    }
+
     imgui.EndTabBar();
+}
+
+struct RuntimeSnapshot {
+    size_t index = 0;
+    void* hwnd = nullptr;
+    std::string api_str;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t back_buffer_count = 0;
+    uint32_t current_back_buffer_index = 0;
+    std::string format_str;
+    std::string color_space_str;
+};
+
+static const char* FormatToRuntimeFormatString(reshade::api::format fmt) {
+    switch (fmt) {
+        case reshade::api::format::r8g8b8a8_unorm:
+            return "R8G8B8A8_UNORM";
+        case reshade::api::format::r8g8b8a8_unorm_srgb:
+            return "R8G8B8A8_UNORM_SRGB";
+        case reshade::api::format::b8g8r8a8_unorm:
+            return "B8G8R8A8_UNORM";
+        case reshade::api::format::b8g8r8a8_unorm_srgb:
+            return "B8G8R8A8_UNORM_SRGB";
+        case reshade::api::format::r10g10b10a2_unorm:
+            return "R10G10B10A2_UNORM";
+        case reshade::api::format::r16g16b16a16_float:
+            return "R16G16B16A16_FLOAT";
+        case reshade::api::format::r8g8b8a8_typeless:
+            return "R8G8B8A8_TYPELESS";
+        case reshade::api::format::b8g8r8a8_typeless:
+            return "B8G8R8A8_TYPELESS";
+        default:
+            return "Unknown";
+    }
+}
+
+static const char* ColorSpaceToString(reshade::api::color_space cs) {
+    switch (cs) {
+        case reshade::api::color_space::srgb_nonlinear:
+            return "sRGB (non-linear)";
+        case reshade::api::color_space::extended_srgb_linear:
+            return "scRGB (linear)";
+        case reshade::api::color_space::hdr10_st2084:
+            return "HDR10 (ST2084)";
+        case reshade::api::color_space::hdr10_hlg:
+            return "HDR10 (HLG)";
+        case reshade::api::color_space::unknown:
+        default:
+            return "Unknown";
+    }
+}
+
+void DrawRuntimesDebugSubTab(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Text("ReShade runtimes (all enumerated swapchain/effect runtimes)");
+    imgui.Separator();
+
+    std::vector<RuntimeSnapshot> snapshots;
+    EnumerateReShadeRuntimes(
+        [](size_t index, reshade::api::effect_runtime* runtime, void* user_data) {
+            auto* out = static_cast<std::vector<RuntimeSnapshot>*>(user_data);
+            RuntimeSnapshot s;
+            s.index = index;
+            if (!runtime) {
+                s.api_str = "?";
+                s.format_str = "N/A";
+                s.color_space_str = "N/A";
+                out->push_back(s);
+                return false;
+            }
+            s.hwnd = runtime->get_hwnd();
+            reshade::api::device* device = runtime->get_device();
+            if (device) {
+                switch (device->get_api()) {
+                    case reshade::api::device_api::d3d9:
+                        s.api_str = "D3D9";
+                        break;
+                    case reshade::api::device_api::d3d10:
+                        s.api_str = "D3D10";
+                        break;
+                    case reshade::api::device_api::d3d11:
+                        s.api_str = "D3D11";
+                        break;
+                    case reshade::api::device_api::d3d12:
+                        s.api_str = "D3D12";
+                        break;
+                    case reshade::api::device_api::opengl:
+                        s.api_str = "OpenGL";
+                        break;
+                    case reshade::api::device_api::vulkan:
+                        s.api_str = "Vulkan";
+                        break;
+                    default:
+                        s.api_str = "?";
+                        break;
+                }
+            } else {
+                s.api_str = "?";
+            }
+            runtime->get_screenshot_width_and_height(&s.width, &s.height);
+            s.back_buffer_count = runtime->get_back_buffer_count();
+            s.current_back_buffer_index = runtime->get_current_back_buffer_index();
+            if (device) {
+                reshade::api::resource bb = runtime->get_back_buffer(0);
+                if (bb != 0) {
+                    reshade::api::resource_desc desc = device->get_resource_desc(bb);
+                    s.format_str = FormatToRuntimeFormatString(desc.texture.format);
+                } else {
+                    s.format_str = "N/A";
+                }
+            } else {
+                s.format_str = "N/A";
+            }
+            reshade::api::swapchain* swapchain = dynamic_cast<reshade::api::swapchain*>(runtime);
+            if (swapchain) {
+                s.color_space_str = ColorSpaceToString(swapchain->get_color_space());
+            } else {
+                s.color_space_str = "N/A";
+            }
+            out->push_back(s);
+            return false;
+        },
+        &snapshots);
+
+    if (snapshots.empty()) {
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No ReShade runtimes.");
+        return;
+    }
+
+    for (const RuntimeSnapshot& s : snapshots) {
+        if (imgui.CollapsingHeader(
+                ("Runtime " + std::to_string(s.index) + (s.index == 0 ? " (first)" : "")).c_str(),
+                display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+            imgui.Indent();
+            imgui.Text("HWND: %p", s.hwnd);
+            imgui.Text("API: %s", s.api_str.c_str());
+            imgui.Text("Back buffer size: %u x %u", s.width, s.height);
+            imgui.Text("Back buffer count: %u (current index: %u)", s.back_buffer_count,
+                       s.current_back_buffer_index);
+            imgui.Text("Back buffer format: %s", s.format_str.c_str());
+            imgui.Text("Color space: %s", s.color_space_str.c_str());
+            imgui.Unindent();
+        }
+    }
 }
 
 static void DrawHooksConfigTab(display_commander::ui::IImGuiWrapper& imgui) {
