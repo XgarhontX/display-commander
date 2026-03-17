@@ -261,6 +261,8 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime);
 extern "C" __declspec(dllexport) constexpr const char* NAME = "Display Commander";
 extern "C" __declspec(dllexport) constexpr const char* DESCRIPTION =
     "RenoDX Display Commander - Advanced display and performance management.";
+extern "C" __declspec(dllexport) constexpr const char* WEBSITE = "https://github.com/pmnoxx/display-commander";
+extern "C" __declspec(dllexport) constexpr const char* ISSUES = "https://github.com/pmnoxx/display-commander/issues";
 
 // Export version string function
 extern "C" __declspec(dllexport) const char* GetDisplayCommanderVersion() { return DISPLAY_COMMANDER_VERSION_STRING; }
