@@ -181,6 +181,8 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnum<LogLevel> log_level;
 
     // Individual Tab Visibility Settings
+    ui::new_ui::BoolSetting show_games_tab;
+    ui::new_ui::BoolSetting show_hotkeys_tab;
     ui::new_ui::BoolSetting show_advanced_tab;
     ui::new_ui::BoolSetting show_window_info_tab;
     ui::new_ui::BoolSetting show_swapchain_tab;
@@ -192,6 +194,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_reshade_tab;
     ui::new_ui::BoolSetting show_performance_tab;
     ui::new_ui::BoolSetting show_vulkan_tab;
+    ui::new_ui::BoolSetting show_notes_tab;
+    ui::new_ui::BoolSetting show_nvidia_profile_tab;
     /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
     ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;
     /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame

@@ -453,9 +453,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
                     gui.EndTabItem();
                 }
-                if (gui.BeginTabItem("Games", nullptr, 0)) {
-                    ui::new_ui::DrawGamesTab(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_games_tab.GetValue()) {
+                    if (gui.BeginTabItem("Games", nullptr, 0)) {
+                        ui::new_ui::DrawGamesTab(gui);
+                        gui.EndTabItem();
+                    }
                 }
                 if (show_all || settings::g_mainTabSettings.show_advanced_tab.GetValue()) {
                     if (gui.BeginTabItem("Advanced", nullptr, 0)) {
@@ -463,9 +465,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                         gui.EndTabItem();
                     }
                 }
-                if (gui.BeginTabItem("Hotkeys", nullptr, 0)) {
-                    ui::new_ui::DrawHotkeysTab(gui);
-                    gui.EndTabItem();
+                if (show_all || settings::g_mainTabSettings.show_hotkeys_tab.GetValue()) {
+                    if (gui.BeginTabItem("Hotkeys", nullptr, 0)) {
+                        ui::new_ui::DrawHotkeysTab(gui);
+                        gui.EndTabItem();
+                    }
                 }
                 if (show_all || settings::g_mainTabSettings.show_controller_tab.GetValue()) {
                     if (gui.BeginTabItem("Controller", nullptr, 0)) {
@@ -505,13 +509,15 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                         gui.EndTabItem();
                     }
                 }
-                if (show_all) {
+                if (show_all || settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue()) {
                     if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
                         static bool s_noreshadeShowAdvancedProfile = false;
                         display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
                                                                     &s_noreshadeShowAdvancedProfile);
                         gui.EndTabItem();
                     }
+                }
+                if (show_all) {
                     if (gui.BeginTabItem("Debug", nullptr, 0)) {
                         ui::new_ui::DrawExperimentalTab(gui, nullptr);
                         gui.EndTabItem();

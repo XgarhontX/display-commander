@@ -1590,6 +1590,26 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Show Individual Tabs:");
     imgui.Indent();
 
+    if (ui::new_ui::g_tab_manager.HasTab("games")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_games_tab, "Show Games Tab", imgui)) {
+            LogInfo("Show Games tab %s",
+                    settings::g_mainTabSettings.show_games_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Show the Games tab (per-game display and profile settings).");
+        }
+    }
+
+    if (ui::new_ui::g_tab_manager.HasTab("hotkeys")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_hotkeys_tab, "Show Hotkeys Tab", imgui)) {
+            LogInfo("Show Hotkeys tab %s",
+                    settings::g_mainTabSettings.show_hotkeys_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Show the Hotkeys tab (keyboard shortcuts for brightness, volume, etc.).");
+        }
+    }
+
     if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab", imgui)) {
             LogInfo("Show Advanced tab %s",
@@ -1631,6 +1651,16 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
+    if (ui::new_ui::g_tab_manager.HasTab("performance")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_performance_tab, "Show Performance Tab", imgui)) {
+            LogInfo("Show Performance tab %s",
+                    settings::g_mainTabSettings.show_performance_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows the Performance tab (experimental measurements) even when 'Show All Tabs' is disabled.");
+        }
+    }
+
     if (ui::new_ui::g_tab_manager.HasTab("streamline")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab", imgui)) {
             LogInfo("Show Streamline tab %s",
@@ -1651,6 +1681,16 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
+    if (ui::new_ui::g_tab_manager.HasTab("reshade")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_reshade_tab, "Show ReShade Tab", imgui)) {
+            LogInfo("Show ReShade tab %s",
+                    settings::g_mainTabSettings.show_reshade_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows the ReShade/Addons tab even when 'Show All Tabs' is disabled.");
+        }
+    }
+
     if (ui::new_ui::g_tab_manager.HasTab("vulkan")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab", imgui)) {
             LogInfo("Show Vulkan (Experimental) tab %s",
@@ -1659,6 +1699,26 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+        }
+    }
+
+    if (ui::new_ui::g_tab_manager.HasTab("notes")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_notes_tab, "Show Notes Tab", imgui)) {
+            LogInfo("Show Notes tab %s",
+                    settings::g_mainTabSettings.show_notes_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows the Notes tab for per-game notes (stored in Display_Commander\\Games\\<game>\\notes.txt).");
+        }
+    }
+
+    if (ui::new_ui::g_tab_manager.HasTab("nvidia_profile")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_nvidia_profile_tab, "Show NVIDIA Profile Tab", imgui)) {
+            LogInfo("Show NVIDIA Profile tab %s",
+                    settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Show the NVIDIA Profile tab (driver profile, FPS limit, DLSS presets for this game).");
         }
     }
 
