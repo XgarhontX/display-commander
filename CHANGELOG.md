@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.576 (unreleased)
+- [compatibility] **ReShade config overrides use runtime when available** - When applying ReShade settings (window/docking, tutorial/updates, DC shader paths), the addon now passes the current effect runtime to `get_config_value`/`set_config_value` when one is available (e.g. from `OnInitEffectRuntime`). Each runtime’s .ini (ReShade.ini, ReShade2.ini, etc.) is updated correctly instead of always writing to the global/current config. Call sites without a runtime still pass `nullptr`. Details: OverrideReShadeSettings(runtime) and helpers take optional runtime; addon.hpp declaration; main_entry.cpp, main_new_tab.cpp call sites.
+
 ## v0.12.575 (unreleased)
 - [compatibility] **Name, author, and description in ReShade Add-ons tab** - The addon now exports NAME, AUTHOR, and DESCRIPTION (in addition to WEBSITE and ISSUES) so ReShade can show addon name, author, and description in the Add-ons tab. ReShade's addon manager was updated to load the AUTHOR export via GetProcAddress when present; name and description were already loaded. Users see Display Commander's author and description in the overlay. Details: addon.cpp exports AUTHOR; external/reshade/source/addon_manager.cpp loads AUTHOR like WEBSITE/ISSUES.
 

@@ -550,7 +550,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
     // Re-apply ReShade config overrides for this runtime (window config, paths, tutorial/updates, etc.)
     // so each new runtime (e.g. ReShade2.ini) gets the same DC settings.
-    OverrideReShadeSettings();
+    OverrideReShadeSettings(runtime);
 
     LogInfo("[OnInitEffectRuntime] exit");
 }
@@ -799,14 +799,16 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
 
 namespace {
 // Helpers for OverrideReShadeSettings - each handles one logical block.
-void OverrideReShadeSettings_WindowConfig() {
+// When runtime is non-null, config is read/written for that runtime's .ini (e.g. ReShade2.ini); otherwise
+// global/current.
+void OverrideReShadeSettings_WindowConfig(reshade::api::effect_runtime* runtime) {
     std::string window_config;
     size_t value_size = 0;
     if ((g_reshade_module != nullptr)
-        && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
+        && reshade::get_config_value(runtime, "OVERLAY", "Window", nullptr, &value_size)) {
         window_config.resize(value_size);
         if ((g_reshade_module != nullptr)
-            && reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
+            && reshade::get_config_value(runtime, "OVERLAY", "Window", window_config.data(), &value_size)) {
             if (!window_config.empty() && window_config.back() == '\0') {
                 window_config.pop_back();
             }
@@ -845,28 +847,28 @@ void OverrideReShadeSettings_WindowConfig() {
         changed_window_config = true;
     }
     if (changed_window_config) {
-        reshade::set_config_value(nullptr, "OVERLAY", "Window", window_config.c_str(), window_config.size());
+        reshade::set_config_value(runtime, "OVERLAY", "Window", window_config.c_str(), window_config.size());
         LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
     }
 }
 
-void OverrideReShadeSettings_TutorialAndUpdates() {
-    reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
-    reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
+void OverrideReShadeSettings_TutorialAndUpdates(reshade::api::effect_runtime* runtime) {
+    reshade::set_config_value(runtime, "OVERLAY", "TutorialProgress", 4);
+    reshade::set_config_value(runtime, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
     if (settings::g_reshadeTabSettings.suppress_reshade_clock.GetValue()) {
-        reshade::set_config_value(nullptr, "OVERLAY", "ShowClock", 0);
+        reshade::set_config_value(runtime, "OVERLAY", "ShowClock", 0);
         LogInfo("ReShade settings override - ShowClock set to 0 (disabled)");
     }
 }
 
-void OverrideReShadeSettings_LoadFromDllMainOnce() {
+void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* runtime) {
     bool load_from_dll_main_set_once = false;
     display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
                                                 load_from_dll_main_set_once);
     if (!load_from_dll_main_set_once) {
         int32_t current_reshade_value = 0;
-        reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", current_reshade_value);
+        reshade::get_config_value(runtime, "ADDON", "LoadFromDllMain", current_reshade_value);
         LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
         LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
         display_commander::config::set_config_value("DisplayCommander", "LoadFromDllMainSetOnce", true);
@@ -877,7 +879,7 @@ void OverrideReShadeSettings_LoadFromDllMainOnce() {
     }
 }
 
-void OverrideReShadeSettings_AddDisplayCommanderPaths() {
+void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime) {
     if (!settings::g_mainTabSettings.add_dc_to_reshade_shader_paths.GetValue()) {
         return;
     }
@@ -908,12 +910,12 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths() {
         return;
     }
 
-    auto addPathToSearchPaths = [](const char* section, const char* key,
-                                   const std::filesystem::path& path_to_add) -> bool {
+    auto addPathToSearchPaths = [runtime](const char* section, const char* key,
+                                          const std::filesystem::path& path_to_add) -> bool {
         char buffer[4096] = {0};
         size_t buffer_size = sizeof(buffer);
         std::vector<std::string> existing_paths;
-        if ((g_reshade_module != nullptr) && reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+        if ((g_reshade_module != nullptr) && reshade::get_config_value(runtime, section, key, buffer, &buffer_size)) {
             const char* ptr = buffer;
             while (*ptr != '\0' && ptr < buffer + buffer_size) {
                 std::string path(ptr);
@@ -948,7 +950,7 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths() {
             combined += path;
             combined += '\0';
         }
-        reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
+        reshade::set_config_value(runtime, section, key, combined.c_str(), combined.size());
         LogInfo("Added path to ReShade %s::%s: %s", section, key, path_str.c_str());
         return true;
     };
@@ -957,7 +959,7 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths() {
     addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
 }
 
-void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
+void OverrideReShadeSettings_RemoveDisplayCommanderPaths(reshade::api::effect_runtime* runtime) {
     std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
     if (dc_base_dir.empty()) {
         LogWarn("Failed to get DC Reshade root path, skipping ReShade path removal");
@@ -985,12 +987,12 @@ void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
                              });
     };
 
-    auto removePathFromSearchPaths = [&](const char* section, const char* key,
-                                         const std::string& normalized_target) -> bool {
+    auto removePathFromSearchPaths = [&, runtime](const char* section, const char* key,
+                                                  const std::string& normalized_target) -> bool {
         char buffer[4096] = {0};
         size_t buffer_size = sizeof(buffer);
         std::vector<std::string> existing_paths;
-        if ((g_reshade_module == nullptr) || !reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+        if ((g_reshade_module == nullptr) || !reshade::get_config_value(runtime, section, key, buffer, &buffer_size)) {
             return false;
         }
         const char* ptr = buffer;
@@ -1009,7 +1011,7 @@ void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
             combined += path;
             combined += '\0';
         }
-        reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
+        reshade::set_config_value(runtime, section, key, combined.c_str(), combined.size());
         LogInfo("Removed DC path from ReShade %s::%s (target was: %s)", section, key, normalized_target.c_str());
         return true;
     };
@@ -1019,20 +1021,22 @@ void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
 }
 }  // namespace
 
-// Override ReShade settings to set tutorial as viewed and disable auto updates
-void OverrideReShadeSettings() {
+// Override ReShade settings to set tutorial as viewed and disable auto updates.
+// When runtime is non-null (e.g. from OnInitEffectRuntime), config is applied to that runtime's .ini; otherwise
+// global/current.
+void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
     if (g_reshade_module == nullptr) {
         return;  // No-ReShade mode or ReShade not loaded; skip ReShade config override
     }
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
-    OverrideReShadeSettings_WindowConfig();
-    OverrideReShadeSettings_TutorialAndUpdates();
-    OverrideReShadeSettings_LoadFromDllMainOnce();
+    OverrideReShadeSettings_WindowConfig(runtime);
+    OverrideReShadeSettings_TutorialAndUpdates(runtime);
+    OverrideReShadeSettings_LoadFromDllMainOnce(runtime);
     if (settings::g_mainTabSettings.add_dc_to_reshade_shader_paths.GetValue()) {
-        OverrideReShadeSettings_AddDisplayCommanderPaths();
+        OverrideReShadeSettings_AddDisplayCommanderPaths(runtime);
     } else {
-        OverrideReShadeSettings_RemoveDisplayCommanderPaths();
+        OverrideReShadeSettings_RemoveDisplayCommanderPaths(runtime);
     }
 
     LogInfo("ReShade settings override completed successfully");
@@ -1763,7 +1767,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
     display_commanderhooks::InstallApiHooks();
     InstallRealDXGIMinHookHooks();
-    OverrideReShadeSettings();
+    OverrideReShadeSettings(nullptr);
 }
 
 void DoInitializationWithoutHwndSafe_Late() {

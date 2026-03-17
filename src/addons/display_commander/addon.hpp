@@ -39,8 +39,8 @@ void ContinuousMonitoringThread();
 
 // Power saving settings and swapchain utilities (declared in swapchain_events.hpp)
 
-// ReShade config: add/remove Display Commander EffectSearchPaths and TextureSearchPaths
-void OverrideReShadeSettings();
+// ReShade config: add/remove Display Commander EffectSearchPaths and TextureSearchPaths. Pass runtime when available so config is applied to that runtime's .ini.
+void OverrideReShadeSettings(reshade::api::effect_runtime* runtime = nullptr);
 
 // Initialization functions
 bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool do_unregister = true);
