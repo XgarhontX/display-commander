@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.575 (unreleased)
+- [compatibility] **Name, author, and description in ReShade Add-ons tab** - The addon now exports NAME, AUTHOR, and DESCRIPTION (in addition to WEBSITE and ISSUES) so ReShade can show addon name, author, and description in the Add-ons tab. ReShade's addon manager was updated to load the AUTHOR export via GetProcAddress when present; name and description were already loaded. Users see Display Commander's author and description in the overlay. Details: addon.cpp exports AUTHOR; external/reshade/source/addon_manager.cpp loads AUTHOR like WEBSITE/ISSUES.
+
 ## v0.12.574 (unreleased)
 - [compatibility] **ReShade settings re-applied on every new runtime** - Display Commander’s ReShade overrides (window/docking config, tutorial and updates, DC shader/texture paths) are now applied every time a new ReShade effect runtime is created, not only at first load. Games that create multiple runtimes (e.g. main swapchain + VR or multiple windows) get consistent DC settings in each runtime’s config (ReShade.ini, ReShade2.ini, etc.). Details: OverrideReShadeSettings() is called from OnInitEffectRuntime in main_entry.cpp.
 
