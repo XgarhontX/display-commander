@@ -2281,7 +2281,8 @@ static void DrawUpdatesAddonsHeader(display_commander::ui::IImGuiWrapper& imgui)
     }
 }
 
-static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui) {
+static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui,
+                                     reshade::api::effect_runtime* runtime) {
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
@@ -2301,10 +2302,9 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered()) {
         std::string effect_display = "—";
         std::string texture_display = "—";
-        // Use same runtime as OverrideReShadeSettings: nullptr = global ReShade config
         char buf[4096] = {0};
         size_t buf_size = sizeof(buf);
-        if (reshade::get_config_value(nullptr, "GENERAL", "EffectSearchPaths", buf, &buf_size) && buf_size > 0) {
+        if (reshade::get_config_value(runtime, "GENERAL", "EffectSearchPaths", buf, &buf_size) && buf_size > 0) {
             std::string combined;
             const char* ptr = buf;
             while (ptr < buf + sizeof(buf) && *ptr != '\0') {
@@ -2316,7 +2316,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
         buf_size = sizeof(buf);
         std::memset(buf, 0, sizeof(buf));
-        if (reshade::get_config_value(nullptr, "GENERAL", "TextureSearchPaths", buf, &buf_size) && buf_size > 0) {
+        if (reshade::get_config_value(runtime, "GENERAL", "TextureSearchPaths", buf, &buf_size) && buf_size > 0) {
             std::string combined;
             const char* ptr = buf;
             while (ptr < buf + sizeof(buf) && *ptr != '\0') {
@@ -2916,7 +2916,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     g_rendering_ui_section.store("ui:tab:main_new:dc_folders", std::memory_order_release);
     if (imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
-        DrawUpdatesSectionContent(imgui);
+        DrawUpdatesSectionContent(imgui, runtime);
         imgui.Unindent();
     }
 
