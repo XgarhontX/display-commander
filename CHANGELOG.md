@@ -2,7 +2,8 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
-## v0.12.571 (unreleased)
+## v0.12.572 (unreleased)
+- [cleanup] **SafeRemoveAll extension whitelist** - `SafeRemoveAll` no longer removes all files in a directory. It now takes a whitelist of file extensions and only removes files with those extensions (case-insensitive), then removes empty directories. Reduces risk of deleting unintended files in temp/staging dirs. Callers pass the extensions they expect: post-ReShade addon temp (`.dc64r`, `.dc32r`, `.dcr`), ReShade update/download temp (`.exe`, `.dll`), Debug staging (`.dll`). Details: utils/safe_remove.hpp, utils/safe_remove.cpp; main_entry.cpp, cli_standalone_ui.cpp, reshade_version_download.cpp, version_check.cpp; docs/safe_remove_extension_whitelist_plan.md.
 - [bugfix] [ui] **Backbuffer colorspace display with RenoDX** - Fixed the UI so backbuffer color space is shown correctly when RenoDX is used to upgrade the backbuffer (e.g. SDR→HDR). The displayed color space now reflects the actual swapchain/backbuffer state after the upgrade instead of showing stale or incorrect values.
 
 ## v0.12.570

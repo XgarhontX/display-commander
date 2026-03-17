@@ -3,7 +3,10 @@
 // Centralized whitelist for directory removal. Use SafeRemoveAll instead of
 // std::filesystem::remove_all to avoid accidentally deleting wrong paths.
 
+// Libraries <standard C++>
 #include <filesystem>
+#include <span>
+#include <string>
 #include <system_error>
 
 namespace display_commander::utils {
@@ -21,10 +24,12 @@ bool IsSafeTempSubdirPath(const std::filesystem::path& dir);
 // - <GetDownloadDirectory()>/Debug/_staging_latest_debug
 bool IsAllowedForRemoveAll(const std::filesystem::path& path);
 
-// If path is an absolute path and allowed (IsAllowedForRemoveAll), removes the
-// directory and all contents; otherwise does nothing. Returns true if removal
-// was attempted and succeeded (or path did not exist); false if not allowed or
-// remove_all failed.
-bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec);
+// If path is an absolute path and allowed (IsAllowedForRemoveAll), recursively
+// removes only files whose extension is in extensions_to_remove (case-insensitive),
+// then removes empty directories. Does not remove_all. Returns true if path did
+// not exist or removal succeeded; false if not allowed or a remove failed.
+bool SafeRemoveAll(const std::filesystem::path& path,
+                   std::span<const std::wstring> extensions_to_remove,
+                   std::error_code& ec);
 
 }  // namespace display_commander::utils

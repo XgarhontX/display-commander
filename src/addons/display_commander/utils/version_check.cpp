@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <vector>
 #include "../version.hpp"
@@ -760,7 +761,8 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error) 
     return DownloadDcReleaseToDll(tag, version, out_error);
 }
 
-// Parse "Version in binaries" then X.Y.Z.W from HTML or Markdown (e.g. "</strong>: 0.12.395.2637" or "**: 0.12.395.2637").
+// Parse "Version in binaries" then X.Y.Z.W from HTML or Markdown (e.g. "</strong>: 0.12.395.2637" or "**:
+// 0.12.395.2637").
 static std::string ParseVersionFromReleaseBody(const std::string& text) {
     const char prefix[] = "Version in binaries";
     size_t pos = text.find(prefix);
@@ -805,6 +807,7 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     std::filesystem::path base = GetDownloadDirectory() / L"Debug";
     const std::string staging_name = "_staging_latest_debug";
     std::filesystem::path staging = base / std::filesystem::path(staging_name);
+    static const std::wstring kStagingDllExtensions[] = {L".dll"};
     std::error_code ec;
     std::filesystem::create_directories(staging, ec);
     if (ec) {
@@ -821,31 +824,31 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     std::filesystem::path path64 = staging / name64;
     std::filesystem::path path32 = staging / name32;
     if (!DownloadBinaryFromUrl(url_64, path64)) {
-        display_commander::utils::SafeRemoveAll(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
         if (out_error) *out_error = "Failed to download 64-bit addon";
         return false;
     }
     if (!DownloadBinaryFromUrl(url_32, path32)) {
-        display_commander::utils::SafeRemoveAll(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
         if (out_error) *out_error = "Failed to download 32-bit addon";
         return false;
     }
     std::string version_from_dll = GetDLLVersionString(path64.wstring());
     if (version_from_dll.empty() || version_from_dll == "Unknown") {
-        display_commander::utils::SafeRemoveAll(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
         if (out_error) *out_error = "Could not read version from downloaded addon";
         return false;
     }
     std::string folder_xyz = VersionStringToXyzFolder(version_from_dll);
     if (folder_xyz.empty()) {
-        display_commander::utils::SafeRemoveAll(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
         if (out_error) *out_error = "Invalid version from addon";
         return false;
     }
     std::filesystem::path target_dir = base / std::filesystem::path(folder_xyz);
     std::filesystem::create_directories(target_dir, ec);
     if (ec) {
-        display_commander::utils::SafeRemoveAll(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
         if (out_error) *out_error = "Could not create Debug version folder";
         return false;
     }
@@ -855,7 +858,7 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     if (ec) {
         std::filesystem::copy(path64, dest64, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
-            display_commander::utils::SafeRemoveAll(staging, ec);
+            display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
             if (out_error) *out_error = "Could not move 64-bit addon to version folder";
             return false;
         }
@@ -866,13 +869,13 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
         std::filesystem::copy(path32, dest32, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
             std::filesystem::remove(dest64, ec);
-            display_commander::utils::SafeRemoveAll(staging, ec);
+            display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
             if (out_error) *out_error = "Could not move 32-bit addon to version folder";
             return false;
         }
         std::filesystem::remove(path32, ec);
     }
-    display_commander::utils::SafeRemoveAll(staging, ec);
+    display_commander::utils::SafeRemoveAll(staging, kStagingDllExtensions, ec);
     return true;
 }
 

@@ -188,7 +188,8 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
         return;  // Don't draw DC UI for no-inject windows (e.g. independent standalone UI)
     }
-    // Ensure the current overlay runtime is in our list (fallback if init_effect_runtime was missed, e.g. addon load order)
+    // Ensure the current overlay runtime is in our list (fallback if init_effect_runtime was missed, e.g. addon load
+    // order)
     if (runtime != nullptr) {
         AddReShadeRuntime(runtime);
     }
@@ -2163,6 +2164,10 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
     }
 }
 
+namespace {
+const std::wstring kPostReShadeTempExtensions[] = {L".dc64r", L".dc32r", L".dcr"};
+}
+
 // Post-ReShade addon dir: .dc64r / .dc32r / .dcr. We hard-link into global Display_Commander\tmp\<pid>;
 // when cross-volume (hard link not possible), we create a local tmp\<pid> in the addon dir and copy there
 // so the copy stays on the same volume. LoadLibrary from the chosen path so originals can be updated while running.
@@ -2188,7 +2193,7 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
         return;  // Never iterate/delete from a path that could be the Display_Commander root
     }
     std::error_code ec;
-    display_commander::utils::SafeRemoveAll(global_temp_dir, ec);
+    display_commander::utils::SafeRemoveAll(global_temp_dir, kPostReShadeTempExtensions, ec);
     if (!std::filesystem::exists(global_temp_dir, ec)) {
         std::filesystem::create_directories(global_temp_dir, ec);
     }
@@ -2223,7 +2228,7 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
                     local_temp_dir.clear();
                     continue;
                 }
-                display_commander::utils::SafeRemoveAll(local_temp_dir, ec);
+                display_commander::utils::SafeRemoveAll(local_temp_dir, kPostReShadeTempExtensions, ec);
                 if (!std::filesystem::exists(local_temp_dir, ec)) {
                     std::filesystem::create_directories(local_temp_dir, ec);
                 }
@@ -2266,13 +2271,13 @@ void CleanupPostReShadeAddonTempDir() {
     std::error_code ec;
     std::filesystem::path base_dc = display_commander::utils::GetLocalDcDirectory();
     if (!base_dc.empty()) {
-        display_commander::utils::SafeRemoveAll(base_dc / L"tmp" / pid_str, ec);
+        display_commander::utils::SafeRemoveAll(base_dc / L"tmp" / pid_str, kPostReShadeTempExtensions, ec);
     }
     if (g_hmodule != nullptr) {
         WCHAR module_path[MAX_PATH];
         if (GetModuleFileNameW(g_hmodule, module_path, MAX_PATH) > 0) {
             std::filesystem::path module_tmp = std::filesystem::path(module_path).parent_path() / L"tmp" / pid_str;
-            display_commander::utils::SafeRemoveAll(module_tmp, ec);
+            display_commander::utils::SafeRemoveAll(module_tmp, kPostReShadeTempExtensions, ec);
         }
     }
 }

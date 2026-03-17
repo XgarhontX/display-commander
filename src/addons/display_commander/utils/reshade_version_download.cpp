@@ -105,8 +105,7 @@ static void ReshadeVersionDownloadWorker(std::string version, bool to_global_roo
         return;
     }
 
-    std::filesystem::path dest_dir =
-        to_global_root ? GetGlobalReshadeDirectory() : GetReshadeVersionFolder(version);
+    std::filesystem::path dest_dir = to_global_root ? GetGlobalReshadeDirectory() : GetReshadeVersionFolder(version);
     std::filesystem::create_directories(dest_dir, ec);
     if (ec) {
         SetError("Could not create destination directory.");
@@ -129,7 +128,8 @@ static void ReshadeVersionDownloadWorker(std::string version, bool to_global_roo
         return;
     }
 
-    SafeRemoveAll(temp_dir, ec);
+    static const std::wstring kReshadeTempExtensions[] = {L".exe", L".dll"};
+    SafeRemoveAll(temp_dir, kReshadeTempExtensions, ec);
     g_status.store(ReshadeDownloadStatus::Ready, std::memory_order_release);
 }
 

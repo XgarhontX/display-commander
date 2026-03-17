@@ -5,8 +5,11 @@
 #include "version_check.hpp"
 
 // Libraries <standard C++>
+#include <algorithm>
 #include <filesystem>
+#include <set>
 #include <string>
+#include <vector>
 
 // Libraries <Windows.h>
 #include <Windows.h>
@@ -65,7 +68,38 @@ bool IsAllowedForRemoveAll(const std::filesystem::path& path) {
     return false;
 }
 
-bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec) {
+namespace {
+
+std::set<std::wstring> BuildExtensionSet(std::span<const std::wstring> extensions_to_remove) {
+    std::set<std::wstring> out;
+    for (const std::wstring& ext : extensions_to_remove) {
+        std::wstring e = ext;
+        std::transform(e.begin(), e.end(), e.begin(), ::towlower);
+        out.insert(std::move(e));
+    }
+    return out;
+}
+
+void RemoveEmptySubdirsRecursive(const std::filesystem::path& dir, std::error_code& ec) {
+    std::filesystem::directory_iterator it(dir, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec) return;
+    for (const std::filesystem::directory_entry& entry : it) {
+        if (ec) return;
+        if (!entry.is_directory(ec)) continue;
+        if (ec) return;
+        RemoveEmptySubdirsRecursive(entry.path(), ec);
+        if (ec) return;
+    }
+    if (std::filesystem::is_empty(dir, ec) && !ec) {
+        std::filesystem::remove(dir, ec);
+    }
+}
+
+}  // namespace
+
+bool SafeRemoveAll(const std::filesystem::path& path,
+                   std::span<const std::wstring> extensions_to_remove,
+                   std::error_code& ec) {
     ec.clear();
     if (path.empty() || !path.is_absolute()) {
         LogError("SafeRemoveAll: path must be a full path (e.g. C:\\...), refused: %s", path.string().c_str());
@@ -83,7 +117,29 @@ bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec) {
     if (!std::filesystem::exists(path, ec)) {
         return true;
     }
-    std::filesystem::remove_all(path, ec);
+    const std::set<std::wstring> ext_set = BuildExtensionSet(extensions_to_remove);
+    std::vector<std::filesystem::path> to_remove;
+    std::filesystem::recursive_directory_iterator rec_it(
+        path, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec) return false;
+    const auto rec_end = std::filesystem::recursive_directory_iterator();
+    for (; rec_it != rec_end; ++rec_it) {
+        std::error_code ec_entry;
+        if (!rec_it->is_regular_file(ec_entry)) continue;
+        if (ec_entry) {
+            ec = ec_entry;
+            return false;
+        }
+        std::wstring ext = rec_it->path().extension().wstring();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+        if (ext_set.count(ext) == 0) continue;
+        to_remove.push_back(rec_it->path());
+    }
+    for (const std::filesystem::path& p : to_remove) {
+        std::filesystem::remove(p, ec);
+        if (ec) return false;
+    }
+    RemoveEmptySubdirsRecursive(path, ec);
     return !ec;
 }
 

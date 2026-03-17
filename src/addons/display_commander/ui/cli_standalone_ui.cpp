@@ -299,8 +299,9 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
         }
     }
 
+    static const std::wstring kReshadeTempExtensions[] = {L".exe", L".dll"};
     std::error_code ec;
-    display_commander::utils::SafeRemoveAll(tempDir, ec);
+    display_commander::utils::SafeRemoveAll(tempDir, kReshadeTempExtensions, ec);
     std::string msg;
     if (params->forGameDetails) {
         if (proxyOnlyInstall)
