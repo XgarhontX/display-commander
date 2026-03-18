@@ -74,6 +74,10 @@ std::filesystem::path GetDisplayCommanderAppDataFolder();
 // Same path as above but does not create the directory (empty if LocalAppData is unavailable).
 std::filesystem::path GetDisplayCommanderAppDataRootPathNoCreate();
 
+// Private system DLL copies (dbghelp_dc*.dll, future xinput1_4_dc*.dll, etc.):
+// %LocalAppData%\Programs\Display_Commander\dlls
+std::filesystem::path GetDisplayCommanderPrivateDllsFolder();
+
 // Display Commander ReShade root: %LocalAppData%\Programs\Display_Commander\Reshade (contains Shaders, Textures)
 std::filesystem::path GetDisplayCommanderReshadeRootFolder();
 

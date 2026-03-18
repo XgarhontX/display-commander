@@ -136,22 +136,15 @@ bool LoadDbgHelp() {
     }
 
     // Prefer a private copy of dbghelp.dll under
-    // %LocalAppData%\Programs\Display_Commander\dbghelp\dbghelp_dc64.dll (or dbghelp_dc32.dll),
+    // %LocalAppData%\Programs\Display_Commander\dlls\dbghelp_dc64.dll (or dbghelp_dc32.dll),
     // copied once from the system directory if not already present.
     std::filesystem::path private_dbghelp_path;
     {
-        std::filesystem::path dc_base = GetDisplayCommanderAppDataFolder();
-        if (!dc_base.empty()) {
-            std::filesystem::path dbghelp_dir = dc_base / L"dbghelp";
+        std::filesystem::path dlls_dir = GetDisplayCommanderPrivateDllsFolder();
+        if (!dlls_dir.empty()) {
             std::error_code ec;
-            if (!std::filesystem::exists(dbghelp_dir, ec)) {
-                if (!std::filesystem::create_directories(dbghelp_dir, ec)) {
-                    LogWarn("DbgHelp: failed to create private folder '%s': %s", dbghelp_dir.string().c_str(),
-                            ec.message().c_str());
-                }
-            }
-            if (std::filesystem::exists(dbghelp_dir, ec) && std::filesystem::is_directory(dbghelp_dir, ec)) {
-                const std::filesystem::path dest = dbghelp_dir / kPrivateDbgHelpFilenameW;
+            if (std::filesystem::exists(dlls_dir, ec) && std::filesystem::is_directory(dlls_dir, ec)) {
+                const std::filesystem::path dest = dlls_dir / kPrivateDbgHelpFilenameW;
 
                 if (!std::filesystem::exists(dest, ec)) {
                     // Resolve the system directory for the source dbghelp.dll (bitness-appropriate).
