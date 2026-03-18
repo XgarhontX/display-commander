@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.584
+- [ui] [bugfix] **Performance overlay VU bars** - Fixed overlapping per-channel labels: column width follows the widest label (e.g. 5.1/7.1 channels like LFE); bars stay centered. Details: `DrawOverlayVUBars` in main_new_tab.cpp.
+
 ## v0.12.583
 - [cleanup] **DC shaders extract to app data only** - Embedded Display Commander shaders (.fx / .fxh) are written only under `%LocalAppData%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander\`, not next to the addon or under the game ReShade folder. Keeps the game directory clean; use Main tab “Add DC Shaders/Textures to ReShade paths” if effects fail to load. Details: `OnInitEffectRuntime_ExtractShadersOnce` in main_entry.cpp.
 

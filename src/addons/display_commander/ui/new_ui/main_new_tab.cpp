@@ -7081,14 +7081,24 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
     }
     const float bar_height = 48.0f;
     const float bar_width = 10.0f;
-    const float gap = 3.0f;
+    // Column width from widest label (e.g. "LFE 100.0%"); fixed 10px bars + 3px gap caused label overlap.
+    const float col_pad_x = 6.0f;
+    float column_width = bar_width + (col_pad_x * 2.0f);
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
+        char raw_buf[32];
+        (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, 100.0f);
+        const float tw = imgui.CalcTextSize(raw_buf).x;
+        column_width = (std::max)(column_width, tw + (col_pad_x * 2.0f));
+    }
+    const float total_width = static_cast<float>(effective_meter_count) * column_width;
     auto draw_list = imgui.GetWindowDrawList();
     const ImVec2 cursor = imgui.GetCursorScreenPos();
-    const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
     if (draw_list != nullptr) {
         for (unsigned int i = 0; i < effective_meter_count; ++i) {
             const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
-            const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
+            const float col_x = cursor.x + static_cast<float>(i) * column_width;
+            const float x = col_x + ((column_width - bar_width) * 0.5f);
             const ImVec2 bg_min(x, cursor.y);
             const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
             const float fill_h = level * bar_height;
@@ -7107,9 +7117,9 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
         const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
         char raw_buf[32];
         (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, level * 100.0f);
-        const float bar_center_x = cursor.x + (static_cast<float>(i) * (bar_width + gap)) + (bar_width * 0.5f);
+        const float col_x = cursor.x + static_cast<float>(i) * column_width;
         const float text_w = imgui.CalcTextSize(raw_buf).x;
-        imgui.SetCursorScreenPos(ImVec2(bar_center_x - (text_w * 0.5f), label_y));
+        imgui.SetCursorScreenPos(ImVec2(col_x + ((column_width - text_w) * 0.5f), label_y));
         imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", raw_buf);
     }
     if (show_tooltips && imgui.IsItemHovered()) {
