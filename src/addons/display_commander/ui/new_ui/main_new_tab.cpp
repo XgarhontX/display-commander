@@ -4330,6 +4330,47 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.TextColored(ui::colors::TEXT_DIMMED, "Advanced FPS limiter settings");
     imgui.Indent();
     DrawDisplaySettings_FpsLimiterAdvanced(imgui);
+    {
+        const DLSSGSummaryLite fg2_lite = GetDLSSGSummaryLite();
+        const bool fg2_dlss_g = fg2_lite.fg_mode == DLSSGFgMode::k2x || fg2_lite.fg_mode == DLSSGFgMode::k3x
+                                || fg2_lite.fg_mode == DLSSGFgMode::k4x;
+        const bool fg2_ui_ok = enabled && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+                               && static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue())
+                                      == FrameTimeMode::kPresent;
+        if (fg2_dlss_g) {
+            imgui.Spacing();
+            if (!fg2_ui_ok) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                  "2nd FPS limiter (FG): requires On Present Sync + Frame time 'Present'.");
+            } else {
+                if (!fps_limit_enabled) {
+                    imgui.BeginDisabled();
+                }
+                bool fg2_on = settings::g_mainTabSettings.fps_limiter_fg2_enabled.GetValue();
+                if (imgui.Checkbox("2nd FPS limiter (generated frames)", &fg2_on)) {
+                    settings::g_mainTabSettings.fps_limiter_fg2_enabled.SetValue(fg2_on);
+                    LogInfo("2nd FPS limiter (FG): %s", fg2_on ? "on" : "off");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "This is 2nd fps limiter, which can pace generated frames on top of the main FPS limiter.");
+                }
+                imgui.SameLine();
+                imgui.SetNextItemWidth(220.f);
+                if (SliderFloatSetting(settings::g_mainTabSettings.fps_limiter_fg2_target_boost_percent,
+                                       "FG target boost", "%.1f %%", imgui)) {
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Secondary limiter target = main FPS limit times (1 + this%%). 0%% = same base cap as main; up "
+                        "to 10%%. Default 1%%.");
+                }
+                if (!fps_limit_enabled) {
+                    imgui.EndDisabled();
+                }
+            }
+        }
+    }
     imgui.Unindent();
 }
 
@@ -4767,66 +4808,6 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
             drawPclStatsCheckbox();
         }
     }
-    /*
-    if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        imgui.SameLine();
-        if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
-                            ICON_FK_WARNING " Suppress Native Reflex", imgui)) {
-            LogInfo("Suppress Native Reflex %s",
-                    settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Override the game's native Reflex implementation with the addon's injected version.");
-        }
-    }*/
-    // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
-    // DrawPclStatsCheckbox
-    /* if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
-         imgui.Spacing();
-         if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-             LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
-         }
-         if (imgui.IsItemHovered()) {
-             imgui.SetTooltipEx(
-                 "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
-                 "latency.");
-         }
-         imgui.SameLine();
-         const LONGLONG now_ns = utils::get_now_ns();
-         const LONGLONG cutoff_ns = now_ns - static_cast<LONGLONG>(utils::SEC_TO_NS);
-         bool all_markers_in_1s = true;
-         for (int i = 0; i < 6; ++i) {
-             if (g_injected_reflex_last_marker_time_ns[i].load(std::memory_order_relaxed) < cutoff_ns) {
-                 all_markers_in_1s = false;
-                 break;
-             }
-         }
-         const LONGLONG last_sleep_ns = g_injected_reflex_last_sleep_time_ns.load(std::memory_order_relaxed);
-         const bool sleep_in_1s = (last_sleep_ns >= cutoff_ns);
-         const bool status_ok = all_markers_in_1s && sleep_in_1s;
-         const LONGLONG sleep_duration_ns = g_reflex_sleep_duration_ns.load(std::memory_order_relaxed);
-         const double sleep_ms = static_cast<double>(sleep_duration_ns) / static_cast<double>(utils::NS_TO_MS);
-         if (status_ok) {
-             imgui.TextColored(ui::colors::ICON_SUCCESS, "Status: OK");
-         } else {
-             imgui.TextColored(ui::colors::ICON_ERROR, "Status: FAILED");
-         }
-         if (imgui.IsItemHovered()) {
-             if (status_ok) {
-                 imgui.SetTooltipEx(
-                     "OK: All 6 Reflex markers (Sim Start/End, Render Submit Start/End, Present Start/End) and "
-                     "Reflex sleep were observed in the last 1 s.\nReflex sleep time: %.2f ms (rolling average).",
-                     sleep_ms);
-             } else {
-                 imgui.SetTooltipEx(
-                     "FAILED: In the last 1 s, either not all 6 markers were sent or Reflex sleep was not called.\n"
-                     "Reflex sleep time: %.2f ms (rolling average).",
-                     sleep_ms);
-             }
-         }
-     }
-     */
-
     // Suppress Reflex Sleep checkbox
     imgui.Spacing();
     if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {

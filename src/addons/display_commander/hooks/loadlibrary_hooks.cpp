@@ -1072,7 +1072,7 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     CALL_GUARD(utils::get_now_ns());
 
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
-        LogInfo("FreeLibrary: ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
+        LogInfo("[FreeLibrary] ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
                 hLibModule);
         // unregister_addon automatically unregisters all events and overlays registered by this addon
         reshade::unregister_addon(hLibModule);
@@ -1082,6 +1082,7 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
         {
             utils::SRWLockExclusive lock(utils::g_continuous_monitoring_loop_lock);
         }
+        LogInfo("[FreeLibrary] ReShade unloaded Display Commander (0x%p)", hLibModule);
 
         return TRUE;
     }

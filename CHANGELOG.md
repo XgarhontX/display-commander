@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.591
+- [new feature] [settings] [ui] **Secondary FPS limiter (DLSS-G), pre-only** - Optional second On Present Sync **pre-sleep only** pacer to pace when the next rendered frame may start (no post-sleep). Shown when frame time mode is Present–Present, DLSS-G is 2×/3×/4×, and the ReShade present path owns the limiter. Target FPS = main cap × (1 + boost%), boost 0–10% (default 1%). Details: `main_tab_settings.*`, `swapchain_events.cpp`, `main_new_tab.cpp`.
+
 ## v0.12.590
 - [cleanup] [removal] **Unused Reflex “suppress native” code removed** - The `ReflexSupressNative` advanced setting, Main tab checkbox, and all hook branches that bypassed native Reflex (NVAPI `SetLatencyMarker` / `Sleep` / `SetSleepMode`, Vulkan NV low-latency) are stripped out so native Reflex is no longer suppressed from the addon side. `IsNativeReflexActive()` now only reflects game/native detection. NVAPI `SetLatencyMarker` debug logging uses `LogInfoThrottled` instead of a manual counter. Details: `advanced_tab_settings.*`, `globals.hpp`, `nvapi_hooks.cpp`, `nvlowlatencyvk_hooks.cpp`, `main_new_tab.cpp`.
 
