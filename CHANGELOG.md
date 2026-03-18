@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.587
+- [settings] [compatibility] **ReShade screenshots under `Screenshots\`** - If ReShade’s screenshot save path is the game folder (default `.\`) or missing from the ini, Display Commander sets it to `.\Screenshots`. The post-save command working directory gets the same treatment when it matches the game root (missing, `.\`, `.`, or `./`), so screenshots and post-save tools stay out of the exe directory. Empty post-save working directory is left unchanged. Details: `OverrideReShadeSettings_ScreenshotPaths` in main_entry.cpp.
+
 ## v0.12.586
 - [cleanup] [hooks] **Private system DLL folder: `dlls\`** - DbgHelp’s private copy (`dbghelp_dc64.dll` / `dbghelp_dc32.dll`) now lives under `%LocalAppData%\Programs\Display_Commander\dlls\` instead of `dbghelp\`. Same folder is reserved for future private copies (e.g. XInput). Helper: `GetDisplayCommanderPrivateDllsFolder()` in general_utils. Details: dbghelp_private_loader.cpp, general_utils.hpp/cpp.
 

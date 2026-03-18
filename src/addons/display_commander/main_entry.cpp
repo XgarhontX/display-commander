@@ -846,6 +846,67 @@ void OverrideReShadeSettings_TutorialAndUpdates(reshade::api::effect_runtime* ru
     }
 }
 
+// ReShade defaults SCREENSHOT SavePath and PostSaveCommandWorkingDirectory to ".\" (game folder).
+// Redirect to .\Screenshots so captures and post-save commands do not clutter the exe directory.
+void OverrideReShadeSettings_ScreenshotPaths(reshade::api::effect_runtime* runtime) {
+    if (g_reshade_module == nullptr) {
+        return;
+    }
+    auto trim = [](std::string& s) {
+        while (!s.empty() && static_cast<unsigned char>(s.back()) <= 32) {
+            s.pop_back();
+        }
+        size_t i = 0;
+        while (i < s.size() && static_cast<unsigned char>(s[i]) <= 32) {
+            ++i;
+        }
+        if (i > 0) {
+            s.erase(0, i);
+        }
+    };
+    auto is_game_root_relative = [&trim](std::string s) -> bool {
+        trim(s);
+        if (s.empty()) {
+            return false;
+        }
+        if (s == ".") {
+            return true;
+        }
+        if (s.size() == 2 && s[0] == '.' && (s[1] == '\\' || s[1] == '/')) {
+            return true;
+        }
+        return false;
+    };
+    static constexpr const char kScreenshots[] = ".\\Screenshots";
+
+    char buf[1024];
+    size_t sz = sizeof(buf);
+    const bool have_save_path =
+        reshade::get_config_value(runtime, "SCREENSHOT", "SavePath", buf, &sz);
+    std::string save_val = have_save_path ? std::string(buf) : std::string();
+    if (!have_save_path || is_game_root_relative(std::move(save_val))) {
+        reshade::set_config_value(runtime, "SCREENSHOT", "SavePath", kScreenshots);
+        LogInfo("ReShade settings override - SCREENSHOT SavePath -> %s (was game root / default)",
+                kScreenshots);
+    }
+
+    sz = sizeof(buf);
+    const bool have_post_cwd =
+        reshade::get_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", buf, &sz);
+    std::string post_val = have_post_cwd ? std::string(buf) : std::string();
+    trim(post_val);
+    if (have_post_cwd && post_val.empty()) {
+        return;  // user cleared working directory; do not override
+    }
+    if (!have_post_cwd || is_game_root_relative(std::move(post_val))) {
+        reshade::set_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", kScreenshots);
+        LogInfo(
+            "ReShade settings override - SCREENSHOT PostSaveCommandWorkingDirectory -> %s (was game root / "
+            "default)",
+            kScreenshots);
+    }
+}
+
 void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* runtime) {
     bool load_from_dll_main_set_once = false;
     display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
@@ -1016,6 +1077,7 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
 
     OverrideReShadeSettings_WindowConfig(runtime);
     OverrideReShadeSettings_TutorialAndUpdates(runtime);
+    OverrideReShadeSettings_ScreenshotPaths(runtime);
     OverrideReShadeSettings_LoadFromDllMainOnce(runtime);
     if (settings::g_mainTabSettings.add_dc_to_reshade_shader_paths.GetValue()) {
         OverrideReShadeSettings_AddDisplayCommanderPaths(runtime);
