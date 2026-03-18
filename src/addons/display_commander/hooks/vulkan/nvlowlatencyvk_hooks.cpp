@@ -124,7 +124,8 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
     // Re-apply SleepMode on SIMULATION_START (same idea as D3D ApplySleepMode on present): either our
     // overridden params or the last params the game tried to set.
     if (params != nullptr && params->markerType == VK_SIMULATION_START && NvLL_VK_SetSleepMode_Original != nullptr) {
-        if (!settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        // if (!settings::g_advancedTabSettings.reflex_supress_native.GetValue())
+        {
             if (ShouldReflexBeEnabled()) {
                 const float fps_limit = GetTargetFps();
                 NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
@@ -201,9 +202,9 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
     }
     // Override params from addon Reflex settings (same idea as D3D ApplySleepMode on present path).
     // For Vulkan there is no ReflexManager/ApplySleepMode on present, so we override in the detour.
-    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        return NVLL_VK_OK;
-    }
+    // if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+    //      return NVLL_VK_OK;
+    // }
     if (ShouldReflexBeEnabled()) {
         const float fps_limit = GetTargetFps();
         NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
@@ -307,7 +308,8 @@ void GetNvLowLatencyVkLastMarkerState(int* out_last_marker_type, uint64_t* out_l
 
 void GetNvllVkHookCallCounts(uint64_t* out_counts, std::size_t count) {
     if (out_counts == nullptr) return;
-    const std::size_t n = (count < static_cast<std::size_t>(NvllVkHook::Count)) ? count : static_cast<std::size_t>(NvllVkHook::Count);
+    const std::size_t n =
+        (count < static_cast<std::size_t>(NvllVkHook::Count)) ? count : static_cast<std::size_t>(NvllVkHook::Count);
     for (std::size_t i = 0; i < n; ++i) {
         out_counts[i] = g_nvll_hook_call_counts[i].load();
     }

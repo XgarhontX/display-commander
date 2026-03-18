@@ -18,7 +18,7 @@ namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 AdvancedTabSettings::AdvancedTabSettings()
-    :       continue_rendering("ContinueRendering", false, "DisplayCommander"),
+    : continue_rendering("ContinueRendering", false, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
       prevent_minimize("PreventMinimize", true, "DisplayCommander"),
       flush_command_queue_before_sleep("FlushCommandQueueBeforeSleep", true, "DisplayCommander"),
@@ -37,7 +37,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       reflex_generate_markers("ReflexGenerateMarkers", false, "DisplayCommander"),
       reflex_enable_sleep("ReflexEnableSleep", false, "DisplayCommander"),
       reflex_logging("ReflexLogging", false, "DisplayCommander"),
-      reflex_supress_native("ReflexSupressNative", false, "DisplayCommander"),
+      //  reflex_supress_native("ReflexSupressNative", false, "DisplayCommander"),
 
       enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", true, "DisplayCommander"),
@@ -97,43 +97,67 @@ void AdvancedTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
-    return {
-        &continue_rendering, &prevent_always_on_top, &prevent_minimize, &flush_command_queue_before_sleep,
-        &enqueue_gpu_completion, &hide_hdr_capabilities, &enable_flip_chain,
-        &auto_colorspace,
-        //&enable_d3d9e_upgrade,
+    return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &flush_command_queue_before_sleep,
+            &enqueue_gpu_completion, &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
+            //&enable_d3d9e_upgrade,
 
-        &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
-        &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
+            &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
+            &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging,
+            //&reflex_supress_native,
 
-        &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
-        &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
-        &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
-        &safemode, &block_gameoverlayrenderer, &dll_loading_delay_ms, &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook,
-        &auto_enable_reshade_config_backup, &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
-        &debug_layer_enabled,
-        &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
-        &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
-        &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
-        &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
-        &texture_cache_content_hash_cap_kb, &dump_textures_enabled,         &show_steam_achievement_notifications,
-        &show_steam_achievement_counter_increased, &play_sound_on_achievement};
+            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
+            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
+            &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
+            &enable_performance_overlay_shortcut, &safemode, &block_gameoverlayrenderer, &dll_loading_delay_ms,
+            &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook, &auto_enable_reshade_config_backup,
+            &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
+            &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
+            &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &enable_presentmon_tracing,
+            &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
+            &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
+            &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
+            &texture_cache_content_hash_cap_kb, &dump_textures_enabled, &show_steam_achievement_notifications,
+            &show_steam_achievement_counter_increased, &play_sound_on_achievement};
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
-    return {
-        &continue_rendering, &flush_command_queue_before_sleep, &enqueue_gpu_completion, &hide_hdr_capabilities,
-        &enable_flip_chain,
-        &auto_colorspace, &enable_hotkeys,
-        &safemode, &block_gameoverlayrenderer, &fake_nvapi_enabled, &suppress_minhook, &auto_enable_reshade_config_backup, &suppress_wgi_globally, &suppress_wgi_enabled,
-        &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
-        &auto_hide_discord_overlay, &suppress_window_changes, &enable_dxgi_refresh_rate_vrr_detection,
-        &enable_presentmon_tracing, &presentmon_provider_dxgkrnl,
-        &presentmon_provider_dxgi, &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling,
-        &enable_dx11_vtable_hooks, &texture_tracking_enabled, &d3d11_texture_caching_enabled,
-        &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled, &texture_cache_content_hash_cap_kb,
-        &dump_textures_enabled, &show_steam_achievement_notifications, &show_steam_achievement_counter_increased,
-        &play_sound_on_achievement};
+    return {&continue_rendering,
+            &flush_command_queue_before_sleep,
+            &enqueue_gpu_completion,
+            &hide_hdr_capabilities,
+            &enable_flip_chain,
+            &auto_colorspace,
+            &enable_hotkeys,
+            &safemode,
+            &block_gameoverlayrenderer,
+            &fake_nvapi_enabled,
+            &suppress_minhook,
+            &auto_enable_reshade_config_backup,
+            &suppress_wgi_globally,
+            &suppress_wgi_enabled,
+            &suppress_wgi_for_unity,
+            &suppress_wgi_for_non_unity_games,
+            &debug_layer_enabled,
+            &debug_break_on_severity,
+            &auto_hide_discord_overlay,
+            &suppress_window_changes,
+            &enable_dxgi_refresh_rate_vrr_detection,
+            &enable_presentmon_tracing,
+            &presentmon_provider_dxgkrnl,
+            &presentmon_provider_dxgi,
+            &presentmon_provider_dwm,
+            &presentmon_provider_d3d9,
+            &disable_dpi_scaling,
+            &enable_dx11_vtable_hooks,
+            &texture_tracking_enabled,
+            &d3d11_texture_caching_enabled,
+            &d3d11_texture_caching_1d_enabled,
+            &d3d11_texture_caching_3d_enabled,
+            &texture_cache_content_hash_cap_kb,
+            &dump_textures_enabled,
+            &show_steam_achievement_notifications,
+            &show_steam_achievement_counter_increased,
+            &play_sound_on_achievement};
 }
 
 }  // namespace settings

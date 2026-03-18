@@ -184,8 +184,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             display_commanderhooks::dxgi::HandlePresentAfter(true);
         }
     } else {
-        if (marker_type == marker_types.present_end
-            && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        if (marker_type == marker_types.present_end) {
             result = send_present_end_to_driver();
             reflex_marker_sent = true;
         }
@@ -278,16 +277,11 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         }
     }
 
-    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue() || reflex_marker_sent) {
+    if (reflex_marker_sent) {
         return result;
     }
 
-    // Log the call (first few times only)
-    static int log_count = 0;
-    if (log_count < 3) {
-        LogInfo("NVAPI SetLatencyMarker called - MarkerType: %d", marker_type);
-        log_count++;
-    }
+    LogInfoThrottled(3, "NVAPI SetLatencyMarker called - MarkerType: %d", marker_type);
 
     return send_present_end_to_driver();
 }
@@ -340,9 +334,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
 
-    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        return NVAPI_OK;
-    }
+    //   if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+    //      return NVAPI_OK;
+    //  }
 
     // Store the parameters for UI display and unified game reflex params (for Game Defaults mode)
     if (pSetSleepModeParams != nullptr) {
@@ -488,7 +482,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
     g_nvapi_d3d_last_sleep_global_frame_id.store(g_global_frame_id.load(std::memory_order_relaxed),
-                                                std::memory_order_relaxed);
+                                                 std::memory_order_relaxed);
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
 
@@ -522,9 +516,9 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
         return NVAPI_OK;
     }
 
-    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        return NVAPI_OK;
-    }
+    //   if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+    //      return NVAPI_OK;
+    //    }
 
     // Call original function
     if (NvAPI_D3D_Sleep_Original != nullptr) {

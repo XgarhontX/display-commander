@@ -4,6 +4,8 @@
 
 ## (unreleased)
 
+## v0.12.590
+- [cleanup] [removal] **Unused Reflex “suppress native” code removed** - The `ReflexSupressNative` advanced setting, Main tab checkbox, and all hook branches that bypassed native Reflex (NVAPI `SetLatencyMarker` / `Sleep` / `SetSleepMode`, Vulkan NV low-latency) are stripped out so native Reflex is no longer suppressed from the addon side. `IsNativeReflexActive()` now only reflects game/native detection. NVAPI `SetLatencyMarker` debug logging uses `LogInfoThrottled` instead of a manual counter. Details: `advanced_tab_settings.*`, `globals.hpp`, `nvapi_hooks.cpp`, `nvlowlatencyvk_hooks.cpp`, `main_new_tab.cpp`.
 
 ## v0.12.589
 - [cleanup] **DLSS version ranges: tuple compare** - `isBetween` (used for DLSS SR/RR render-preset availability) now compares `(major, minor, patch)` lexicographically via `std::tuple` instead of packing into a single integer, so ordering stays correct for any component values (e.g. 310.x) without encoding limits. Details: `general_utils.cpp`.

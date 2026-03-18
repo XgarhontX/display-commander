@@ -826,7 +826,8 @@ extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestam
 // Config save failure tracking
 extern std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path;
 
-// DC config directory (DisplayCommander.toml location). Set at start of DLL_PROCESS_ATTACH to exe directory; can be changed later.
+// DC config directory (DisplayCommander.toml location). Set at start of DLL_PROCESS_ATTACH to exe directory; can be
+// changed later.
 extern std::atomic<std::shared_ptr<const std::wstring>> g_dc_config_directory;
 
 // Multiple Display Commander versions detection
@@ -877,7 +878,7 @@ LogLevel GetMinLogLevel();
 // Reflex settings
 extern std::atomic<bool> s_reflex_auto_configure;
 extern std::atomic<bool> s_reflex_enable_current_frame;
-extern std::atomic<bool> s_reflex_supress_native;
+// extern std::atomic<bool> s_reflex_supress_native;
 extern std::atomic<bool> s_enable_reflex_logging;
 
 // Shortcut settings
@@ -1494,7 +1495,8 @@ extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 // Helper function to check if native Reflex is active
 // Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
 inline bool IsNativeReflexActive(uint64_t now_ns) {
-    return g_native_reflex_detected.load() && !settings::g_advancedTabSettings.reflex_supress_native.GetValue();
+    return g_native_reflex_detected.load();
+    // && !settings::g_advancedTabSettings.reflex_supress_native.GetValue();
 }
 // Backward-compatible overload (calls the above with current time)
 inline bool IsNativeReflexActive() { return IsNativeReflexActive(utils::get_now_ns()); }

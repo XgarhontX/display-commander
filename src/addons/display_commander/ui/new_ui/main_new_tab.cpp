@@ -4767,6 +4767,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
             drawPclStatsCheckbox();
         }
     }
+    /*
     if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         imgui.SameLine();
         if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
@@ -4777,7 +4778,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Override the game's native Reflex implementation with the addon's injected version.");
         }
-    }
+    }*/
     // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
     // DrawPclStatsCheckbox
     /* if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {

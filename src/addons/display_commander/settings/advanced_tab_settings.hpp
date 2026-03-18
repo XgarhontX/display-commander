@@ -30,9 +30,11 @@ class AdvancedTabSettings {
     BoolSetting prevent_always_on_top;
     BoolSetting prevent_minimize;
 
-    /** When true (default), DXGI Present detours flush the command queue before FPS limiter sleep (DX11/DX12). Reduces input-to-display latency when limiter is active. */
+    /** When true (default), DXGI Present detours flush the command queue before FPS limiter sleep (DX11/DX12). Reduces
+     * input-to-display latency when limiter is active. */
     BoolSetting flush_command_queue_before_sleep;
-    /** When true (default), enqueue GPU completion measurement from recorded present-update state (DX11/DX12). Used for latency/GPU timing. */
+    /** When true (default), enqueue GPU completion measurement from recorded present-update state (DX11/DX12). Used for
+     * latency/GPU timing. */
     BoolSetting enqueue_gpu_completion;
 
     // HDR and Colorspace Settings
@@ -64,7 +66,7 @@ class AdvancedTabSettings {
     BoolSetting reflex_generate_markers;
     BoolSetting reflex_enable_sleep;
     BoolSetting reflex_logging;
-    BoolSetting reflex_supress_native;
+    //   BoolSetting reflex_supress_native;
 
     // Safemode setting
     BoolSetting safemode;
@@ -86,7 +88,8 @@ class AdvancedTabSettings {
 
     /** When true, ReShade config backup is effectively enabled for all games (global_overrides.toml). Default false. */
     OverrideBoolSetting auto_enable_reshade_config_backup;
-    /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false. */
+    /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false.
+     */
     OverrideBoolSetting suppress_wgi_globally;
     /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */
     BoolSetting suppress_wgi_enabled;
@@ -105,7 +108,8 @@ class AdvancedTabSettings {
     // Window management compatibility setting
     BoolSetting suppress_window_changes;
 
-    /** When true, DXGI Present detours signal the refresh rate monitor (SignalRefreshRateMonitor) for DXGI-based refresh rate / VRR detection. Default false. */
+    /** When true, DXGI Present detours signal the refresh rate monitor (SignalRefreshRateMonitor) for DXGI-based
+     * refresh rate / VRR detection. Default false. */
     BoolSetting enable_dxgi_refresh_rate_vrr_detection;
 
     // Win+Up grace: seconds after leaving foreground when Win+Up (restore) still works. 0=disabled, 1-60=seconds,
