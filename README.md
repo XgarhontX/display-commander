@@ -194,6 +194,11 @@ This works because Display Commander loads `dlls_to_load/before_reshade/` **befo
    - `ReShade64.dll` -> rename to `dxgi.dll`
 3. Place Display Commander as a ReShade addon in the same directory:
    - `zzz_display_commander.addon64`
+4. In reshade.ini (6.7.2+)
+```
+[ADDON]
+LoadFromDllMain=zzz_display_commander.addon64
+```
 
 Then launch the game and enable Display Commander in the ReShade overlay (Add-ons tab) if it is not already active.
 
