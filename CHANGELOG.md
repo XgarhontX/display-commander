@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.614
+- [ui] [settings] **Reflex combo always visible; works in all FPS limiter modes** - The Reflex combo (Low latency / Off / Game Defaults / Low+boost) is now always shown in Advanced FPS limiter settings regardless of FPS Limiter Mode or whether the FPS limiter checkbox is on. Which of the three stored settings it edits (On Present Sync, Reflex limiter, or when off/LatentSync) follows the current mode. Effective Reflex mode is now driven only by the selected FPS Limiter Mode, so your Reflex choice applies even when the FPS limiter checkbox is off (e.g. you can set "Reflex" for On Present Sync and still have that low-latency setting apply without enabling the limiter). Details: `GetEffectiveReflexMode()` in `swapchain_events.cpp` no longer checks `s_fps_limiter_enabled`; unified Reflex combo in `DrawDisplaySettings_FpsLimiterAdvanced`, removed duplicate combos from OnPresentSync and Reflex drawers.
+
 ## v0.12.613
 - (No entries yet.)
 

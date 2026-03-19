@@ -4424,47 +4424,8 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
 static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::IImGuiWrapper& imgui,
                                                         const std::function<void()>& drawPclStatsCheckbox) {
-    // Reflex mode selector (Low latency / Low+boost / Off / Game Defaults) — always visible so it's not lost when FPS
-    // limiter preset is used
+    // Reflex combo is always shown in Advanced FPS limiter settings (unified for all modes)
     imgui.Spacing();
-    if (IsReflexAvailable()) {
-        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
-            // Setting is automatically saved via ComboSettingEnumWrapper
-        }
-        if (imgui.IsItemHovered()) {
-            std::string tooltip =
-                "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
-                "Low latency: Enables Reflex Low Latency Mode (default).\n"
-                "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
-                "Off: Disables both Low Latency and Boost.\n"
-                "Game Defaults: Do not override; use the game's own Reflex settings.";
-            auto last_params = ::g_last_reflex_params_set_by_addon.load();
-            if (last_params) {
-                float fps = (last_params->minimumIntervalUs > 0)
-                                ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
-                                : 0.0f;
-                tooltip += "\n\nLast Reflex settings we set via API:";
-                tooltip += "\n  Low Latency: ";
-                tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
-                tooltip += ", Boost: ";
-                tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
-                tooltip += ", Use Markers: ";
-                tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
-                tooltip += "\n  FPS limit: ";
-                if (fps > 0.0f) {
-                    std::ostringstream oss;
-                    oss << std::fixed << std::setprecision(1) << fps;
-                    tooltip += oss.str();
-                } else {
-                    tooltip += "none";
-                }
-            }
-            imgui.SetTooltipEx("%s", tooltip.c_str());
-        }
-        DrawNvllNativeReflexStatusOnSameLine(imgui);
-        DrawDxgiNativeReflexStatusOnSameLine(imgui);
-    }
-
     if (!::IsNativeFramePacingInSync()) {
         // Check if we're running on D3D9 and show warning
         const reshade::api::device_api current_api = g_last_reshade_device_api.load();
@@ -4830,22 +4791,9 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
             }
         }
 
-        // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
-        imgui.Spacing();
-        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
-                "Low latency: Enables Reflex Low Latency Mode (default).\n"
-                "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
-                "Off: Disables both Low Latency and Boost.\n"
-                "Game Defaults: Do not override; use the game's own Reflex settings.");
-        }
-        DrawNvllNativeReflexStatusOnSameLine(imgui);
-        DrawDxgiNativeReflexStatusOnSameLine(imgui);
+        // Reflex combo is always shown in Advanced FPS limiter settings (unified for all modes)
         if (PCLStatsReportingAllowed()) {
-            imgui.SameLine();
+            imgui.Spacing();
             drawPclStatsCheckbox();
         }
     }
@@ -5074,25 +5022,67 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
             }
         }
     };
+
+    // Reflex combo: always visible; which setting is used depends on FPS Limiter Mode (and applies even when checkbox off)
+    if (IsReflexAvailable()) {
+        imgui.Spacing();
+        const FpsLimiterMode mode = static_cast<FpsLimiterMode>(current_item);
+        bool combo_changed = false;
+        if (mode == FpsLimiterMode::kOnPresentSync) {
+            combo_changed = ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui,
+                                                    600.f);
+        } else if (mode == FpsLimiterMode::kReflex) {
+            combo_changed = ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex",
+                                                    imgui, 600.f);
+        } else {
+            combo_changed =
+                ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui,
+                                        600.f);
+        }
+        (void)combo_changed;
+        if (imgui.IsItemHovered()) {
+            const char* context =
+                (mode == FpsLimiterMode::kOnPresentSync)
+                    ? "On Present Sync"
+                    : (mode == FpsLimiterMode::kReflex) ? "Reflex FPS limiter" : "FPS limiter off or LatentSync";
+            std::string tooltip = std::string("NVIDIA Reflex (used for ") + context + ").\n\n"
+                + "Low latency: Enables Reflex Low Latency Mode (default).\n"
+                + "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+                + "Off: Disables both Low Latency and Boost.\n"
+                + "Game Defaults: Do not override; use the game's own Reflex settings.";
+            auto last_params = ::g_last_reflex_params_set_by_addon.load();
+            if (last_params) {
+                float fps = (last_params->minimumIntervalUs > 0)
+                                ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
+                                : 0.0f;
+                tooltip += "\n\nLast Reflex settings we set via API:";
+                tooltip += "\n  Low Latency: ";
+                tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
+                tooltip += ", Boost: ";
+                tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
+                tooltip += ", Use Markers: ";
+                tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
+                tooltip += "\n  FPS limit: ";
+                if (fps > 0.0f) {
+                    std::ostringstream oss;
+                    oss << std::fixed << std::setprecision(1) << fps;
+                    tooltip += oss.str();
+                } else {
+                    tooltip += "none";
+                }
+            }
+            imgui.SetTooltipEx("%s", tooltip.c_str());
+        }
+        DrawNvllNativeReflexStatusOnSameLine(imgui);
+        DrawDxgiNativeReflexStatusOnSameLine(imgui);
+    }
+
     if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
         DrawDisplaySettings_FpsLimiterOnPresentSync(imgui, DrawPclStatsCheckbox);
     }
 
     if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
         DrawDisplaySettings_FpsLimiterReflex(imgui, DrawPclStatsCheckbox);
-    }
-
-    // Reflex config when FPS limiter is off (checkbox unchecked) or mode is LatentSync (used when no FPS limiter is
-    // active)
-    if (!s_fps_limiter_enabled.load() || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
-        imgui.Spacing();
-        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Reflex setting when FPS limiter is off or mode is LatentSync.\n"
-                "Used for Vulkan NvLL and other paths when no FPS limiter mode is active.");
-        }
     }
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)

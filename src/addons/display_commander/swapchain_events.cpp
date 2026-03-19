@@ -1418,14 +1418,13 @@ float GetTargetFps() {
 }
 
 static OnPresentReflexMode GetEffectiveReflexMode() {
-    if (!s_fps_limiter_enabled.load() || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
-    }
+    // Use selected FPS limiter mode only (not checkbox). Reflex setting applies in all modes even when limiter off.
     switch (s_fps_limiter_mode.load()) {
         case FpsLimiterMode::kOnPresentSync:
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
         case FpsLimiterMode::kReflex:
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
+        case FpsLimiterMode::kLatentSync:
         default:
             return static_cast<OnPresentReflexMode>(
                 settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
