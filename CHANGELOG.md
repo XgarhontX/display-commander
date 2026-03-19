@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.607
+- [docs] **README: proxy install recommended** - Documented the recommended “Display Commander as `dxgi.dll`/`winmm.dll` proxy + `ReShade64.dll`/`ReShade32.dll`” layout (and kept ReShade-addon install as a fallback) for clearer, more compatible setup guidance.
+
 ## v0.12.606
 - [compatibility] **Apply ReShade path overrides to the active runtime** - Toggling “Add DC Shaders/Textures to ReShade paths” now passes the current ReShade runtime to the override function so the correct `ReShade*.ini` is updated when multiple runtimes/configs exist.
 

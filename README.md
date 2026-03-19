@@ -80,7 +80,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
-- **Proxy loading**: Load as dxgi.dll, d3d9.dll, d3d11.dll, d3d12.dll, ddraw.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, vulkan-1.dll, or winhttp.dll proxy when needed. When loaded as **winhttp.dll**, the Main tab shows a warning: the proxy is not signed by Microsoft and may cause network connection issues (blocked traffic, login failures); consider using another proxy (e.g. dxgi.dll) if you see network problems.
+- **Proxy loading**: Load as dxgi.dll, d3d9.dll, d3d11.dll, d3d12.dll, ddraw.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, vulkan-1.dll, winmm.dll, or winhttp.dll proxy when needed. When loaded as **winhttp.dll**, the Main tab shows a warning: the proxy is not signed by Microsoft and may cause network connection issues (blocked traffic, login failures); consider using another proxy (e.g. dxgi.dll) if you see network problems.
 - **Expert – flag files**: Optional flag files change behavior (e.g. `.NO_RESHADE`, `.NODC`).
   **In the game exe directory:**
   - `.NO_RESHADE` / `.NORESHADE` — standalone mode (no ReShade; settings UI only)
@@ -112,7 +112,37 @@ For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](
 - Windows with **stable ReShade 6.6.2** or later
 - The addon matching your game architecture: `.addon64` for 64-bit, `.addon32` for 32-bit
 
-## Installation
+## Installing Display Commander as a proxy (`dxgi.dll` / `winmm.dll`) (RECOMMENDED)
+
+**Recommended for maximum compatibility:** install Display Commander as a **DLL proxy** in the **game exe folder**—start with **`winmm.dll`** or **`dxgi.dll`**; if the game does not load those from its directory, try **another supported proxy name** (e.g. `d3d11.dll`, `d3d12.dll`, `version.dll`; full list under **Features → Proxy loading** above). Copy `zzz_display_commander.addon64` (or `.addon32` for 32-bit) there and **rename** it to that proxy filename. Put ReShade beside it as **`ReShade64.dll`** (64-bit) or **`ReShade32.dll`** (32-bit); Display Commander loads ReShade from that DLL. This layout avoids depending on a global ReShade install and works with titles that only load DLLs from the game folder.
+
+**Common proxy names**
+
+| Name | Typical use |
+|------|-------------|
+| **dxgi.dll** | DirectX 10/11/12 titles that load DXGI from the game directory. |
+| **winmm.dll** | Very early load (before DXGI in some setups); use if `dxgi.dll` is not loaded from the game folder or you need this load order. |
+
+Do not leave **two** different proxies in the same folder if both would wrap the same API (e.g. conflicting `dxgi.dll` replacements). Pick one approach per game.
+
+**Steps (64-bit game)**
+
+1. Copy `zzz_display_commander.addon64` into the **same directory as the game executable**.
+2. Rename that file to `dxgi.dll` **or** `winmm.dll` (only one proxy name as above).
+3. Add **ReShade** next to it:
+   - Download the official addon installer: [ReShade_Setup_6.7.3_Addon.exe](https://reshade.me/downloads/ReShade_Setup_6.7.3_Addon.exe).
+   - Open the `.exe` with **7-Zip** (right-click → *7-Zip* → *Open archive*) and extract **`ReShade64.dll`** into the **game exe folder** (same place as the renamed Display Commander proxy).
+4. Launch the game; open the ReShade overlay and enable Display Commander on the Add-ons tab if needed.
+
+**32-bit games**: Use `zzz_display_commander.addon32` renamed to the same proxy pattern your title expects, and extract **`ReShade32.dll`** from the same installer archive instead of `ReShade64.dll`.
+
+ReShade **6.6.2 or later** is required; the 6.7.3 addon package above meets that. Newer ReShade addon installers from [reshade.me](https://reshade.me) work the same way if you prefer a newer `ReShade64.dll` / `ReShade32.dll`.
+
+**Config and ReShade paths** (proxy installs too): Same rules as in the **Config and ReShade paths** paragraph in the next section.
+
+## Installing Display Commander as a ReShade addon (may cause issue; use as backup)
+
+Use this path when **ReShade** is installed with the official setup from **[reshade.me](https://reshade.me)** and loads as **`dxgi.dll`**, **`d3d9.dll`**, **`opengl32.dll`**, or the **Vulkan layer**—then copy Display Commander’s `.addon64` / `.addon32` into the same place ReShade uses for that game (or your global ReShade folder). If that setup misbehaves, switch to the **proxy + `ReShade64.dll`** / **`ReShade32.dll`** method in the section above.
 
 **Prerequisites**: You must have **stable ReShade 6.6.2** or later installed.
 
