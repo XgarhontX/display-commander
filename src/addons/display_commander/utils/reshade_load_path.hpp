@@ -6,8 +6,9 @@
 
 namespace display_commander::utils {
 
-// Location type for ReShade: Local (game folder), Global (fixed base), or SpecificVersion (Dll\X.Y.Z).
+// Location type for ReShade: Config (DC config dir), Local (game folder), Global (fixed base), or SpecificVersion (Dll\X.Y.Z).
 enum class ReshadeLocationType {
+    Config,          // DC config directory (DisplayCommander.toml location)
     Local,           // game folder (Reshade32/64 in same folder as game exe)
     Global,          // one fixed location: %LocalAppData%\...\Display_Commander\Reshade (default when no local)
     SpecificVersion  // Reshade\Dll\X.Y.Z (versioned subfolders)
@@ -31,7 +32,7 @@ struct ChooseReshadeVersionResult {
     std::string fallback_loaded;      // version actually used in that case
 };
 
-// Returns all tracked ReShade locations (Local + Global + SpecificVersion).
+// Returns all tracked ReShade locations (Config + Local + Global + SpecificVersion). Search order: DC config dir, then exe dir, then global/base.
 std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& game_directory);
 
 // Picks one directory from locations based on selected_setting ("no" | "local" | "latest" | "global" | "X.Y.Z").

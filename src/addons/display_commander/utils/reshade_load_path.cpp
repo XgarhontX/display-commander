@@ -1,5 +1,6 @@
 #include "reshade_load_path.hpp"
 #include "../config/display_commander_config.hpp"
+#include "../globals.hpp"
 #include "general_utils.hpp"
 #include "logging.hpp"
 #include "version_check.hpp"
@@ -148,10 +149,23 @@ static std::string GetReshadeVersionInDirectoryNormalized(const std::filesystem:
 std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& game_directory) {
     std::vector<ReshadeLocation> out;
     namespace vc = display_commander::utils::version_check;
-    const std::filesystem::path base = GetGlobalReshadeDirectory();
-    if (base.empty()) return out;
 
-    // Local: game folder
+    // Config: DC config directory (searched first, then exe dir)
+    auto dc_config = g_dc_config_directory.load(std::memory_order_acquire);
+    if (dc_config && !dc_config->empty()) {
+        std::filesystem::path config_path(*dc_config);
+        if (DirectoryHasReshadeDll(config_path)) {
+            ReshadeLocation loc;
+            loc.type = ReshadeLocationType::Config;
+            loc.version = GetReshadeVersionInDirectoryNormalized(config_path);
+            loc.directory = std::move(config_path);
+            out.push_back(std::move(loc));
+        }
+    }
+
+    const std::filesystem::path base = GetGlobalReshadeDirectory();
+
+    // Local: game folder (exe dir)
     if (!game_directory.empty() && DirectoryHasReshadeDll(game_directory)) {
         ReshadeLocation loc;
         loc.type = ReshadeLocationType::Local;
@@ -159,6 +173,9 @@ std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& ga
         loc.directory = game_directory;
         out.push_back(std::move(loc));
     }
+
+    // Global and SpecificVersion require non-empty base
+    if (base.empty()) return out;
 
     // Global: base folder
     if (DirectoryHasReshadeDll(base)) {
@@ -208,6 +225,12 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
 
     if (setting == "local") {
         for (const auto& loc : locations) {
+            if (loc.type == ReshadeLocationType::Config) {
+                result.directory = loc.directory;
+                return result;
+            }
+        }
+        for (const auto& loc : locations) {
             if (loc.type == ReshadeLocationType::Local) {
                 result.directory = loc.directory;
                 return result;
@@ -237,6 +260,12 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
     }
 
     if (setting == "global") {
+        for (const auto& loc : locations) {
+            if (loc.type == ReshadeLocationType::Config) {
+                result.directory = loc.directory;
+                return result;
+            }
+        }
         for (const auto& loc : locations) {
             if (loc.type == ReshadeLocationType::Global) {
                 result.directory = loc.directory;
@@ -285,6 +314,7 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
 
 static const char* ReshadeLocationTypeToString(ReshadeLocationType t) {
     switch (t) {
+        case ReshadeLocationType::Config:          return "Config";
         case ReshadeLocationType::Local:           return "Local";
         case ReshadeLocationType::Global:          return "Global";
         case ReshadeLocationType::SpecificVersion: return "SpecificVersion";

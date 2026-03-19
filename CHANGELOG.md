@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.612
+- [compatibility] **ReShade DLL search: DC config dir and exe dir** - ReShade32.dll/Reshade64.dll are now looked up in two places: first in Display Commander's config directory (where DisplayCommander.toml lives), then in the game exe directory. Previously only the exe dir (and global/base paths from settings) were used. This allows placing ReShade DLLs next to your config for proxy installs where the exe dir is read-only or shared. Details: `ReshadeLocationType::Config`, `GetReshadeLocations` / `ChooseReshadeVersion` in `utils/reshade_load_path.*`.
+
 ## v0.12.611
 - [ui] **DLSS information: CreateFeature seen (tracked)** - The Main tab DLSS block now has a collapsible "CreateFeature seen (tracked)" section (same style as "DLSS module paths (tracked)"). It shows for DLSS, DLSS FG, and DLSS-RR whether our NGX/Streamline hooks observed CreateFeature ("CreateFeature seen"), or "Loaded too late (CreateFeature not seen)" when the game created the feature before we hooked, or "Not seen" when the feature was never created in this session.
 

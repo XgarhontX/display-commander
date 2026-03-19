@@ -83,7 +83,7 @@ std::filesystem::path GetDocumentsDirectory() {
 }
 
 // Get the Reshade directory path (where reshade64.dll/reshade32.dll are located).
-// Uses DC config: Local, Shared path, or Specific version folder.
+// Search order: DC config dir first, then exe dir; also Global/SpecificVersion per settings.
 std::filesystem::path GetReshadeDirectory() { return display_commander::utils::GetReshadeDirectoryForLoading(); }
 
 // Convert full path to path relative to LocalAppData (masks username)
