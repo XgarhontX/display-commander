@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.609
+- [docs] [compatibility] **README: Monster Hunter Wilds + ReFramework layouts** - Added two known-good install layouts for combining Display Commander, ReShade, and ReFramework (DLL load order / proxy naming).
+
 ## v0.12.608
 - [docs] **README: OptiScaler with dlls_to_load** - Added a short OptiScaler install note covering the `dlls_to_load/before_reshade` (and `after_reshade`) folders.
 

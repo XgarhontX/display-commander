@@ -167,6 +167,38 @@ Use this path when **ReShade** is installed with the official setup from **[resh
 
 OptiScaler has no official website; use only the [GitHub repo](https://github.com/optiscaler/OptiScaler), their Discord, or Nitec’s NexusMods page. It is free; any site asking for payment is a scam.
 
+## Monster Hunter Wilds + ReFramework
+
+ReFramework uses an input proxy (`dinput8.dll`), and its interaction with ReShade + Display Commander depends on DLL load order. The following two layouts are known to work.
+
+Prerequisites:
+- Use the stable ReShade addon (`ReShade64.dll` / `ReShade32.dll`) compatible with Display Commander (stable ReShade 6.6.2 or later).
+- Adjust `64-bit` vs `32-bit` filenames consistently (`zzz_display_commander.addon64` vs `zzz_display_commander.addon32`, `ReShade64.dll` vs `ReShade32.dll`).
+
+### Method 1 (DC as `winmm.dll`, ReFramework loaded before ReShade)
+
+1. In the **Monster Hunter Wilds game exe directory**, copy Display Commander as:
+   - `zzz_display_commander.addon64` -> rename to `winmm.dll`
+2. Extract ReShade into the same directory so you have:
+   - `ReShade64.dll`
+3. Create:
+   - `dlls_to_load/before_reshade/`
+   and place ReFramework here:
+   - `dlls_to_load/before_reshade/dinput8.dll`
+
+This works because Display Commander loads `dlls_to_load/before_reshade/` **before** it initializes ReShade.
+
+### Method 2 (ReFramework as `dinput8.dll`, ReShade as `dxgi.dll`, DC as addon)
+
+1. In the game exe directory, place:
+   - `dinput8.dll` (ReFramework)
+2. Rename ReShade so it becomes the DXGI proxy:
+   - `ReShade64.dll` -> rename to `dxgi.dll`
+3. Place Display Commander as a ReShade addon in the same directory:
+   - `zzz_display_commander.addon64`
+
+Then launch the game and enable Display Commander in the ReShade overlay (Add-ons tab) if it is not already active.
+
 ## Usage
 
 Inside the ReShade overlay, Display Commander exposes:
