@@ -358,63 +358,65 @@ MainTabSettings::MainTabSettings()
     };
 }
 
-void ApplyNativeReflexPreset(FpsLimiterPreset preset) {
+void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetOverrides& out) {
     switch (preset) {
         case FpsLimiterPreset::kLowLatencyNativePacing:
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(true);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 0;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = true;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
             break;
         case FpsLimiterPreset::kLowLatencyMarkers:
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(1);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 1;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = false;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
             break;
         case FpsLimiterPreset::kBalanced:
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(2);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 2;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = false;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
             break;
         case FpsLimiterPreset::kStability:
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(3);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 3;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = false;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
             break;
         case FpsLimiterPreset::kPaceGenerated:
-            g_mainTabSettings.limit_real_frames.SetValue(false);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            out.limit_real_frames = false;
+            out.use_reflex_markers_as_fps_limiter = false;
+            out.reflex_fps_limiter_max_queued_frames = 0;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = false;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
             break;
         case FpsLimiterPreset::kPaceGeneratedSafe:
-            g_mainTabSettings.limit_real_frames.SetValue(false);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(true);
+            out.limit_real_frames = false;
+            out.use_reflex_markers_as_fps_limiter = false;
+            out.reflex_fps_limiter_max_queued_frames = 0;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = false;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = true;
             break;
-        case FpsLimiterPreset::kCustom: break;
+        case FpsLimiterPreset::kCustom:
+            // No overrides; caller should use config values
+            break;
     }
 }
 
@@ -422,13 +424,6 @@ void ApplyNativeReflexPreset(FpsLimiterPreset preset) {
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
-
-    // Apply FPS limiter preset when not Custom (validate range to avoid UB on corrupted config)
-    const int preset_raw = native_reflex_fps_preset.GetValue();
-    if (preset_raw >= 0 && preset_raw < static_cast<int>(FpsLimiterPreset::kCustom)) {
-        const FpsLimiterPreset preset = static_cast<FpsLimiterPreset>(preset_raw);
-        ApplyNativeReflexPreset(preset);
-    }
 
     // Update CPU cores maximum based on system CPU count
     UpdateCpuCoresMaximum();

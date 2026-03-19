@@ -249,7 +249,7 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle, PCEVENT_DESCRIPTOR E
         const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
         ChooseFpsLimiter(now_ns, FpsLimiterCallSite::reflex_marker_pclstats_etw);
         const bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker_pclstats_etw);
-        const bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
+        const bool native_pacing_sim_start_only = GetEffectiveNativePacingSimStartOnly();
         if (use_fps_limiter) {
             if (native_pacing_sim_start_only) {
                 if (marker == 0) {

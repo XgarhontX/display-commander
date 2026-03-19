@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.610
+- [bugfix] [settings] **Safe Mode fps limiter stays on after restart** - The "Safe Mode fps limiter" checkbox no longer turns off when you restart the game. Previously, loading settings re-applied the FPS limiter preset and overwrote this (and other) values in config. Presets now only apply as runtime overrides when native Reflex is active; they never write to config, so your saved choices (including Safe Mode fps limiter) persist correctly. Details: `GetNativeReflexPresetOverrides`, `GetEffective*` in globals; preset application removed from `LoadSettings` and from UI combo change.
+
 ## v0.12.609
 - [docs] [compatibility] **README: Monster Hunter Wilds + ReFramework layouts** - Added two known-good install layouts for combining Display Commander, ReShade, and ReFramework (DLL load order / proxy naming).
 

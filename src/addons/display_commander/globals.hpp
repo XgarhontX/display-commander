@@ -719,6 +719,15 @@ const char* GetChosenFpsLimiterSiteName();
 /** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 1s). */
 bool IsNativeFramePacingInSync();
 
+/** When native Reflex is active and a non-Custom preset is selected, returns the preset override; otherwise config. */
+bool GetEffectiveLimitRealFrames();
+bool GetEffectiveUseReflexMarkersAsFpsLimiter();
+int GetEffectiveReflexFpsLimiterMaxQueuedFrames();
+bool GetEffectiveUseStreamlineProxyFpsLimiter();
+bool GetEffectiveNativePacingSimStartOnly();
+bool GetEffectiveDelayPresentStartAfterSimEnabled();
+bool GetEffectiveSafeModeFpsLimiter();
+
 // Thread tracking for frame pacing debug (Experimental tab, default off)
 constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;  // SIMULATION_START..PRESENT_END
 /** When true, record calling thread ID in latency marker detour and ChooseFpsLimiter (synced from UI). */

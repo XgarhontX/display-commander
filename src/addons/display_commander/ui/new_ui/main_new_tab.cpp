@@ -1192,8 +1192,8 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
-    // Check if limit real frames is enabled
-    if (!settings::g_mainTabSettings.limit_real_frames.GetValue()) {
+    // Check if limit real frames is enabled (effective: config or preset override when native Reflex active)
+    if (!GetEffectiveLimitRealFrames()) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
         return;
     }
@@ -4438,8 +4438,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
 
         // Low Latency Ratio Selector (Experimental WIP placeholder)
         imgui.Spacing();
-        auto display_input_ratio =
-            !(::IsNativeFramePacingInSync() && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
+        auto display_input_ratio = !(::IsNativeFramePacingInSync() && GetEffectiveNativePacingSimStartOnly());
 
         if (display_input_ratio) {
             if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
@@ -4564,9 +4563,6 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
                                     600.f)) {
             const FpsLimiterPreset new_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
-            if (new_preset != FpsLimiterPreset::kCustom) {
-                settings::ApplyNativeReflexPreset(new_preset);
-            }
             LogInfo("FPS limiter preset changed to %d", static_cast<int>(new_preset));
         }
         if (imgui.IsItemHovered()) {
@@ -4745,9 +4741,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
     }
 
-    // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
+    // Limit Real Frames indicator (only visible if OnPresentSync mode is selected; shows effective value)
     if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-        bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+        bool limit_real = GetEffectiveLimitRealFrames();
         imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
     }
 }
@@ -4778,7 +4774,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                     imgui.SetTooltipEx("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
                 }
             } else {
-                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+                bool limit_real = GetEffectiveLimitRealFrames();
                 imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                   ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
                                   limit_real ? "ON" : "OFF");
@@ -4914,11 +4910,11 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
         }
     }
 
-    // Limit Real Frames (experimental)
+    // Limit Real Frames (experimental; checkbox shows effective value, write updates config)
     if (enabled_experimental_features) {
         if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
             imgui.Spacing();
-            bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+            bool limit_real = GetEffectiveLimitRealFrames();
             if (imgui.Checkbox("Limit Real Frames", &limit_real)) {
                 settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
                 LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");

@@ -584,7 +584,7 @@ static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGIS
     CALL_GUARD(now_ns);
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     bool use_fps_limiter = false;
-    if (settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
+    if (GetEffectiveUseStreamlineProxyFpsLimiter()) {
         ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
                          FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
         use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
@@ -631,7 +631,7 @@ static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(
     }
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     bool use_fps_limiter = false;
-    if (settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
+    if (GetEffectiveUseStreamlineProxyFpsLimiter()) {
         ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
                          FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);
         use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);

@@ -266,9 +266,19 @@ class MainTabSettings {
 // Global instance
 extern MainTabSettings g_mainTabSettings;
 
-// Utility functions
-/** Applies FPS limiter preset values. No-op for FpsLimiterPreset::kCustom. */
-void ApplyNativeReflexPreset(FpsLimiterPreset preset);
+/** Override values for FPS limiter when native Reflex is active and a non-Custom preset is selected. */
+struct NativeReflexPresetOverrides {
+    bool limit_real_frames;
+    bool use_reflex_markers_as_fps_limiter;
+    int reflex_fps_limiter_max_queued_frames;
+    bool use_streamline_proxy_fps_limiter;
+    bool native_pacing_sim_start_only;
+    bool delay_present_start_after_sim_enabled;
+    bool safe_mode_fps_limiter;
+};
+
+/** Fills override values for the given preset. Used at runtime when native Reflex is active; does not write config. */
+void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetOverrides& out);
 /** Returns the extended display device ID for the monitor containing the window. */
 std::string GetExtendedDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);

@@ -323,15 +323,15 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
         if ((site == FpsLimiterCallSite::reflex_marker || site == FpsLimiterCallSite::reflex_marker_vk_nvll
              || site == FpsLimiterCallSite::reflex_marker_vk_loader
              || site == FpsLimiterCallSite::reflex_marker_pclstats_etw)
-            && !settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue()) {
+            && !GetEffectiveUseReflexMarkersAsFpsLimiter()) {
             continue;
         }
         if ((site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy
              || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy)
-            && !settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
+            && !GetEffectiveUseStreamlineProxyFpsLimiter()) {
             continue;
         }
-        if (settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue()
+        if (GetEffectiveSafeModeFpsLimiter()
             && s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync
             && site != FpsLimiterCallSite::reshade_addon_event) {
             continue;
@@ -394,6 +394,84 @@ bool IsNativeFramePacingInSync() {
         return true;
     }
     return false;
+}
+
+namespace {
+bool UsePresetOverrides() {
+    if (!IsNativeFramePacingInSync()) return false;
+    const int preset_raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+    return preset_raw >= 0 && preset_raw < static_cast<int>(FpsLimiterPreset::kCustom);
+}
+}  // namespace
+
+bool GetEffectiveLimitRealFrames() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.limit_real_frames;
+    }
+    return settings::g_mainTabSettings.limit_real_frames.GetValue();
+}
+
+bool GetEffectiveUseReflexMarkersAsFpsLimiter() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.use_reflex_markers_as_fps_limiter;
+    }
+    return settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue();
+}
+
+int GetEffectiveReflexFpsLimiterMaxQueuedFrames() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.reflex_fps_limiter_max_queued_frames;
+    }
+    return settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
+}
+
+bool GetEffectiveUseStreamlineProxyFpsLimiter() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.use_streamline_proxy_fps_limiter;
+    }
+    return settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue();
+}
+
+bool GetEffectiveNativePacingSimStartOnly() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.native_pacing_sim_start_only;
+    }
+    return settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
+}
+
+bool GetEffectiveDelayPresentStartAfterSimEnabled() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.delay_present_start_after_sim_enabled;
+    }
+    return settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
+}
+
+bool GetEffectiveSafeModeFpsLimiter() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.safe_mode_fps_limiter;
+    }
+    return settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue();
 }
 
 // Thread tracking for frame pacing debug

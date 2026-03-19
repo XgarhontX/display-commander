@@ -167,10 +167,9 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     bool use_present_end = false;
     int result = 0;
 
-    auto reflex_fps_limiter_max_queued_frames =
-        settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
+    const int reflex_fps_limiter_max_queued_frames = GetEffectiveReflexFpsLimiterMaxQueuedFrames();
 
-    bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue()
+    bool native_pacing_sim_start_only = GetEffectiveNativePacingSimStartOnly()
                                         && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
     if (native_pacing_sim_start_only) {
@@ -235,7 +234,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         {
             // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
             if (marker_type == marker_types.present_start && frame_id > 300) {
-                const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
+                const bool delay_enabled = GetEffectiveDelayPresentStartAfterSimEnabled();
                 const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
                 if (delay_enabled && delay_frames > 0.0f) {
                     const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
