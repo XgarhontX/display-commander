@@ -1,9 +1,7 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+
+// Source Code <Display Commander>
 #include "globals.hpp"
-#include <psapi.h>
-#include <algorithm>
-#include <cctype>
-#include <filesystem>
-#include "../../../external/nvapi/nvapi.h"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "latency/reflex_provider.hpp"
 #include "nvapi/vrr_status.hpp"
@@ -16,16 +14,30 @@
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
 #include "utils.hpp"
+#include "utils/dc_load_path.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 
-#include <d3d11.h>
-#include <wrl/client.h>
+// Libraries <ReShade / ImGui>
 #include <reshade.hpp>
 
+// Libraries <Standard C++>
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <cmath>
+#include <filesystem>
+
+// Libraries <Windows>
+#include <psapi.h>
+
+// Libraries <Other>
+#include <d3d11.h>
+#include <wrl/client.h>
+
+// Libraries <NVAPI>
+#include "../../../external/nvapi/nvapi.h"
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -44,6 +56,17 @@ bool IsUsingWine() {
 
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
+
+namespace display_commander::utils {
+bool IsLoadedAsWinHttpProxy() {
+    if (g_hmodule == nullptr) return false;
+    WCHAR path[MAX_PATH];
+    if (GetModuleFileNameW(g_hmodule, path, MAX_PATH) == 0) return false;
+    const wchar_t* slash = wcsrchr(path, L'\\');
+    const wchar_t* filename = (slash != nullptr) ? (slash + 1) : path;
+    return _wcsicmp(filename, L"winhttp.dll") == 0;
+}
+}  // namespace display_commander::utils
 
 // Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH).
 std::string g_dll_load_caller_path;

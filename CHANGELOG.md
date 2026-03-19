@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.602
+- [cleanup] [compatibility] **winhttp proxy detection without module scan** - The “loaded as winhttp.dll proxy” check now uses the addon module handle (`g_hmodule`) and `GetModuleFileNameW` instead of scanning process modules, reducing overhead and avoiding edge cases with module enumeration.
+
 ## v0.12.601
 - [hooks] **Streamline DLSS-G status tracking** - Restored `slDLSSGSetOptions` detour and updated DLSS-G “enabled” tracking to use `slDLSSGGetState`’s returned `DLSSGState` (status) instead of relying on requested options.
 

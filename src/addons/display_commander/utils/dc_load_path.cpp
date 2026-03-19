@@ -1,13 +1,22 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+
+// Source Code <Display Commander>
 #include "dc_load_path.hpp"
-#include <ShlObj.h>
-#include <Windows.h>
+#include "../config/display_commander_config.hpp"
+#include "general_utils.hpp"
+#include "version_check.hpp"
+
+// Libraries <Standard C++>
 #include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "../config/display_commander_config.hpp"
-#include "general_utils.hpp"
-#include "version_check.hpp"
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows>
+#include <ShlObj.h>
 
 namespace display_commander::utils {
 
@@ -239,16 +248,6 @@ static std::filesystem::path GetDcProxyModulePathImpl(std::filesystem::path* out
 }
 
 std::filesystem::path GetDcProxyModulePath() { return GetDcProxyModulePathImpl(nullptr); }
-
-bool IsLoadedAsWinHttpProxy() {
-    std::filesystem::path proxy_path = GetDcProxyModulePath();
-    if (proxy_path.empty() || !proxy_path.has_filename()) return false;
-    std::wstring name = proxy_path.filename().wstring();
-    for (auto& c : name) {
-        if (c >= L'A' && c <= L'Z') c += (L'a' - L'A');
-    }
-    return name == L"winhttp.dll";
-}
 
 bool IsLoadedWithDLLExtension(void* h_module) {
     if (h_module == nullptr) return false;
