@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.603
+- [cleanup] [compatibility] **Cache ReShade LoadFromDllMain warning check** - The Main tab no longer reads `ADDON\\LoadFromDllMain` from ReShade config every frame; it’s fetched once per process after ReShade is detected (restart required for ini changes to take effect).
+
 ## v0.12.602
 - [cleanup] [compatibility] **winhttp proxy detection without module scan** - The “loaded as winhttp.dll proxy” check now uses the addon module handle (`g_hmodule`) and `GetModuleFileNameW` instead of scanning process modules, reducing overhead and avoiding edge cases with module enumeration.
 

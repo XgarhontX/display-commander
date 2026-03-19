@@ -104,6 +104,10 @@ namespace {
 // Flag to indicate a restart is required after changing VSync/tearing options
 std::atomic<bool> s_restart_needed_vsync_tearing{false};
 
+// ReShade ADDON LoadFromDllMain: read once per process after g_reshade_module is set (avoids ini parse every frame).
+std::atomic<bool> s_load_from_dll_main_fetched{false};
+std::atomic<int32_t> s_load_from_dll_main_value{0};
+
 // Helper function to check if injected Reflex is active
 bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     auto last_injected_call = g_nvapi_last_sleep_timestamp_ns.load();
@@ -2647,11 +2651,18 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
-    // LoadFromDllMain warning
+    // LoadFromDllMain warning (config read once; requires restart to pick up ini changes)
     int32_t load_from_dll_main_value = 0;
-    if ((g_reshade_module != nullptr)
-        && reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
-        && load_from_dll_main_value == 1) {
+    if (g_reshade_module != nullptr) {
+        if (!s_load_from_dll_main_fetched.load(std::memory_order_acquire)) {
+            int32_t v = 0;
+            const bool ok = reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", v);
+            s_load_from_dll_main_value.store(ok ? v : 0, std::memory_order_relaxed);
+            s_load_from_dll_main_fetched.store(true, std::memory_order_release);
+        }
+        load_from_dll_main_value = s_load_from_dll_main_value.load(std::memory_order_relaxed);
+    }
+    if (load_from_dll_main_value == 1) {
         imgui.Spacing();
         imgui.TextColored(ui::colors::TEXT_WARNING,
                           ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
