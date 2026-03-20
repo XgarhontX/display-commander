@@ -1404,6 +1404,8 @@ struct DLSSGSummary {
     std::string dlssd_dll_version = "N/A";
     std::string supported_dlss_presets = "N/A";
     std::string supported_dlss_rr_presets = "N/A";
+    std::string runtime_sr_preset = "N/A";  // Observed NGX value (captured from hooks)
+    std::string runtime_rr_preset = "N/A";  // Observed NGX value (captured from hooks)
     std::string auto_exposure = "N/A";  // "On", "Off", or "N/A" (from DLSS Feature Create Flags)
     // When DLSS override is enabled for a DLL: true if that loaded DLL is from its override folder
     bool dlss_override_applied = true;   // nvngx_dlss.dll

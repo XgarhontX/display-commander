@@ -821,6 +821,26 @@ std::atomic<bool> g_dlss_from_nvidia_app_bin{false};
 // Get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
+    auto preset_value_to_label = [](int preset_value) -> std::string {
+        if (preset_value == 0) return "DLSS Default (0)";
+        if (preset_value > 0) {
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "Preset %c (%d)", 'A' + preset_value - 1, preset_value);
+            return std::string(buffer);
+        }
+        char fallback[24];
+        snprintf(fallback, sizeof(fallback), "%d", preset_value);
+        return std::string(fallback);
+    };
+    auto quality_to_suffix = [](const std::string& quality) -> const char* {
+        if (quality == "Quality") return "Quality";
+        if (quality == "Balanced") return "Balanced";
+        if (quality == "Performance") return "Performance";
+        if (quality == "Ultra Performance") return "UltraPerformance";
+        if (quality == "Ultra Quality") return "UltraQuality";
+        if (quality == "DLAA") return "DLAA";
+        return nullptr;
+    };
 
     // Use the new global tracking variables for more accurate status
     summary.dlss_active = (g_dlss_enabled.load() != 0) || g_streamline_dlss_enabled.load();
@@ -863,6 +883,56 @@ DLSSGSummary GetDLSSGSummary() {
             case NVSDK_NGX_PerfQuality_Value_UltraQuality:     summary.quality_preset = "Ultra Quality"; break;
             case NVSDK_NGX_PerfQuality_Value_DLAA:             summary.quality_preset = "DLAA"; break;
             default:                                           summary.quality_preset = "Unknown"; break;
+        }
+    }
+    {
+        int sr_preset = -1;
+        bool has_sr_preset = false;
+        const char* suffix = quality_to_suffix(summary.quality_preset);
+        if (suffix != nullptr) {
+            std::string sr_name = std::string("DLSS.Hint.Render.Preset.") + suffix;
+            has_sr_preset = g_ngx_parameters.get_as_int(sr_name, sr_preset);
+        }
+        if (!has_sr_preset) {
+            static const char* k_sr_keys[] = {"DLSS.Hint.R ender.Preset.Quality", "DLSS.Hint.Render.Preset.Balanced",
+                                              "DLSS.Hint.Render.Preset.Performance",
+                                              "DLSS.Hint.Render.Preset.UltraPerformance",
+                                              "DLSS.Hint.Render.Preset.UltraQuality", "DLSS.Hint.Render.Preset.DLAA"};
+            for (const char* key : k_sr_keys) {
+                if (g_ngx_parameters.get_as_int(key, sr_preset)) {
+                    has_sr_preset = true;
+                    break;
+                }
+            }
+        }
+        if (has_sr_preset) {
+            summary.runtime_sr_preset = preset_value_to_label(sr_preset);
+        }
+    }
+    {
+        int rr_preset = -1;
+        bool has_rr_preset = false;
+        const char* suffix = quality_to_suffix(summary.quality_preset);
+        if (suffix != nullptr) {
+            std::string rr_name = std::string("RayReconstruction.Hint.Render.Preset.") + suffix;
+            has_rr_preset = g_ngx_parameters.get_as_int(rr_name, rr_preset);
+        }
+        if (!has_rr_preset) {
+            static const char* k_rr_keys[] = {"RayReconstruction.Hint.Render.Preset.Quality",
+                                              "RayReconstruction.Hint.Render.Preset.Balanced",
+                                              "RayReconstruction.Hint.Render.Preset.Performance",
+                                              "RayReconstruction.Hint.Render.Preset.UltraPerformance",
+                                              "RayReconstruction.Hint.Render.Preset.UltraQuality",
+                                              "RayReconstruction.Hint.Render.Preset.DLAA"};
+            for (const char* key : k_rr_keys) {
+                if (g_ngx_parameters.get_as_int(key, rr_preset)) {
+                    has_rr_preset = true;
+                    break;
+                }
+            }
+        }
+        if (has_rr_preset) {
+            summary.runtime_rr_preset = preset_value_to_label(rr_preset);
         }
     }
 

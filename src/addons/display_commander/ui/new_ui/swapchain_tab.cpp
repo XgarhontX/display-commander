@@ -1479,6 +1479,11 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
                               settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
         }
+        imgui.TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "  Runtime SR Preset (hook): %s",
+                          summary.runtime_sr_preset.c_str());
+        imgui.TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "  Runtime RR Preset (hook): %s",
+                          summary.runtime_rr_preset.c_str());
+        imgui.TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "  Runtime FG Mode (hook): %s", summary.fg_mode.c_str());
         imgui.Spacing();
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = no override (don't change anything)");
