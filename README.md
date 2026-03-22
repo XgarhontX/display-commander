@@ -101,12 +101,6 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - **Image adjustment**: Brightness, gamma, saturation, hue; AutoHDR option
 - **Fake NVAPI** (experimental): Spoof NVIDIA on non-NVIDIA GPUs for DLSS/Reflex-style features
 
-## Known Issues
-
-**⚠️ Load Order Requirement**: Display Commander must be loaded last by ReShade. This is why we've added the `zzz_` prefix to the filename - it ensures proper load order and prevents conflicts with other addons.
-
-For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
-
 ## Requirements
 
 - Windows with **stable ReShade 6.6.2** or later
@@ -266,10 +260,6 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 - "Missing submodule: external/reshade": Run `git submodule update --init --recursive`.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.
 - "No addon files found" after build: Ensure Release config and correct architecture; check `build/` or `build32/Release/` for the expected output name (should be `zzz_display_commander.addon64` or `zzz_display_commander.addon32`).
-
-## Feature Proposals
-
-Have ideas for new features? Check out our [Feature Proposals](FEATURE_PROPOSALS.md) to see what's being considered for future development.
 
 ## Support
 

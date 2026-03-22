@@ -60,6 +60,3 @@ endif()
 
 # Include addon subdirectories
 add_subdirectory(src/addons/display_commander)
-
-# Include tools
-add_subdirectory(tools)

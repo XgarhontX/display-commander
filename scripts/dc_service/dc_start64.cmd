@@ -1,1 +1,0 @@
-rundll32.exe zzz_DisplayCommander.addon64,Start

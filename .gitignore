@@ -1,3 +1,7 @@
+*/**/*.*
+
+
+
 # CMake build directories
 build/
 build32/
@@ -20,6 +24,10 @@ compile_commands.json
 # IDE metadata
 .idea/
 .vscode/
+.cursor/
+
+# Vim swap files
+*.swp
 
 # OS junk
 Thumbs.db
@@ -63,3 +71,68 @@ imgui.ini
 
 # Docs not commited to the repo
 private_docs
+
+
+
+# excluded
+!src/**/*.hpp
+!src/**/*.cpp
+!src/**/**/*.hpp
+!src/**/**/*.cpp
+!src/**/**/**/*.hpp
+!src/**/**/**/*.cpp
+!src/**/**/**/**/*.hpp
+!src/**/**/**/**/*.cpp
+!src/**/**/**/**/**/*.hpp
+!src/**/**/**/**/**/*.cpp
+!src/**/**/**/**/**/**/*.hpp
+!src/**/**/**/**/**/**/*.cpp
+!src/**/**/**/**/**/**/**/*.hpp
+!src/**/**/**/**/**/**/**/*.cpp
+
+!src/addons/display_commander/proxy_dll/exports.def
+!src/addons/display_commander/proxy_dll/opengl32.def
+!src/addons/display_commander/proxy_dll/version.rc.in
+
+# .github
+!.github/
+!.github/FUNDING.yml
+!.github/workflows/*.yml
+
+
+# res
+!src/addons/display_commander/res/effects/*.fx
+!src/addons/display_commander/res/forkawesome.h
+!src/addons/display_commander/res/game_default_overrides.toml
+!src/addons/display_commander/res/launcher_icon.*
+!src/addons/display_commander/res/make_launcher_icon.ps1
+
+# .files
+!.clang-format
+!.clang-tidy
+!.editorconfig
+!.gitignore
+!.gitmodules
+
+# external
+!external/
+
+# ROOT
+!CHANGELOG.md
+!CMakeLists.txt
+!CMakePresets.json
+!README.md
+!SUMMARY.md
+!bd32_core.ps1
+!bd_core.ps1
+!build_display_commander.ps1
+!SUPPORT.md
+!reshade-display-commander.code-workspace
+
+# include
+!include/reshade_imgui.hpp
+
+# scripts
+scripts
+
+#  git ls-files -ic --exclude-standard
