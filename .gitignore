@@ -1,5 +1,15 @@
-*/**/*.*
-
+*.*
+**/*.*
+**/**/*.*
+**/**/**/*.*
+**/**/**/**/*.*
+**/**/**/**/**/*.*
+**/**/**/**/**/**/*.*
+**/**/**/**/**/**/**/*.*
+**/**/**/**/**/**/**/**/*.*
+**/**/**/**/**/**/**/**/**/*.*
+**/**/**/**/**/**/**/**/**/**/*.*
+**/**/**/**/**/**/**/**/**/**/**/*.*
 
 
 # CMake build directories
@@ -123,8 +133,6 @@ private_docs
 !CMakePresets.json
 !README.md
 !SUMMARY.md
-!bd32_core.ps1
-!bd_core.ps1
 !build_display_commander.ps1
 !SUPPORT.md
 !reshade-display-commander.code-workspace
@@ -132,7 +140,14 @@ private_docs
 # include
 !include/reshade_imgui.hpp
 
-# scripts
-scripts
+!scripts/display_commander_installer_windows.bat
+
+
+!external/reshade_includes/reshade_events.hpp
+!external/reshade_includes/reshade_overlay.hpp
+!src/addons/display_commander/proxy_dll/opengl32_proxy_gl.h
+!src/addons/display_commander/res/effects/ReShade.fxh
+!src/addons/display_commander/res/effects/color.fxh
+
 
 #  git ls-files -ic --exclude-standard

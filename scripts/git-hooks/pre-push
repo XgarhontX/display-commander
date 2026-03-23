@@ -1,0 +1,15 @@
+#!/bin/sh
+# Local pre-push: refuse push if any indexed paths match standard ignore rules
+# (tracked files that should typically not be committed). Install: scripts/install_git_hooks.sh
+
+if ! tracked_ignored=$(git ls-files -ic --exclude-standard 2>/dev/null); then
+	echo "pre-push: git ls-files failed; fix your repo/git and retry." >&2
+	exit 1
+fi
+if [ -n "$tracked_ignored" ]; then
+	echo "pre-push: blocked — tracked files match ignore rules." >&2
+	echo "Fix: git rm --cached -- <path>  (then commit). Paths:" >&2
+	printf '%s\n' "$tracked_ignored" >&2
+	exit 1
+fi
+exit 0

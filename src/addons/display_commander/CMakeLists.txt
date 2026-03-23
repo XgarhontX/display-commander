@@ -42,6 +42,23 @@ configure_file(
 # Common compile options, definitions, and includes shared by DLL and exe (and by the object library).
 # Reduces duplication and, with the object library below, compiles shared sources once for both targets.
 add_library(display_commander_common_options INTERFACE)
+
+# Ninja + MSVC: CMake may omit Windows SDK UM LIBPATH when using cl.exe outside a full VS Developer
+# environment, causing LNK1104 for setupapi.lib / tdh.lib. Derive Lib/<ver>/um/<arch> from CMAKE_MT.
+if(MSVC AND WIN32 AND CMAKE_MT)
+  cmake_path(GET CMAKE_MT PARENT_PATH _dc_mt_parent)
+  cmake_path(GET _dc_mt_parent FILENAME _dc_winsdk_um_arch)
+  cmake_path(GET _dc_mt_parent PARENT_PATH _dc_winsdk_ver_dir)
+  cmake_path(GET _dc_winsdk_ver_dir FILENAME _dc_winsdk_ver)
+  cmake_path(GET _dc_winsdk_ver_dir PARENT_PATH _dc_winsdk_bin)
+  cmake_path(GET _dc_winsdk_bin PARENT_PATH _dc_windows_kits_10)
+  cmake_path(APPEND _dc_windows_kits_10 "Lib" "${_dc_winsdk_ver}" "um" "${_dc_winsdk_um_arch}"
+    OUTPUT_VARIABLE _dc_winsdk_um_lib_dir)
+  if(EXISTS "${_dc_winsdk_um_lib_dir}")
+    target_link_directories(display_commander_common_options INTERFACE "${_dc_winsdk_um_lib_dir}")
+  endif()
+endif()
+
 target_compile_definitions(display_commander_common_options INTERFACE
   GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT}
   ${BUILD_DATE_DEFINE}
