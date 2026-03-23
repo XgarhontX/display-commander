@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.617
+- [docs] **README: remove OptiScaler note** - Removed the OptiScaler installation note from `README.md` to keep setup guidance focused on currently recommended paths.
+
 ## v0.12.616
 - [settings] **License acceptance prompt version bump** - Bumped bundled legal presentation version to `1002` so users are prompted to re-accept after updating third-party notices.
 - [docs] **Third-party notices: AutoHDR-ReShade MIT attribution** - Added missing `AutoHDR-ReShade` license attribution to `THIRD_PARTY_NOTICES.txt` (MIT), including source link for reference/inspiration credit.
