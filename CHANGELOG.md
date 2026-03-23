@@ -4,6 +4,7 @@
 
 ## v0.12.618
 - [settings] [cleanup] **Log active `default_settings.toml` values on load** - Startup logs now include all active key/value pairs parsed from `[DisplayCommander]` in `default_settings.toml`, so you can quickly confirm which fallback defaults are in effect (or see that none are set).
+- [settings] [ui] **`PreventAlwaysOnTop` now defaults to off** - New installs now keep "Prevent always on top" disabled by default, so games and windows preserve normal always-on-top behavior unless you explicitly enable this override.
 
 ## v0.12.617
 - [docs] **README: remove OptiScaler note** - Removed the OptiScaler installation note from `README.md` to keep setup guidance focused on currently recommended paths.

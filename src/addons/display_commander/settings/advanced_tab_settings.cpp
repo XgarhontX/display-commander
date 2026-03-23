@@ -19,7 +19,7 @@ namespace settings {
 // Constructor - initialize all settings with proper keys and default values
 AdvancedTabSettings::AdvancedTabSettings()
     : continue_rendering("ContinueRendering", false, "DisplayCommander"),
-      prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
+      prevent_always_on_top("PreventAlwaysOnTop", false, "DisplayCommander"),
       prevent_minimize("PreventMinimize", true, "DisplayCommander"),
       flush_command_queue_before_sleep("FlushCommandQueueBeforeSleep", true, "DisplayCommander"),
       enqueue_gpu_completion("EnqueueGpuCompletion", true, "DisplayCommander"),
