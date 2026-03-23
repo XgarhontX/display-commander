@@ -110,9 +110,6 @@ private_docs
 !src/addons/display_commander/res/effects/*.fx
 !src/addons/display_commander/res/forkawesome.h
 !src/addons/display_commander/res/game_default_overrides.toml
-!src/addons/display_commander/res/launcher_icon.*
-!src/addons/display_commander/res/make_launcher_icon.ps1
-
 # .files
 !.clang-format
 !.clang-tidy
