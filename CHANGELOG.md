@@ -2,6 +2,10 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.620
+- [bugfix] [hooks] **Stop removing `WM_POPUP`** - Window message handling no longer removes `WM_POPUP`, preserving popup-related behavior expected by games and overlays.
+- [settings] **Default settings fallback now uses `"no changes"`** - `default_settings.toml` fallback behavior now points to `"no changes"` so missing defaults do not silently apply unintended overrides.
+
 ## v0.12.619
 - [ui] **Window control toggles moved to Main tab** - Moved `Prevent Always On Top` and `Prevent Minimize` from the Advanced tab into Main tab's Window Control section, so window-behavior controls are grouped where users already manage minimize/focus/restore actions.
 

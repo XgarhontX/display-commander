@@ -178,7 +178,7 @@ inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_t
     if (nIndex == GWL_STYLE) {
         // WS_POPUP added to fix godstrike
         auto old_dwNewLong = dwNewLong;
-        dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
+        dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU); //  | WS_POPUP
         if (old_dwNewLong != dwNewLong) {
             LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_STYLE: %08X -> %08X", old_dwNewLong,
                              dwNewLong);
