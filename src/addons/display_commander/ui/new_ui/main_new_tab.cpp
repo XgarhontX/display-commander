@@ -59,6 +59,7 @@
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
+#include "help_tab.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "utils/detour_call_tracker.hpp"
@@ -3807,6 +3808,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         DrawAdvancedSettings(imgui);
         imgui.Unindent();
     }
+
+    DrawMainTabLegalSection(imgui);
 }
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {

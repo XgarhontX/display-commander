@@ -212,6 +212,9 @@ class MainTabSettings {
      * requested by the application. Part of Vulkan injection (SpecialK-style). Default off. */
     ui::new_ui::BoolSetting vulkan_inject_extensions_enabled;
 
+    /** Highest bundled license presentation version the user accepted (persists in config; no checkbox in UI). */
+    ui::new_ui::IntSetting license_acknowledged_version;
+
     // Brightness (ReShade effect driven by DC)
     /** When true, DC adds its Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths.
      * When false, those paths are removed from ReShade config. Default on. */

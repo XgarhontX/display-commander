@@ -272,12 +272,16 @@ Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on
 
 The RenoDX Discord community is the best place to get real-time help, discuss features, and connect with other users.
 
+## License
+
+This project is distributed under the terms in [LICENSE](LICENSE). Third-party components and their notices are listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+
 ## Credits
 
 - ReShade and its addon SDK
 - Dear ImGui (via ReShade dependencies)
 - NVIDIA NVAPI headers/libs (`external/nvapi`)
-- Additional third-party code under `external/` (stb, fpng, etc.)
+- Additional third-party code under `external/` — see [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)
 - **VBlank Scanline Sync**: Based on the algorithm used in Special-K by Kaldaien
 - **Swapchain HDR Upgrade** (scRGB / HDR10): Approach inspired by [AutoHDR-ReShade](https://github.com/EndlesslyFlowering/AutoHDR-ReShade) (EndlesslyFlowering)
 

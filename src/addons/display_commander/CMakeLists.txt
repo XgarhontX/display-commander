@@ -213,14 +213,22 @@ set(DC_PERCEPTUALBOOST_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommande
 set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
 set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
 set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")
+set(DC_LICENSE_SRC "${CMAKE_CURRENT_LIST_DIR}/../../../LICENSE")
+set(DC_THIRD_PARTY_NOTICES_SRC "${CMAKE_CURRENT_LIST_DIR}/../../../THIRD_PARTY_NOTICES.txt")
 set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
 if(EXISTS "${DC_CONTROL_FX}")
+  if(NOT EXISTS "${DC_LICENSE_SRC}")
+    message(WARNING "LICENSE not found at ${DC_LICENSE_SRC} - embedded license resource (305) will be missing")
+  endif()
+  if(NOT EXISTS "${DC_THIRD_PARTY_NOTICES_SRC}")
+    message(WARNING "THIRD_PARTY_NOTICES.txt not found at ${DC_THIRD_PARTY_NOTICES_SRC} - embedded notices resource (306) will be missing")
+  endif()
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders and game_default_overrides in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\n#define IDR_GAME_DEFAULT_OVERRIDES 304\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\n")
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders, game_default_overrides, and legal text in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\n#define IDR_GAME_DEFAULT_OVERRIDES 304\n#define IDR_DC_LICENSE 305\n#define IDR_THIRD_PARTY_NOTICES 306\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\nIDR_DC_LICENSE RCDATA \"DC_LICENSE.txt\"\nIDR_THIRD_PARTY_NOTICES RCDATA \"THIRD_PARTY_NOTICES.txt\"\n")
   else()
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders and game_default_overrides in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_GAME_DEFAULT_OVERRIDES 304\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\n")
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders, game_default_overrides, and legal text in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_GAME_DEFAULT_OVERRIDES 304\n#define IDR_DC_LICENSE 305\n#define IDR_THIRD_PARTY_NOTICES 306\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\nIDR_DC_LICENSE RCDATA \"DC_LICENSE.txt\"\nIDR_THIRD_PARTY_NOTICES RCDATA \"THIRD_PARTY_NOTICES.txt\"\n")
   endif()
   # Generate shader_effect.rc at build time (so it exists after clean); script is written at configure time.
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
@@ -230,8 +238,10 @@ if(EXISTS "${DC_CONTROL_FX}")
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_LICENSE_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_THIRD_PARTY_NOTICES_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt"
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
-    COMMENT "Copy DisplayCommander shader files and game_default_overrides.toml to build dir for resource embedding"
+    COMMENT "Copy DisplayCommander shader files, game_default_overrides.toml, LICENSE, and THIRD_PARTY_NOTICES to build dir for resource embedding"
     BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS} ${DC_SHADER_RC}
   )
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
@@ -313,6 +323,11 @@ target_sources(display_commander_exe PRIVATE
   $<TARGET_OBJECTS:display_commander_objs>
   $<TARGET_OBJECTS:imgui_standalone_obj>
 )
+if(EXISTS "${DC_CONTROL_FX}")
+  target_sources(display_commander_exe PRIVATE ${DC_SHADER_RC})
+  add_dependencies(display_commander_exe copy_shader_files_for_rc)
+  set_source_files_properties(${DC_SHADER_RC} PROPERTIES GENERATED TRUE)
+endif()
 target_compile_definitions(display_commander_exe PRIVATE DISPLAY_COMMANDER_BUILD_EXE)
 target_link_libraries(display_commander_exe PRIVATE display_commander_common_options setupapi tdh advapi32 wininet bcrypt shell32)
 target_link_libraries(display_commander_exe PRIVATE minhook)

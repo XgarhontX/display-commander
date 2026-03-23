@@ -128,6 +128,7 @@ private_docs
 !external/
 
 # ROOT
+!THIRD_PARTY_NOTICES.txt
 !CHANGELOG.md
 !CMakeLists.txt
 !CMakePresets.json
