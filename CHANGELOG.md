@@ -4,6 +4,7 @@
 
 Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
+- Sometimes config .toml file gets delete during save.
 
 ## v0.12.625
 - [compatibility] [hooks] **RE4: treat as REFramework present for hook skip** - `re4.exe` is detected so Display Commander skips the same D3D11/D3D12 device hooks as when a `reframework\plugins` module path is seen, avoiding conflicts when REFramework does not appear in loaded-module paths the usual way.
