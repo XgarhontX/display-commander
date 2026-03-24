@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 
+## v0.12.623
+- [ui] [compatibility] **Added warning to NVAPI "Refresh Rate"** - Added a warning for the NVAPI "Refresh Rate" control to make potential side effects clearer before users change it.
+
 ## v0.12.622
 - [bugfix] [compatibility] **Fixed Monster Hunter Wilds being slow to start / unresponsive** - Improved startup behavior so Monster Hunter Wilds no longer becomes slow to start or unresponsive during launch.
 

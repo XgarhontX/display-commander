@@ -345,15 +345,16 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     imgui.NextColumn();
 
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
+    if (imgui.Checkbox("Refresh rate" ICON_FK_WARNING, &show_actual_refresh_rate)) {
         settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
             "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
-            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+            "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
     }
+    imgui.NextColumn();
     imgui.NextColumn();
 
     bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
