@@ -12,6 +12,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.5 (2026-03-24)
+
+- [cleanup] [hooks] **CALL_GUARD_NO_TS on NGX helpers without guards** - Added crash/exit call-site tracking to `DLSSOptimalSettingsCallback_Proxy`, `UntrackNGXHandle`, `GetFeatureFromHandle`, `ApplyDLSSPresetParameters`, `CleanupNGXHandleTracking`, `ResetNGXPresetInitialization`, `CleanupNGXHooks`, and `ApplyNGXParameterOverride` in `ngx_hooks.cpp`. Skipped trivial one-line helpers and hot UI getters (`IsDLSSEnabled`, etc.) to limit overhead and tracker noise.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
 ## v0.13.4 (2026-03-24)
 
 - [cleanup] [hooks] **NGX Parameter vtable indices as named constants** - `HookNGXParameterVTable` no longer uses raw slot numbers (e.g. 3 for `SetI`); it uses a local `NGX_Parameter_VTable_Index` enum and `ngx_param_vtable_idx()` so the Special-K / NGX layout is documented in one place and harder to mistype.
