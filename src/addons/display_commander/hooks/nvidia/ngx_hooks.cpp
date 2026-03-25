@@ -199,18 +199,42 @@ using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_P
 using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
                                                                              const char* InName, void** OutValue);
 
-// NGX initialization function pointer types (matches nvsdk_ngx.h when NGX_SNIPPET_BUILD is undefined: Init includes
-// InFeatureInfo before InSDKVersion; NGX_SNIPPET_BUILD driver builds use 4-arg Init — same export name, different ABI)
+// #define DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI 1
+
+// nvsdk_ngx.h: several exports share one name but differ by NGX_SNIPPET_BUILD / #else (see file note ~L114). Summary:
+// - D3D11/D3D12 Init: NGX_SNIPPET_BUILD -> 4 args (device then InSDKVersion). Else -> 5 args (+ InFeatureInfo before
+//   InSDKVersion). Same export name; detour arity must match the loaded module + caller. Build-time: define
+//   DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI=1 (CMake option DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) to compile 4-arg Init
+//   detours/typedefs like the snippet branch; default OFF = 5-arg SDK Init.
+// - D3D11/D3D12 Init_Ext: Prototypes appear only under NGX_SNIPPET_BUILD in nvsdk_ngx.h (5 args). The SDK #else branch
+//   does not declare D3D Init_Ext (Init + FeatureInfo is the public Init surface there).
+// - D3D11/D3D12 Init_with_ProjectID: Prototypes only when NGX_SNIPPET_BUILD is undefined (7 args). Snippet branch omits
+//   these declarations entirely (not a different count—absent vs present in the header).
+// - D3D11/D3D12 CreateFeature: Always 4 parameter slots in the header; InParameters is const* under NGX_SNIPPET_BUILD
+//   and non-const* in the #else branch (qualifier differs, not the argument count).
+// - UpdateFeature: Prototype only in #else (2 args). Omitted when NGX_SNIPPET_BUILD (export may be absent for snippet
+//   builds).
+
+#if defined(DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) && DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI
+// 4-arg Init (nvsdk_ngx.h NGX_SNIPPET_BUILD branch) — DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI in CMake.
+using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                               const wchar_t* InApplicationDataPath,
+                                                               ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion);
+#else
+// 5-arg Init (public SDK #else) — default build.
 using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
                                                                ID3D12Device* InDevice,
                                                                const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                                NVSDK_NGX_Version InSDKVersion);
+#endif
+// 5-arg Init_Ext as in nvsdk_ngx.h NGX_SNIPPET_BUILD block; not declared for D3D in SDK #else — see block above.
 using NVSDK_NGX_D3D12_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D12Device* InDevice,
                                                                    NVSDK_NGX_Version InSDKVersion,
                                                                    const NVSDK_NGX_Parameter* InParameters);
+// 7-arg Init_with_ProjectID; declarations skipped in nvsdk_ngx.h when NGX_SNIPPET_BUILD — see block above.
 using NVSDK_NGX_D3D12_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -218,6 +242,7 @@ using NVSDK_NGX_D3D12_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
 using NVSDK_NGX_D3D12_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+// 4 param slots; InParameters is const* here (NGX_SNIPPET_BUILD style); header #else uses non-const* — see ABI block.
 using NVSDK_NGX_D3D12_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
                                                                         NVSDK_NGX_Feature InFeatureID,
                                                                         const NVSDK_NGX_Parameter* InParameters,
@@ -228,16 +253,24 @@ using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12
                                                                           const NVSDK_NGX_Parameter* InParameters,
                                                                           PFN_NVSDK_NGX_ProgressCallback InCallback);
 
+#if defined(DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) && DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI
+using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                               const wchar_t* InApplicationDataPath,
+                                                               ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion);
+#else
 using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
                                                                ID3D11Device* InDevice,
                                                                const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                                NVSDK_NGX_Version InSDKVersion);
+#endif
+// 5-arg Init_Ext (snippet branch only in header for D3D) — see ABI block above.
 using NVSDK_NGX_D3D11_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D11Device* InDevice,
                                                                    NVSDK_NGX_Version InSDKVersion,
                                                                    const NVSDK_NGX_Parameter* InParameters);
+// 7-arg Init_with_ProjectID (SDK branch only in header) — see ABI block above.
 using NVSDK_NGX_D3D11_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -245,6 +278,7 @@ using NVSDK_NGX_D3D11_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
 using NVSDK_NGX_D3D11_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D11_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D11_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+// 4 param slots; const* InParameters = NGX_SNIPPET_BUILD branch; #else is non-const* — see ABI block above.
 using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
                                                                         NVSDK_NGX_Feature InFeatureID,
                                                                         const NVSDK_NGX_Parameter* InParameters,
@@ -266,7 +300,7 @@ using NVSDK_NGX_D3D12_EvaluateFeature_C_pfn =
     NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList, const NVSDK_NGX_Handle* InFeatureHandle,
                                   const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback_C InCallback);
 
-// UpdateFeature function pointer type
+// 2 args; nvsdk_ngx.h declares UpdateFeature only when NGX_SNIPPET_BUILD is undefined — see ABI block above.
 using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(const NVSDK_NGX_Application_Identifier* ApplicationId,
                                                                   const NVSDK_NGX_Feature FeatureID);
 
@@ -344,8 +378,8 @@ NVSDK_NGX_D3D11_EvaluateFeature_C_pfn NVSDK_NGX_D3D11_EvaluateFeature_C_Original
 // UpdateFeature original function pointer
 NVSDK_NGX_UpdateFeature_pfn NVSDK_NGX_UpdateFeature_Original = nullptr;
 
-/** Table-driven NGX hook install: name, detour, original. Use exact DLL export name (e.g. Init_with_ProjectID);
- * Init_ProjectID is a different ABI. */
+/** Table-driven NGX hook install: name, detour, original. Export names: use Init_with_ProjectID (not Init_ProjectID).
+ * Init / Init_Ext / CreateFeature / UpdateFeature: see nvsdk_ngx.h NGX_SNIPPET_BUILD vs #else (ABI block above typedefs). */
 struct NGXHookEntry {
     const char* name;
     LPVOID detour;
@@ -1094,7 +1128,25 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
     return res;
 }
 
-// D3D12 Init detour (nvsdk_ngx.h: InFeatureInfo then InSDKVersion)
+#if defined(DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) && DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI
+// D3D12 Init detour — 4-arg (NGX_SNIPPET_BUILD-style); enable via CMake DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI.
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
+                                                        const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
+                                                        NVSDK_NGX_Version InSDKVersion) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d12_init_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+
+    LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
+
+    if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
+        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+#else
+// D3D12 Init detour — 5-arg public SDK (#else): InFeatureInfo before InSDKVersion (default build).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
                                                         const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -1112,8 +1164,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
 
     return NVSDK_NGX_Result_Fail;
 }
+#endif
 
-// D3D12 Init Ext detour (DLL/Core: 5 params, 5th = const NVSDK_NGX_Parameter*)
+// D3D12 Init_Ext detour — 5 args as in nvsdk_ngx.h NGX_SNIPPET_BUILD; D3D Init_Ext not in SDK #else branch (see ABI
+// block above typedefs).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long InApplicationId,
                                                             const wchar_t* InApplicationDataPath,
                                                             ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion,
@@ -1132,7 +1186,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long I
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D12 Init_with_ProjectID detour
+// D3D12 Init_with_ProjectID detour — 7 args; nvsdk_ngx.h omits these prototypes when NGX_SNIPPET_BUILD (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -1193,7 +1247,8 @@ static void LogNGXCreateFeatureParameters(NVSDK_NGX_Parameter* InParameters) {
     }
 }
 
-// D3D12 CreateFeature detour (DLL/Core: const NVSDK_NGX_Parameter* per nvsdk_ngx.h NGX_SNIPPET_BUILD)
+// D3D12 CreateFeature detour — 4 param slots; const InParameters matches NGX_SNIPPET_BUILD; #else uses non-const* (same
+// count). See ABI block above typedefs.
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
                                                                  NVSDK_NGX_Feature InFeatureID,
                                                                  const NVSDK_NGX_Parameter* InParameters,
@@ -1369,7 +1424,25 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D11 Init detour (nvsdk_ngx.h: InFeatureInfo then InSDKVersion)
+#if defined(DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) && DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI
+// D3D11 Init detour — 4-arg snippet/Core ABI (CMake DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI).
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
+                                                        const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
+                                                        NVSDK_NGX_Version InSDKVersion) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d11_init_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+
+    LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
+
+    if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
+        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+#else
+// D3D11 Init detour — 5-arg SDK Init (default).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
                                                         const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -1387,8 +1460,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
 
     return NVSDK_NGX_Result_Fail;
 }
+#endif
 
-// D3D11 Init Ext detour (DLL/Core: 5 params, 5th = const NVSDK_NGX_Parameter*)
+// D3D11 Init_Ext detour — 5 args; D3D Init_Ext only under NGX_SNIPPET_BUILD in nvsdk_ngx.h (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long InApplicationId,
                                                             const wchar_t* InApplicationDataPath,
                                                             ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion,
@@ -1483,7 +1557,7 @@ static void SafeLogWString(const char* name, const wchar_t* str) {
     }
 }
 
-// D3D11 Init_with_ProjectID detour
+// D3D11 Init_with_ProjectID detour — 7 args; omitted from nvsdk_ngx.h when NGX_SNIPPET_BUILD (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -1591,8 +1665,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_with_ProjectID_Detour(
     return result;
 }
 
-// D3D11 CreateFeature detour
-// D3D11 CreateFeature detour (DLL/Core: const NVSDK_NGX_Parameter* per nvsdk_ngx.h NGX_SNIPPET_BUILD)
+// D3D11 CreateFeature detour — 4 slots; const* InParameters = NGX_SNIPPET_BUILD; #else non-const* (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext* InDevCtx,
                                                                  NVSDK_NGX_Feature InFeatureID,
                                                                  const NVSDK_NGX_Parameter* InParameters,
@@ -1704,7 +1777,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     return NVSDK_NGX_Result_Fail;
 }
 
-// UpdateFeature detour
+// UpdateFeature detour — 2 args; nvsdk_ngx.h declares only when NGX_SNIPPET_BUILD is undefined (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Application_Identifier* ApplicationId,
                                                            const NVSDK_NGX_Feature FeatureID) {
     CALL_GUARD(utils::get_now_ns());
@@ -1960,6 +2033,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 }
 
 static constexpr std::size_t kNGXHookCount = 21;
+// Detour signatures follow bundled nvsdk_ngx.h; Init and related variants differ by NGX_SNIPPET_BUILD — see ABI block.
 static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
     {.name = "NVSDK_NGX_D3D12_Init",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_Detour),
@@ -2049,7 +2123,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
     LogInfo("Installing NGX initialization hooks...");
 
-    // Table-driven install (signatures match DLL/Core interface; see docs/ngx_hooks_signature_audit.md)
+    // Table-driven install — signatures vs nvsdk_ngx.h NGX_SNIPPET_BUILD / #else (ABI comment block above typedefs)
     for (std::size_t i = 0; i < kNGXHookCount; ++i) {
         const NGXHookEntry& entry = kNGXHooks[i];
         LPVOID target = GetProcAddress(ngx_dll, entry.name);

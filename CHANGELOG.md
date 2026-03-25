@@ -12,12 +12,25 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.8 (2026-03-25)
+
+- [cleanup] [hooks] **Clarified NGX snippet/Core ABI context** - Documented and validated that `NGX_SNIPPET_BUILD` in official NGX headers represents a separate snippet/Core-facing ABI variant (not the default public SDK calling pattern), helping choose the correct hook signature branch for Init variants.
+  Details: `external/nvidia-dlss/include/nvsdk_ngx.h`, `external/nvidia-dlss/include/nvsdk_ngx_vk.h`.
+
+## v0.13.7 (2026-03-25)
+
+- [hooks] [compatibility] **Optional 4-arg NGX Init ABI (snippet/Core)** - CMake option `DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI` defines `DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI=1` so D3D11/D3D12 `Init` typedefs and detours match the 4-parameter `NGX_SNIPPET_BUILD` branch in `nvsdk_ngx.h` instead of the default 5-arg public SDK Init. Use when you must hook a module that exports the snippet-style calling convention; default remains 5-arg.
+  Details: `src/addons/display_commander/CMakeLists.txt`, `hooks/nvidia/ngx_hooks.cpp`.
+
 ## v0.13.6 (2026-03-25)
 
 - [hooks] **NGX D3D11/D3D12 Init: InFeatureInfo parameter** - `NVSDK_NGX_D3D11_Init` / `NVSDK_NGX_D3D12_Init` typedefs and detours now include `const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo` before `InSDKVersion`, matching public `nvsdk_ngx.h` when `NGX_SNIPPET_BUILD` is not defined. NVIDIA documents an alternate 4-argument Init for `NGX_SNIPPET_BUILD` (driver/snippet); if a loaded module used that ABI, the same export name would be incompatible.
   Details: `hooks/nvidia/ngx_hooks.cpp`.
 
 - [cleanup] [hooks] **D3D11/D3D12 Init_with_ProjectID hook identifiers** - Renamed internal `NVSDK_NGX_D3D11_Init_ProjectID_*` and `NVSDK_NGX_D3D12_Init_ProjectID_*` typedef/original/detour symbols to `*_Init_with_ProjectID_*` so they match the exported NGX APIs `NVSDK_NGX_D3D11_Init_with_ProjectID` / `NVSDK_NGX_D3D12_Init_with_ProjectID`. Behavior unchanged.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
+- [cleanup] [hooks] **NGX ABI variant comments** - Documented in `ngx_hooks.cpp` which `nvsdk_ngx.h` prototypes differ by `NGX_SNIPPET_BUILD` vs `#else` (Init 4 vs 5 args, Init_Ext / Init_with_ProjectID / UpdateFeature presence, CreateFeature `const` vs mutable `InParameters`). Central block above NGX typedefs; matching notes on detours and hook table.
   Details: `hooks/nvidia/ngx_hooks.cpp`.
 
 ## v0.13.5 (2026-03-24)
