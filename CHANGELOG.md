@@ -6,9 +6,16 @@ Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets delete during save.
 
+## v0.12.630
+- [bugfix] **`GetFontSize()` is const on `IImGuiWrapper`** - Declaring the method `const` matches how `get_ui_scale` / `scale_px` take a `const` wrapper reference, so the project builds cleanly with MSVC.
+  Details: `imgui_wrapper_base.hpp`, `imgui_wrapper_reshade.hpp`, `imgui_wrapper_standalone.*`.
+
+## v0.12.629
+- [ui] **New UI scales with font and uses a fixed max content width** - All Display Commander tabs are drawn inside a shared width cap (800 logical pixels at the default 13px reference font, scaled when the active font size changes). Spacing, padding, scrollbars, tab rounding, and related style values are scaled the same way so the layout stays proportional when ReShade’s font size changes.
+  Details: `ui/ui_scale.hpp`; `GetFontSize()` on `IImGuiWrapper`; `FontScaledUiLayoutScope` in `ui/new_ui/new_ui_tabs.cpp`.
+
 ## v0.12.628
-- [ui] **Main tab UI optimizations** - Tighter layout when optional Main tab sections are all off: no empty vertical gap before Input / Window Control. When you enable optional panels, vertical spacing is applied only ahead of each section that actually draws (DC folders, brightness and AutoHDR, texture filtering, audio, CPU, window buttons, overlay windows).
-  Details: `DrawMainTabOptionalPanelsInOrder` in `ui/new_ui/main_new_tab.cpp`.
+- [ui] **Main tab UI optimizations** - Optimized UI to make display commander for fps limiter focused.
 
 ## v0.12.627
 - [ui] **Main tab license block only when needed** - The license / third-party notice prompt at the bottom of the Main tab is shown only when the bundled license presentation version is newer than what you already accepted. After acceptance, that footer is omitted so the tab stays compact. The “Disagree” control that terminated the game was removed.

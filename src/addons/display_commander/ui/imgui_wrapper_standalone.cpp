@@ -190,6 +190,7 @@ void ImGuiWrapperStandalone::BulletText(const char* fmt, ...) {
 }
 float ImGuiWrapperStandalone::GetTextLineHeight() { return ImGui::GetTextLineHeight(); }
 float ImGuiWrapperStandalone::GetTextLineHeightWithSpacing() { return ImGui::GetTextLineHeightWithSpacing(); }
+float ImGuiWrapperStandalone::GetFontSize() const { return ImGui::GetFontSize(); }
 bool ImGuiWrapperStandalone::InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) {
     return ImGui::InputTextWithHint(label, hint, buf, buf_size);
 }

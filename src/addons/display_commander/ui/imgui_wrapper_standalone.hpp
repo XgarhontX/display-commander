@@ -104,6 +104,7 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void BulletText(const char* fmt, ...) override;
     float GetTextLineHeight() override;
     float GetTextLineHeightWithSpacing() override;
+    float GetFontSize() const override;
     bool InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) override;
     void BeginGroup() override;
     void EndGroup() override;

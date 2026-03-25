@@ -195,6 +195,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     }
     float GetTextLineHeight() override { return ImGui::GetTextLineHeight(); }
     float GetTextLineHeightWithSpacing() override { return ImGui::GetTextLineHeightWithSpacing(); }
+    float GetFontSize() const override { return ImGui::GetFontSize(); }
     bool InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) override {
         return ImGui::InputTextWithHint(label, hint, buf, buf_size);
     }

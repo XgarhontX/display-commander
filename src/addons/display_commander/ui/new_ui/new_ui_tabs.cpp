@@ -1,10 +1,9 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "new_ui_tabs.hpp"
-#include <winbase.h>
-#include <cstdio>
-#include <reshade_imgui.hpp>
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../ui/imgui_wrapper_reshade.hpp"
+#include "../../ui/ui_scale.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
@@ -20,10 +19,63 @@
 #include "swapchain_tab.hpp"
 #include "vulkan_tab.hpp"
 
+// Libraries <ReShade> / <imgui>
+#include <imgui.h>
+#include <reshade_imgui.hpp>
+
+// Libraries <standard C++>
+#include <algorithm>
+#include <cstdio>
+
+// Libraries <Windows.h> — before other Windows headers
+#include <Windows.h>
+
 // Current section of the rendering UI (for crash/stuck reporting). Global namespace to match globals.hpp extern.
 std::atomic<const char*> g_rendering_ui_section{nullptr};
 
 namespace ui::new_ui {
+
+namespace {
+
+constexpr int kFontScaledStyleVarCount = 9;
+
+/** Font-relative style scaling + fixed max-width child so every tab shares the same client width. */
+struct FontScaledUiLayoutScope {
+    display_commander::ui::IImGuiWrapper& gui_;
+
+    explicit FontScaledUiLayoutScope(display_commander::ui::IImGuiWrapper& g) : gui_(g) {
+        const float s = display_commander::ui::get_ui_scale(g);
+        const ImGuiStyle& st = g.GetStyle();
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(st.ItemSpacing.x * s, st.ItemSpacing.y * s));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(st.FramePadding.x * s, st.FramePadding.y * s));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing,
+                            ImVec2(st.ItemInnerSpacing.x * s, st.ItemInnerSpacing.y * s));
+        ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, st.IndentSpacing * s);
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(st.CellPadding.x * s, st.CellPadding.y * s));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, st.ScrollbarSize * s);
+        ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, st.GrabMinSize * s);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(st.WindowPadding.x * s, st.WindowPadding.y * s));
+        ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, st.TabRounding * s);
+
+        const float cap_w = display_commander::ui::scale_px(g, display_commander::ui::kUiMaxContentWidthPx);
+        const float avail_x = g.GetContentRegionAvail().x;
+        float child_w = cap_w;
+        if (avail_x > 0.0f) {
+            child_w = (std::min)(cap_w, avail_x);
+        }
+        gui_.BeginChild("dc_ui_content_cap", ImVec2(child_w, 0.0f), false);
+    }
+
+    ~FontScaledUiLayoutScope() {
+        gui_.EndChild();
+        ImGui::PopStyleVar(kFontScaledStyleVarCount);
+    }
+
+    FontScaledUiLayoutScope(const FontScaledUiLayoutScope&) = delete;
+    FontScaledUiLayoutScope& operator=(const FontScaledUiLayoutScope&) = delete;
+};
+
+}  // namespace
 
 // Global tab manager instance
 TabManager g_tab_manager;
@@ -125,79 +177,84 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
         }
     }
 
-    // If only one tab is visible, draw it directly without tab bar
-    if (visible_tab_count == 1) {
-        if (first_visible_tab_index >= 0 && (*current_tabs)[first_visible_tab_index].on_draw) {
-            static thread_local char s_ui_section_buf[64];
-            snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
-                     (*current_tabs)[first_visible_tab_index].id.c_str());
-            g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
-            (*current_tabs)[first_visible_tab_index].on_draw(runtime);
+    {
+        FontScaledUiLayoutScope scaled_layout(gui);
+
+        // If only one tab is visible, draw it directly without tab bar
+        if (visible_tab_count == 1) {
+            if (first_visible_tab_index >= 0 && (*current_tabs)[first_visible_tab_index].on_draw) {
+                static thread_local char s_ui_section_buf[64];
+                snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
+                         (*current_tabs)[first_visible_tab_index].id.c_str());
+                g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
+                (*current_tabs)[first_visible_tab_index].on_draw(runtime);
+            }
+            g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
+            return;
         }
-        g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
-        return;
-    }
 
-    g_rendering_ui_section.store("ui:draw:tab_bar", std::memory_order_release);
+        g_rendering_ui_section.store("ui:draw:tab_bar", std::memory_order_release);
 
-    // Draw tab bar only when multiple tabs are visible
-    if (gui.BeginTabBar("MainTabs", 0)) {
-        for (size_t i = 0; i < current_tabs->size(); ++i) {
-            // Check if tab should be visible
-            bool should_show = (*current_tabs)[i].is_visible;
+        // Draw tab bar only when multiple tabs are visible
+        if (gui.BeginTabBar("MainTabs", 0)) {
+            for (size_t i = 0; i < current_tabs->size(); ++i) {
+                // Check if tab should be visible
+                bool should_show = (*current_tabs)[i].is_visible;
 
-            // Check individual tab settings for advanced tabs
-            if ((*current_tabs)[i].is_advanced_tab) {
-                bool tab_enabled = false;
-                const std::string& tab_id = (*current_tabs)[i].id;
+                // Check individual tab settings for advanced tabs
+                if ((*current_tabs)[i].is_advanced_tab) {
+                    bool tab_enabled = false;
+                    const std::string& tab_id = (*current_tabs)[i].id;
 
-                // Check individual tab setting or fall back to "Show All Tabs"
-                if (tab_id == "games") {
-                    tab_enabled = settings::g_mainTabSettings.show_games_tab.GetValue();
-                } else if (tab_id == "hotkeys") {
-                    tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
-                } else if (tab_id == "advanced") {
-                    tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
-                } else if (tab_id == "controller") {
-                    tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
-                } else if (tab_id == "experimental") {
-                    tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
-                } else if (tab_id == "reshade") {
-                    tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
-                } else if (tab_id == "performance") {
-                    tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
-                } else if (tab_id == "vulkan") {
-                    tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
-                } else if (tab_id == "notes") {
-                    tab_enabled = settings::g_mainTabSettings.show_notes_tab.GetValue();
-                } else if (tab_id == "nvidia_profile") {
-                    tab_enabled = settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue();
+                    // Check individual tab setting or fall back to "Show All Tabs"
+                    if (tab_id == "games") {
+                        tab_enabled = settings::g_mainTabSettings.show_games_tab.GetValue();
+                    } else if (tab_id == "hotkeys") {
+                        tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
+                    } else if (tab_id == "advanced") {
+                        tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
+                    } else if (tab_id == "controller") {
+                        tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
+                    } else if (tab_id == "experimental") {
+                        tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
+                    } else if (tab_id == "reshade") {
+                        tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
+                    } else if (tab_id == "performance") {
+                        tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
+                    } else if (tab_id == "vulkan") {
+                        tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
+                    } else if (tab_id == "notes") {
+                        tab_enabled = settings::g_mainTabSettings.show_notes_tab.GetValue();
+                    } else if (tab_id == "nvidia_profile") {
+                        tab_enabled = settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue();
+                    }
+
+                    // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
+                    should_show =
+                        should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
                 }
 
-                // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
-                should_show =
-                    should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
-            }
-
-            if (!should_show) {
-                continue;
-            }
-
-            if (gui.BeginTabItem((*current_tabs)[i].name.c_str(), nullptr, 0)) {
-                active_tab_ = static_cast<int>(i);
-
-                // Draw tab content
-                if ((*current_tabs)[i].on_draw) {
-                    static thread_local char s_ui_section_buf[64];
-                    snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s", (*current_tabs)[i].id.c_str());
-                    g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
-                    (*current_tabs)[i].on_draw(runtime);
+                if (!should_show) {
+                    continue;
                 }
 
-                gui.EndTabItem();
+                if (gui.BeginTabItem((*current_tabs)[i].name.c_str(), nullptr, 0)) {
+                    active_tab_ = static_cast<int>(i);
+
+                    // Draw tab content
+                    if ((*current_tabs)[i].on_draw) {
+                        static thread_local char s_ui_section_buf[64];
+                        snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
+                                 (*current_tabs)[i].id.c_str());
+                        g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
+                        (*current_tabs)[i].on_draw(runtime);
+                    }
+
+                    gui.EndTabItem();
+                }
             }
+            gui.EndTabBar();
         }
-        gui.EndTabBar();
     }
     g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
 }

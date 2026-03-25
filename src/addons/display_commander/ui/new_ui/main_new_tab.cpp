@@ -4735,10 +4735,10 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
 
         // Low Latency Ratio Selector (Experimental WIP placeholder)
-        imgui.Spacing();
         auto display_input_ratio = !(::IsNativeFramePacingInSync() && GetEffectiveNativePacingSimStartOnly());
 
         if (display_input_ratio) {
+            imgui.Spacing();
             if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
                                     "Display / Input Ratio", imgui, 600.f)) {
                 // Setting is automatically saved via ComboSettingWrapper

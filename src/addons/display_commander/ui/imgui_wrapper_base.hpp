@@ -181,6 +181,8 @@ struct IImGuiWrapper {
     virtual void BulletText(const char* fmt, ...) = 0;
     virtual float GetTextLineHeight() = 0;
     virtual float GetTextLineHeightWithSpacing() = 0;
+    /** Current font size in pixels (includes global scale). Used for layout scaling. */
+    virtual float GetFontSize() const = 0;
 
     // Input
     virtual bool InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) = 0;
