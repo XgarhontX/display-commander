@@ -12,6 +12,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.3 (2026-03-24)
+
+- [compatibility] [hooks] **RE9: treat as REFramework for hook skip** - `re9.exe` is detected the same way as `re4.exe`, so Display Commander skips DXGI/D3D11/D3D12 device hook installation when the usual `reframework\plugins` module path is not visible in the loaded-module list.
+  Details: `IsReFrameworkGame()` in `hooks/loadlibrary_hooks.cpp`.
+
 ## v0.13.2 (2026-03-24)
 
 - [critical] [bugfix] [hooks] **Fixed loading wrong `sl.interposer.dll` version** - Display Commander now resolves and hooks the expected Streamline interposer module for the current process/session instead of attaching to an incorrect version.

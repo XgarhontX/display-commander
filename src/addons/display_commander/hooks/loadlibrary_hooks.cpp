@@ -1751,7 +1751,7 @@ static bool IsReFrameworkGame() {
     }
     std::wstring exe_name = std::filesystem::path(exe_path).filename().wstring();
     std::transform(exe_name.begin(), exe_name.end(), exe_name.begin(), ::towlower);
-    return exe_name == L"re4.exe";
+    return exe_name == L"re4.exe" || exe_name == L"re9.exe";
 }
 
 // Helper function to check if any loaded module has "reframework\plugins" in its path
