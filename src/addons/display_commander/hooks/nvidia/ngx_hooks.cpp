@@ -1701,6 +1701,35 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
     return NVSDK_NGX_Result_Fail;
 }
 
+namespace {
+
+// NVSDK_NGX_Parameter vtable slot indices (NGX SDK layout; matches Special-K comments).
+enum class NGX_Parameter_VTable_Index : int {
+    SetVoidPointer = 0,
+    SetD3d12Resource = 1,
+    SetD3d11Resource = 2,
+    SetI = 3,
+    SetUI = 4,
+    SetD = 5,
+    SetF = 6,
+    SetULL = 7,
+    GetVoidPointer = 8,
+    GetD3d12Resource = 9,
+    GetD3d11Resource = 10,
+    GetI = 11,
+    GetUI = 12,
+    GetD = 13,
+    GetF = 14,
+    GetULL = 15,
+    Reset = 16,
+};
+
+constexpr std::size_t ngx_param_vtable_idx(NGX_Parameter_VTable_Index i) noexcept {
+    return static_cast<std::size_t>(static_cast<int>(i));
+}
+
+} // namespace
+
 // Function to hook NGX Parameter vtable (following Special-K's approach)
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
     if (Params == nullptr) {
@@ -1717,57 +1746,45 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
     // Extract vtable from parameter object
     void** vftable = *(void***)*&Params;
 
-    // VTable layout (following Special-K's comments):
-    // [ 0] void* SetVoidPointer;
-    // [ 1] void* SetD3d12Resource;
-    // [ 2] void *SetD3d11Resource;
-    // [ 3] void* SetI;
-    // [ 4] void* SetUI;
-    // [ 5] void* SetD;
-    // [ 6] void* SetF;
-    // [ 7] void* SetULL;
-    // [ 8] void* GetVoidPointer;
-    // [ 9] void* GetD3d12Resource;
-    // [10] void* GetD3d11Resource;
-    // [11] void *GetI;
-    // [12] void *GetUI;
-    // [13] void* GetD;
-    // [14] void* GetF;
-    // [15] void* GetULL;
-    // [16] void* Reset;
+    // Slot order: NGX_Parameter_VTable_Index (Special-K / NGX SDK layout).
 
     LogInfo("Installing NGX Parameter vtable hooks (%s)...", context != nullptr ? context : "unknown");
 
-    // Hook SetI (vtable index 3)
-    CreateAndEnableHook(vftable[3], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::SetI)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetI_Original), "NVSDK_NGX_Parameter_SetI");
 
-    // Hook SetUI (vtable index 4)
-    CreateAndEnableHook(vftable[4], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetUI_Detour),
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::SetUI)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetUI_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetUI_Original), "NVSDK_NGX_Parameter_SetUI");
-    // Hook SetD (vtable index 5)
-    CreateAndEnableHook(vftable[5], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetD_Detour),
+
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::SetD)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetD_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetD_Original), "NVSDK_NGX_Parameter_SetD");
 
-    // Hook SetF (vtable index 6)
-    CreateAndEnableHook(vftable[6], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetF_Detour),
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::SetF)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetF_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetF_Original), "NVSDK_NGX_Parameter_SetF");
 
-    // Hook SetULL (vtable index 7)
-    CreateAndEnableHook(vftable[7], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::SetULL)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original), "NVSDK_NGX_Parameter_SetULL");
-    // Hook GetVoidPointer (vtable index 8) - Special-K uses index 8
-    CreateAndEnableHook(vftable[8], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
+
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::GetVoidPointer)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetVoidPointer_Original),
                         "NVSDK_NGX_Parameter_GetVoidPointer");
-    // Hook GetI (vtable index 11) - Special-K uses index 11
-    CreateAndEnableHook(vftable[11], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
+
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::GetI)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original), "NVSDK_NGX_Parameter_GetI");
-    // Hook GetUI (vtable index 12) - Special-K uses index 12
-    CreateAndEnableHook(vftable[12], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
+
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::GetUI)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original), "NVSDK_NGX_Parameter_GetUI");
-    // Hook GetULL (vtable index 15) - Special-K uses index 15
-    CreateAndEnableHook(vftable[15], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
+
+    CreateAndEnableHook(vftable[ngx_param_vtable_idx(NGX_Parameter_VTable_Index::GetULL)],
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original), "NVSDK_NGX_Parameter_GetULL");
 
     g_ngx_vtable_hooks_installed = true;

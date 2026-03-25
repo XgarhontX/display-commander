@@ -12,6 +12,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.4 (2026-03-24)
+
+- [cleanup] [hooks] **NGX Parameter vtable indices as named constants** - `HookNGXParameterVTable` no longer uses raw slot numbers (e.g. 3 for `SetI`); it uses a local `NGX_Parameter_VTable_Index` enum and `ngx_param_vtable_idx()` so the Special-K / NGX layout is documented in one place and harder to mistype.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
 ## v0.13.3 (2026-03-24)
 
 - [compatibility] [hooks] **RE9: treat as REFramework for hook skip** - `re9.exe` is detected the same way as `re4.exe`, so Display Commander skips DXGI/D3D11/D3D12 device hook installation when the usual `reframework\plugins` module path is not visible in the loaded-module list.
