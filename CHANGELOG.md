@@ -4,11 +4,12 @@
 
 Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
-- Sometimes config .toml file gets delete during save.
+- Sometimes config .toml file gets deleted during save.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
-- Add fixed for Vulkan games with broken Reflex.
+- Add fix for Vulkan games with broken Reflex.
+- Add fix for games with broken native reflex.
 
 ## v0.13.0 (2026-03-24)
 
