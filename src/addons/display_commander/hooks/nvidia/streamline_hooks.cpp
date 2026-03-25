@@ -26,12 +26,12 @@
 // Streamline DLSS-G types (from sl_dlss_g.h)
 #include "sl_dlss_g.h"
 
-// Streamline function pointers
-using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);
-using slIsFeatureSupported_pfn = int (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
-using slGetNativeInterface_pfn = int (*)(void* proxyInterface, void** baseInterface);
-using slUpgradeInterface_pfn = int (*)(void** baseInterface);
-using slGetFeatureFunction_pfn = int (*)(int feature, const char* functionName, void*& function);
+// Streamline loader exports (match sl_core_api.h PFun_sl*)
+using slInit_pfn = sl::Result (*)(const sl::Preferences& pref, uint64_t sdkVersion);
+using slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
+using slGetNativeInterface_pfn = sl::Result (*)(void* proxyInterface, void** baseInterface);
+using slUpgradeInterface_pfn = sl::Result (*)(void** baseInterface);
+using slGetFeatureFunction_pfn = sl::Result (*)(sl::Feature feature, const char* functionName, void*& function);
 
 static slInit_pfn slInit_Original = nullptr;
 static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
@@ -40,11 +40,11 @@ static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 
 // Forward declarations for table-driven hook install
-static int slInit_Detour(void* pref, uint64_t sdkVersion);
-static int slUpgradeInterface_Detour(void** baseInterface);
-static int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
-static int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
-static int slGetFeatureFunction_Detour(int feature, const char* functionName, void*& function);
+static sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion);
+static sl::Result slUpgradeInterface_Detour(void** baseInterface);
+static sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
+static sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
+static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function);
 
 /** Table-driven install for sl.interposer.dll exports. Order matches StreamlineLoaderHook enum. */
 enum class StreamlineLoaderHook : std::size_t {
@@ -78,23 +78,23 @@ static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::s
      .original = reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original)},
 };
 
-// slDLSSGetOptimalSettings: Result(options, settings) - hooked when game requests it via slGetFeatureFunction
-using slDLSSGetOptimalSettings_pfn = int (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
+// slDLSSGetOptimalSettings (sl_dlss.h PFun_slDLSSGetOptimalSettings) - via slGetFeatureFunction
+using slDLSSGetOptimalSettings_pfn = sl::Result (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
 static slDLSSGetOptimalSettings_pfn slDLSSGetOptimalSettings_Original = nullptr;
 static std::atomic<bool> g_slDLSSGetOptimalSettings_hook_installed{false};
 
-// slDLSSSetOptions: Result(viewport, options) - hooked when game requests it via slGetFeatureFunction
-using slDLSSSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
+// slDLSSSetOptions (sl_dlss.h PFun_slDLSSSetOptions) - via slGetFeatureFunction
+using slDLSSSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
 static slDLSSSetOptions_pfn slDLSSSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSSetOptions_hook_installed{false};
 
-// slDLSSGSetOptions: Result(viewport, options) - hooked when game requests it via slGetFeatureFunction
-using slDLSSGSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
+// slDLSSGSetOptions (sl_dlss_g.h PFun_slDLSSGSetOptions) - via slGetFeatureFunction
+using slDLSSGSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
 static slDLSSGSetOptions_pfn slDLSSGSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSGSetOptions_hook_installed{false};
 
-// slSetData: plugin internal - signature matches PFun_slSetDataInternal
-using slSetDataInternal_pfn = int (*)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);
+// slSetData: plugin internal (Streamline plugin_manager PFun_slSetDataInternal)
+using slSetDataInternal_pfn = sl::Result (*)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);
 static slSetDataInternal_pfn slSetData_Original = nullptr;
 static std::atomic<bool> g_slSetData_hook_installed{false};
 
@@ -291,7 +291,8 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGState& state, const s
 }
 
 // Hook functions
-int slInit_Detour(void* pref, uint64_t sdkVersion) {
+sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
+    (void)pref;
     CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
@@ -307,10 +308,10 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
         return slInit_Original(pref, sdkVersion);
     }
 
-    return -1;  // Error if original not available
+    return sl::Result::eErrorNotInitialized;
 }
 
-int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
+sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
     CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
@@ -318,7 +319,7 @@ int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adap
     static int log_count = 0;
     if (log_count < 30) {
         // Log the call
-        LogInfo("slIsFeatureSupported called (Feature: %d)", feature);
+        LogInfo("slIsFeatureSupported called (Feature: %d)", static_cast<int>(feature));
         log_count++;
     }
 
@@ -327,10 +328,10 @@ int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adap
         return slIsFeatureSupported_Original(feature, adapterInfo);
     }
 
-    return -1;  // Error if original not available
+    return sl::Result::eErrorNotInitialized;
 }
 
-int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
+sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
@@ -343,12 +344,12 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
         return slGetNativeInterface_Original(proxyInterface, baseInterface);
     }
 
-    return -1;  // Error if original not available
+    return sl::Result::eErrorNotInitialized;
 }
 
 // slDLSSGetOptimalSettings detour: observe calls, apply same quality/preset overrides as slDLSSSetOptions, then call
 // original
-static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
+static sl::Result slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     static bool first_call = true;
     CALL_GUARD(utils::get_now_ns());
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
@@ -359,7 +360,7 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
     }
 
     if (slDLSSGetOptimalSettings_Original == nullptr) {
-        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+        return sl::Result::eErrorInvalidParameter;
     }
 
     sl::DLSSOptions modified_options = options;
@@ -381,7 +382,7 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
         }
     }
 
-    int result = slDLSSGetOptimalSettings_Original(modified_options, settings);
+    const sl::Result result = slDLSSGetOptimalSettings_Original(modified_options, settings);
 
     // Update g_ngx_parameters so DLSS Information tab shows values for Vulkan/Streamline (no NGX path)
     UpdateNGXParamsFromDLSSOptions(modified_options);
@@ -390,7 +391,7 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
     if (optionsLogged && first_call) {
         LogInfo(
             "slDLSSGetOptimalSettings result=%d -> optimalRender=%ux%u sharpness=%.2f renderMin=%ux%u renderMax=%ux%u",
-            result, settings.optimalRenderWidth, settings.optimalRenderHeight, settings.optimalSharpness,
+            static_cast<int>(result), settings.optimalRenderWidth, settings.optimalRenderHeight, settings.optimalSharpness,
             settings.renderWidthMin, settings.renderHeightMin, settings.renderWidthMax, settings.renderHeightMax);
     }
     if (first_call) {
@@ -402,10 +403,10 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
 
 // slDLSSSetOptions detour: log arguments and apply main-tab DLSS overrides (quality preset, render preset,
 // auto-exposure)
-static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options) {
+static sl::Result slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options) {
     static bool first_call = true;
     if (slDLSSSetOptions_Original == nullptr) {
-        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+        return sl::Result::eErrorInvalidParameter;
     }
     uint32_t viewportId = static_cast<uint32_t>(viewport);
     if (LogDLSSOptions(options) && first_call) {
@@ -478,12 +479,12 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
 }
 
 // slDLSSGSetOptions detour: observe requested mode/frames-to-generate. "Enabled" is decided by slDLSSGGetState.
-static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
+static sl::Result slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
     if (slDLSSGSetOptions_Original == nullptr) {
-        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+        return sl::Result::eErrorInvalidParameter;
     }
-    int result = slDLSSGSetOptions_Original(viewport, options);
-    if (result == static_cast<int>(sl::Result::eOk)) {
+    const sl::Result result = slDLSSGSetOptions_Original(viewport, options);
+    if (result == sl::Result::eOk) {
         g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
         g_ngx_parameters.update_int("DLSSG.Mode", static_cast<int>(options.mode));
     }
@@ -491,7 +492,7 @@ static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl
 }
 
 // slSetData detour: log when plugin's slSetData is called (inputs chain + cmdBuffer)
-static int slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer) {
+static sl::Result slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer) {
     if (inputs != nullptr) {
         const sl::StructType& t = inputs->structType;
         LogInfo(
@@ -510,35 +511,35 @@ static int slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* 
     if (slSetData_Original != nullptr) {
         return slSetData_Original(inputs, cmdBuffer);
     }
-    return static_cast<int>(sl::Result::eErrorInvalidParameter);
+    return sl::Result::eErrorInvalidParameter;
 }
 
-// slDLSSGGetState: Result(viewport, state, options) - hooked when game requests it via slGetFeatureFunction
-using slDLSSGGetState_pfn = int (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
-                                    const sl::DLSSGOptions* options);
+// slDLSSGGetState (sl_dlss_g.h PFun_slDLSSGGetState) - via slGetFeatureFunction
+using slDLSSGGetState_pfn =
+    sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state, const sl::DLSSGOptions* options);
 static slDLSSGGetState_pfn slDLSSGGetState_Original = nullptr;
 static std::atomic<bool> g_slDLSSGGetState_hook_installed{false};
 
 // slDLSSGGetState detour: after original, update g_ngx_parameters and FG atomic from options when non-null
-static int slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
-                                  const sl::DLSSGOptions* options) {
+static sl::Result slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                         const sl::DLSSGOptions* options) {
     if (slDLSSGGetState_Original == nullptr) {
-        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+        return sl::Result::eErrorInvalidParameter;
     }
-    int result = slDLSSGGetState_Original(viewport, state, options);
-    if (result == static_cast<int>(sl::Result::eOk)) {
+    const sl::Result result = slDLSSGGetState_Original(viewport, state, options);
+    if (result == sl::Result::eOk) {
         UpdateNGXParamsFromDLSSGOptions(state, options);
     }
     return result;
 }
 
 // slGetFeatureFunction detour: install hooks when game requests DLSS-G/DLSS feature functions
-static int slGetFeatureFunction_Detour(int feature, const char* functionName, void*& function) {
+static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function) {
     if (slGetFeatureFunction_Original == nullptr) {
-        return -1;
+        return sl::Result::eErrorNotInitialized;
     }
-    int result = slGetFeatureFunction_Original(feature, functionName, function);
-    if (result != static_cast<int>(sl::Result::eOk) || function == nullptr) {
+    const sl::Result result = slGetFeatureFunction_Original(feature, functionName, function);
+    if (result != sl::Result::eOk || function == nullptr) {
         return result;
     }
     // Install slDLSSGGetState hook on first successful lookup
@@ -611,7 +612,7 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
 // - ID3D12Device (replaced with SL proxy), ID3D11Device (no proxy, just registered), IDXGIFactory (proxy),
 //   IDXGISwapChain (proxy). We only vtable-hook the DXGI proxy factory and proxy swapchain.
 // Reference: external/Streamline/source/core/sl.api/sl.cpp slUpgradeInterface()
-int slUpgradeInterface_Detour(void** baseInterface) {
+sl::Result slUpgradeInterface_Detour(void** baseInterface) {
     CALL_GUARD(utils::get_now_ns());
     const bool disabled = true;
     if (disabled) {
@@ -626,9 +627,9 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     LogInfo("prevent_slupgrade_interface: %d", static_cast<int>(prevent_slupgrade_interface));
 
     if (slUpgradeInterface_Original == nullptr) {
-        return -1;  // Error if original not available
+        return sl::Result::eErrorNotInitialized;
     }
-    auto result = slUpgradeInterface_Original(baseInterface);
+    const sl::Result result = slUpgradeInterface_Original(baseInterface);
     if (baseInterface == nullptr) return result;
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
@@ -683,7 +684,7 @@ void InitializePreventSLUpgradeInterface() {
     }
 }
 
-bool InstallStreamlineHooks(HMODULE streamline_module) {
+bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
     // Check if Streamline hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::STREAMLINE)) {

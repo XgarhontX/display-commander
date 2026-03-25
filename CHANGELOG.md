@@ -5,15 +5,17 @@
 Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets deleted during save.
+- Reflex + boost causes fps drop. (Add warning, or now show + boost option)
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
-## v0.13.0 (2026-03-24)
+## v0.13.1 (2026-03-24)
 
-- [cleanup] **Version line** - Bumped to **0.13.0** (minor); patch counter reset for the 0.13.x series. Details: `DISPLAY_COMMANDER_VERSION_*` in `src/addons/display_commander/CMakeLists.txt`.
+- [cleanup] [hooks] **Streamline hook signatures vs NVIDIA headers** - Loader exports (`slInit`, `slUpgradeInterface`, `slIsFeatureSupported`, `slGetNativeInterface`, `slGetFeatureFunction`) and feature/plugin detours (`slDLSSGetOptimalSettings`, `slDLSSSetOptions`, `slDLSSGSetOptions`, `slDLSSGGetState`, `slSetData`) now use `sl::Result` and the parameter types from `sl_core_api.h`, `sl_dlss.h`, and `sl_dlss_g.h` instead of `int` / mismatched types (e.g. `slGetFeatureFunction` takes `sl::Feature`, not `int`).
+  Details: `hooks/nvidia/streamline_hooks.cpp`.
 
 ## v0.12.630
 - [bugfix] **`GetFontSize()` is const on `IImGuiWrapper`** - Declaring the method `const` matches how `get_ui_scale` / `scale_px` take a `const` wrapper reference, so the project builds cleanly with MSVC.
