@@ -8,6 +8,7 @@ Summary (see sections below for license text or pointers)
 ----------------------------------------------------------
 Component                          | Location / source              | License
 -----------------------------------|--------------------------------|------------------
+Special K (reference/inspiration, compatibility patterns) | https://github.com/SpecialKO/SpecialK | GPL-3.0 (see section below)
 ReShade (fork, addon host + deps)  | external/reshade             | BSD-3-Clause
 dear imgui                         | external/reshade/deps/imgui  | MIT
 MinHook                            | external/minhook             | BSD-2-Clause (see file for HDE credits)
@@ -20,6 +21,22 @@ Khronos Vulkan-Headers             | external/vulkan-headers      | Apache-2.0 O
 toml++                             | external/tomlplusplus        | MIT
 NvidiaProfileInspectorRevamped data| external/NvidiaProfileInspectorRevamped | MIT (Reference.xml may be copied next to builds; see submodule LICENSE)
 Fork Awesome (icons, font data)    | external/ForkAwesome; res/forkawesome.h | SIL Open Font License 1.1
+
+
+-------------------------------------------------------------------------------
+Special K (reference / inspiration / compatibility)
+-------------------------------------------------------------------------------
+Display Commander is not derived from Special K source code and does not ship
+Special K binaries. Some behaviors and integration points are informed by or
+aim to interoperate with patterns used by the Special K project (see upstream
+repository).
+
+Special K is licensed under the GNU General Public License v3.0.
+
+Full license text: https://www.gnu.org/licenses/gpl-3.0.html
+
+(Source repository: https://github.com/SpecialKO/SpecialK — upstream LICENSE:
+https://github.com/SpecialKO/SpecialK/blob/main/LICENSE)
 
 
 -------------------------------------------------------------------------------
