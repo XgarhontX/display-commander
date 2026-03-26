@@ -3,7 +3,6 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[critical]` – Severe bug (crashes, wrong module/DLL, data loss risk). `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 Known issues:
-- Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets deleted during save.
 - Reflex + boost causes fps drop. (Add warning, or now show + boost option)
 
@@ -11,6 +10,11 @@ Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
+
+## v0.13.10 (2026-03-25)
+
+- [bugfix] [hooks] **Fixed FPS getting halved with Frame Generation in The Witcher 3** - Display Commander now updates DLSS-G interpolation state on all NGX Evaluate paths, preventing the FG status mismatch that could cause half-FPS behavior in The Witcher 3.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
 
 ## v0.13.9 (2026-03-25)
 

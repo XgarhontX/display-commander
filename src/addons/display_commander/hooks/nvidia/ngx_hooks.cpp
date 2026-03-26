@@ -1247,6 +1247,25 @@ static void LogNGXCreateFeatureParameters(NVSDK_NGX_Parameter* InParameters) {
     }
 }
 
+static void UpdateDLSSGEnableInterpFromEvaluate(const NVSDK_NGX_Handle* InFeatureHandle,
+                                                const NVSDK_NGX_Parameter* InParameters) {
+    CALL_GUARD_NO_TS();
+    if (InFeatureHandle == nullptr || InParameters == nullptr || NVSDK_NGX_Parameter_GetI_Original == nullptr) {
+        return;
+    }
+
+    if (GetFeatureFromHandle(const_cast<NVSDK_NGX_Handle*>(InFeatureHandle)) != NVSDK_NGX_Feature_FrameGeneration) {
+        return;
+    }
+
+    int enable_interp = 0;
+    if (NVSDK_NGX_SUCCEED(
+            NVSDK_NGX_Parameter_GetI_Original(const_cast<NVSDK_NGX_Parameter*>(InParameters), "DLSSG.EnableInterp",
+                                              &enable_interp))) {
+        g_ngx_parameters.update_int("DLSSG.EnableInterp", enable_interp);
+    }
+}
+
 // D3D12 CreateFeature detour — 4 param slots; const InParameters matches NGX_SNIPPET_BUILD; #else uses non-const* (same
 // count). See ABI block above typedefs.
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
@@ -1363,6 +1382,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
     }
 
     if (NVSDK_NGX_D3D12_EvaluateFeature_Original != nullptr) {
@@ -1401,6 +1421,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12Graph
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature_C");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
     }
     if (NVSDK_NGX_D3D12_EvaluateFeature_C_Original != nullptr) {
         return NVSDK_NGX_D3D12_EvaluateFeature_C_Original(InCmdList, InFeatureHandle, InParameters, InCallback);
@@ -1417,6 +1438,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature_C");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
     }
     if (NVSDK_NGX_D3D11_EvaluateFeature_C_Original != nullptr) {
         return NVSDK_NGX_D3D11_EvaluateFeature_C_Original(InDevCtx, InFeatureHandle, InParameters, InCallback);
@@ -1768,6 +1790,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
     }
 
     if (NVSDK_NGX_D3D11_EvaluateFeature_Original != nullptr) {
