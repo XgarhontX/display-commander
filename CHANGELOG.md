@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.12 (2026-03-26)
+
+- [bugfix] [hooks] [compatibility] **Fixed FPS drop in UI in Death Stranding 2** - Improved NGX/DLSS-G parameter handling so UI-triggered frame pacing drops are avoided, fixing FPS degradation seen in Death Stranding 2.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
 ## v0.13.11 (2026-03-25)
 
 - [ui] [settings] **Clearer warning for Low Latency + Boost mode** - Updated the Reflex mode label text to explicitly warn that **Low Latency + Boost** can cause issues, helping users choose safer defaults when a game behaves poorly with boost enabled.

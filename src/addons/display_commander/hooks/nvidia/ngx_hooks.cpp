@@ -347,6 +347,15 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
             return NVSDK_NGX_Result_Success;
         }
     }
+    // also get DLSSG.EnableInterp
+    int enable_interp = 0;
+    if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
+        NVSDK_NGX_Parameter_GetI_Original(InParams, "DLSSG.EnableInterp", &enable_interp);
+    }
+    if (enable_interp == 1) {
+        return NVSDK_NGX_Result_Success;
+    }
+
     return g_ngx_dlss_optimal_settings_callback_original(InParams);
 }
 
