@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.21 (2026-03-27)
+
+- [cleanup] **Incremental builds** - Removed CMake `BUILD_DATE` / `BUILD_TIME` compile definitions so ordinary builds do not recompile every source file after each configure. Version display still shows the full version string (including git commit count).
+  Details: `CMakeLists.txt`, `version.hpp`, Main tab version line.
+
 ## v0.13.20 (2026-03-27)
 
 - [ui] [settings] **Higher FPS limit slider maximum** - The Main tab FPS limit sliders can now be set up to twice the previous maximum (still derived from monitor refresh data), so you can choose higher caps when needed.

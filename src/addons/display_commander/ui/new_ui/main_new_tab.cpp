@@ -3535,8 +3535,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
     {
-        imgui.TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
-                          DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+        imgui.TextColored(ui::colors::TEXT_DEFAULT, "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
 
         // Version check and update UI
         {

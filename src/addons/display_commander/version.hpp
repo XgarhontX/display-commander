@@ -27,22 +27,7 @@
 #define DISPLAY_COMMANDER_VERSION_STRING \
     DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "." DISPLAY_COMMANDER_VERSION_BUILD_STRING
 
-// Build date and time (automatically set by CMake)
-#ifndef BUILD_DATE
-#define DISPLAY_COMMANDER_BUILD_DATE "unknown"
-#else
-#define DISPLAY_COMMANDER_BUILD_DATE BUILD_DATE
-#endif
-
-#ifndef BUILD_TIME
-#define DISPLAY_COMMANDER_BUILD_TIME "unknown"
-#else
-#define DISPLAY_COMMANDER_BUILD_TIME BUILD_TIME
-#endif
-
-// Full version info string
-#define DISPLAY_COMMANDER_FULL_VERSION                                                              \
-    "Display Commander v" DISPLAY_COMMANDER_VERSION_STRING " (Build: " DISPLAY_COMMANDER_BUILD_DATE \
-    " " DISPLAY_COMMANDER_BUILD_TIME ")"
+// Full version info string (version string already includes git commit count from CMake)
+#define DISPLAY_COMMANDER_FULL_VERSION "Display Commander v" DISPLAY_COMMANDER_VERSION_STRING
 
 #endif  // DISPLAY_COMMANDER_VERSION_HPP

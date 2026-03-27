@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 20)
+set(DISPLAY_COMMANDER_VERSION_PATCH 21)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -17,8 +17,6 @@ set(DISPLAY_COMMANDER_DLL_SOURCES ${DISPLAY_COMMANDER_SOURCES})
 # Common sources for the object library (main_entry.cpp is linked only into the addon DLL).
 set(DISPLAY_COMMANDER_COMMON_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
 list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/main_entry\\.cpp$")
-# jump_list.cpp is exe-only (uses DISPLAY_COMMANDER_BUILD_EXE for Win32 Jump List; not linked into DLL).
-list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/jump_list\\.cpp$")
 
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -36,26 +34,10 @@ configure_file(
 # Reduces duplication and, with the object library below, compiles shared sources once for both targets.
 add_library(display_commander_common_options INTERFACE)
 
-# Ninja + MSVC: CMake may omit Windows SDK UM LIBPATH when using cl.exe outside a full VS Developer
-# environment, causing LNK1104 for setupapi.lib / tdh.lib. Derive Lib/<ver>/um/<arch> from CMAKE_MT.
-if(MSVC AND WIN32 AND CMAKE_MT)
-  cmake_path(GET CMAKE_MT PARENT_PATH _dc_mt_parent)
-  cmake_path(GET _dc_mt_parent FILENAME _dc_winsdk_um_arch)
-  cmake_path(GET _dc_mt_parent PARENT_PATH _dc_winsdk_ver_dir)
-  cmake_path(GET _dc_winsdk_ver_dir FILENAME _dc_winsdk_ver)
-  cmake_path(GET _dc_winsdk_ver_dir PARENT_PATH _dc_winsdk_bin)
-  cmake_path(GET _dc_winsdk_bin PARENT_PATH _dc_windows_kits_10)
-  cmake_path(APPEND _dc_windows_kits_10 "Lib" "${_dc_winsdk_ver}" "um" "${_dc_winsdk_um_arch}"
-    OUTPUT_VARIABLE _dc_winsdk_um_lib_dir)
-  if(EXISTS "${_dc_winsdk_um_lib_dir}")
-    target_link_directories(display_commander_common_options INTERFACE "${_dc_winsdk_um_lib_dir}")
-  endif()
-endif()
+
 
 target_compile_definitions(display_commander_common_options INTERFACE
   GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT}
-  ${BUILD_DATE_DEFINE}
-  ${BUILD_TIME_DEFINE}
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
   DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
