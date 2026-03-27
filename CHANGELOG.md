@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.15 (2026-03-27)
+
+- [bugfix] **Removed deadlock in running-games refresh path** - Fixed a freeze/hang issue caused by `RefreshRunningGamesCache`, so game list refresh no longer deadlocks and the addon remains responsive.
+  Details: synchronized refresh flow to avoid lock-order contention during running-games cache updates.
+
 ## v0.13.14 (2026-03-26)
 
 - [bugfix] [hooks] [ui] **Hotfix for incomplete FG detection from v0.13.12** - Corrected the Frame Generation (FG) detection logic so Display Commander more reliably identifies when FG is actually enabled, fixing cases where `0.13.12` did not report FG state properly.

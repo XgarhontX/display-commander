@@ -275,11 +275,13 @@ std::atomic<bool> g_running_games_refresh_requested{false};
 }  // namespace
 
 void RefreshRunningGamesCache() {
+    /*
+    caused deadlock
     std::vector<RunningGameInfo> temp;
     GetRunningGamesWithDisplayCommander(temp);
     g_running_games_cache.store(std::make_shared<std::vector<RunningGameInfo>>(std::move(temp)),
                                 std::memory_order_release);
-    g_running_games_refresh_requested.store(false, std::memory_order_release);
+    g_running_games_refresh_requested.store(false, std::memory_order_release);*/
 }
 
 void GetRunningGamesCache(std::vector<RunningGameInfo>& out_games) {
