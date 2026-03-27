@@ -7848,31 +7848,33 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
         // Get fg_mode if needed
         std::string fg_mode = "N/A";
+
+        int dllssg_mode = -1;
+        int enable_interp = -1;
+        g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
+        g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
+
+        bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+
+
         if (show_fg_mode) {
             int num_frames_actually_presented;
             // 2026-03-26 fix for Death Stranding 2 - On the Beach
             // Uses DLLSG.MODE 0/1
             // Uses DLSSG.MultiFrameCount 1/2
-            if (g_ngx_parameters.get_as_int("DLSSG.NumFramesActuallyPresented", num_frames_actually_presented)) {
-                char buffer[16];
-                snprintf(buffer, sizeof(buffer), "%dx", num_frames_actually_presented);
-                fg_mode = std::string(buffer);
-            } else {
-                int enable_interp;
-                if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp) && enable_interp == 1) {
-                    unsigned int multi_frame_count;
-                    if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                        if (multi_frame_count == 1) {
-                            fg_mode = "2x";
-                        } else if (multi_frame_count == 2) {
-                            fg_mode = "3x";
-                        } else if (multi_frame_count == 3) {
-                            fg_mode = "4x";
-                        } else {
-                            char buffer[16];
-                            snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
-                            fg_mode = std::string(buffer);
-                        }
+            if (is_fg_enabled) {
+                unsigned int multi_frame_count;
+                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+                    if (multi_frame_count == 1) {
+                        fg_mode = "2x";
+                    } else if (multi_frame_count == 2) {
+                        fg_mode = "3x";
+                    } else if (multi_frame_count == 3) {
+                        fg_mode = "4x";
+                    } else {
+                        char buffer[16];
+                        snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+                        fg_mode = std::string(buffer);
                     }
                 }
             }

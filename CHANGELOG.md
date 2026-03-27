@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.14 (2026-03-26)
+
+- [bugfix] [hooks] [ui] **Hotfix for incomplete FG detection from v0.13.12** - Corrected the Frame Generation (FG) detection logic so Display Commander more reliably identifies when FG is actually enabled, fixing cases where `0.13.12` did not report FG state properly.
+  Details: updated DLSS-G / FG detection logic used by runtime status reporting.
+
 ## v0.13.13 (2026-03-26)
 
 - [bugfix] [settings] **Turned off HDR10 / scRGB color fix by default** - Disabled the default per-game `AutoColorspace` override so SDR titles aren't forced into HDR/scRGB color space, reducing washed-out/incorrect SDR colors.

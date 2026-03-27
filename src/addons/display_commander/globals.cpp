@@ -1017,39 +1017,32 @@ DLSSGSummary GetDLSSGSummary() {
         summary.tonemapper_type = std::to_string(tonemapper);
     }
 
-    int num_frames_actually_presented = 0;
-    if (g_ngx_parameters.get_as_int("DLSSG.NumFramesActuallyPresented", num_frames_actually_presented)) {
-        char buffer[16];
-        snprintf(buffer, sizeof(buffer), "%dx", num_frames_actually_presented);
-        summary.fg_mode = std::string(buffer);
-    } else {
-        // Get DLSS-G frame generation mode
-        int enable_interp;
-        if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {
-            if (enable_interp == 1) {
-                // DLSS-G is enabled, check MultiFrameCount for mode
-                unsigned int multi_frame_count;
-                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                    if (multi_frame_count == 1) {
-                        summary.fg_mode = "2x";
-                    } else if (multi_frame_count == 2) {
-                        summary.fg_mode = "3x";
-                    } else if (multi_frame_count == 3) {
-                        summary.fg_mode = "4x";
-                    } else {
-                        char buffer[16];
-                        snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
-                        summary.fg_mode = std::string(buffer);
-                    }
-                } else {
-                    summary.fg_mode = "Active (mode unknown)";
-                }
+    int dllssg_mode = -1;
+    int enable_interp = -1;
+    g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
+    g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
+
+    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+    if (is_fg_enabled) {
+        // DLSS-G is enabled, check MultiFrameCount for mode
+        unsigned int multi_frame_count;
+        if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+            if (multi_frame_count == 1) {
+                summary.fg_mode = "2x";
+            } else if (multi_frame_count == 2) {
+                summary.fg_mode = "3x";
+            } else if (multi_frame_count == 3) {
+                summary.fg_mode = "4x";
             } else {
-                summary.fg_mode = "Disabled";
+                char buffer[16];
+                snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+                summary.fg_mode = std::string(buffer);
             }
         } else {
-            summary.fg_mode = "Unknown";
+            summary.fg_mode = "Active (mode unknown)";
         }
+    } else {
+        summary.fg_mode = "Disabled";
     }
 
     // Get NVIDIA Optical Flow Accelerator (OFA) status
@@ -1265,36 +1258,28 @@ DLSSGSummaryLite GetDLSSGSummaryLite() {
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
     summary.any_dlss_active = summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
 
-    int num_frames_actually_presented = 0;
-    if (g_ngx_parameters.get_as_int("DLSSG.NumFramesActuallyPresented", num_frames_actually_presented)) {
-        switch (num_frames_actually_presented) {
-            case 1:  summary.fg_mode = DLSSGFgMode::Off; break;
-            case 2:  summary.fg_mode = DLSSGFgMode::k2x; break;
-            case 3:  summary.fg_mode = DLSSGFgMode::k3x; break;
-            case 4:  summary.fg_mode = DLSSGFgMode::k4x; break;
-            default: summary.fg_mode = DLSSGFgMode::Unknown; break;
-        }
-    } else {
-        int enable_interp;
-        if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {
-            if (enable_interp == 1) {
-                unsigned int multi_frame_count;
-                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                    switch (multi_frame_count) {
-                        case 1:  summary.fg_mode = DLSSGFgMode::k2x; break;
-                        case 2:  summary.fg_mode = DLSSGFgMode::k3x; break;
-                        case 3:  summary.fg_mode = DLSSGFgMode::k4x; break;
-                        default: summary.fg_mode = DLSSGFgMode::Other; break;
-                    }
-                } else {
-                    summary.fg_mode = DLSSGFgMode::ActiveUnknown;
-                }
-            } else {
-                summary.fg_mode = DLSSGFgMode::Off;
+
+    int dllssg_mode = -1;
+    int enable_interp = -1;
+    g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
+    g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
+
+    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+
+    if (is_fg_enabled) {
+        unsigned int multi_frame_count;
+        if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+            switch (multi_frame_count) {
+                case 1:  summary.fg_mode = DLSSGFgMode::k2x; break;
+                case 2:  summary.fg_mode = DLSSGFgMode::k3x; break;
+                case 3:  summary.fg_mode = DLSSGFgMode::k4x; break;
+                default: summary.fg_mode = DLSSGFgMode::Other; break;
             }
         } else {
-            summary.fg_mode = DLSSGFgMode::Unknown;
+            summary.fg_mode = DLSSGFgMode::ActiveUnknown;
         }
+    } else {
+        summary.fg_mode = DLSSGFgMode::Off;
     }
     return summary;
 }
