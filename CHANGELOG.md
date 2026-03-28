@@ -10,6 +10,10 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.27 (2026-03-27)
+
+- [cleanup] [hooks] **Quieter logs** - Print less to logs.
+
 ## v0.13.26 (2026-03-27)
 
 - [bugfix] [compatibility] **Steam platform detection restored** - `steam_api.dll` / `steam_api64.dll` are recognized again for “which launcher” logging and the Main tab platform list. This is name-only detection (loaded modules and game folder); there is still no Steam API introspection (`GetProcAddress` / achievements / overlay hooks).

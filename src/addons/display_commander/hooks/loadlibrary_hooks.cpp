@@ -1543,7 +1543,9 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
             if (!modules_loaded_late_without_noticing) {
                 g_loaded_modules.clear();
                 g_module_handles.clear();
-                g_on_module_loaded_seen_handles.clear();
+                // Keep g_on_module_loaded_seen_handles: LoadLibrary/LdrLoadDll may have run OnModuleLoaded before
+                // enumerate, and InstallLoadLibraryHooks can call full enumerate more than once — avoid re-logging
+                // every module and re-running hook setup for the same HMODULE.
                 {
                     utils::SRWLockExclusive lock_apis(utils::g_host_loaded_apis_srwlock);
                     g_host_loaded_graphics_apis.clear();
@@ -1571,6 +1573,13 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
         for (DWORD i = 0; i < moduleCount; i++) {
             if (g_module_handles.find(hModules[i]) != g_module_handles.end()) {
                 continue;
+            }
+
+            bool already_reported = false;
+            if (!modules_loaded_late_without_noticing) {
+                utils::SRWLockExclusive lock_seen(utils::g_module_srwlock);
+                already_reported =
+                    g_on_module_loaded_seen_handles.find(hModules[i]) != g_on_module_loaded_seen_handles.end();
             }
 
             ModuleInfo moduleInfo;
@@ -1608,13 +1617,15 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
             if (modules_loaded_late_without_noticing) {
                 LogInfo("Late enumeration: added %ws (0x%p) - was loaded without us noticing",
                         moduleInfo.moduleName.c_str(), moduleInfo.baseAddress);
-            } else {
+            } else if (!already_reported) {
                 LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
                         moduleInfo.sizeOfImage);
             }
 
             // Call the module loaded callback (so hooks can be installed for this module)
-            OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
+            if (!already_reported) {
+                OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
+            }
         }
 
         if (modules_loaded_late_without_noticing && added > 0) {
