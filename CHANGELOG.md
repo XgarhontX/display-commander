@@ -13,8 +13,7 @@ Feature protosal:
 
 ## v0.13.29 (2026-03-27)
 
-- [bugfix] [hooks] **D3D9 / D3D9Ex FPS limiter (double post-present)** - After `Present` / `PresentEx`, `OnPresentUpdateAfter2` now runs only when this API path owns the FPS limiter (`use_fps_limiter`), matching the DXGI pattern. Previously it always ran from the D3D9 detours, so with ReShade loaded you could run post-present work twice per frame (ReShade `finish_present` already calls `HandlePresentAfter` when the addon path is chosen), which made effective caps roughly half the setting (e.g. needing “2×” FPS). Same guard added for the DirectDraw flip hook.
-  Details: `d3d9_present_hooks.cpp`, `ddraw_present_hooks.cpp`.
+- [bugfix] [hooks] **D3D9Ex FPS limiter (double post-present)** - Fix fps limiter requiring 2x framerate.
 
 ## v0.13.28 (2026-03-27)
 
