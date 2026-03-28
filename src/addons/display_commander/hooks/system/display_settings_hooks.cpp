@@ -1,16 +1,26 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_settings_hooks.hpp"
-#include "../windows_hooks/windows_message_hooks.hpp"
-#include <MinHook.h>
-#include <windows.h>
-#include <wingdi.h>
+#include "../../game_fixes/game_exe_hook_skip.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
-#include "../windows_hooks/api_hooks.hpp"  // GetGameWindow
 #include "../hook_suppression_manager.hpp"
+#include "../windows_hooks/api_hooks.hpp"  // GetGameWindow
+#include "../windows_hooks/windows_message_hooks.hpp"
 #include "../windows_hooks/window_proc_hooks.hpp"  // WindowHasBorder
+
+// Libraries <standard C++>
+#include <atomic>
+
+#include <MinHook.h>
+
+// Libraries <Windows.h> — before other Windows headers
+#include <Windows.h>
+
+// Libraries <Windows>
+#include <wingdi.h>
 
 // Original function pointers
 ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;
@@ -130,6 +140,12 @@ bool InstallDisplaySettingsHooks() {
         LogInfo("Display settings hooks installation suppressed by user setting");
         return false;
     }
+
+    if (display_commander::game_fixes::ShouldSkipDisplaySettingsHooksForProcess()) {
+        LogInfo("Display settings hooks installation skipped (game-specific fix)");
+        return false;
+    }
+
     LogInfo("Installing display settings hooks...");
 
     // Hook ChangeDisplaySettingsA

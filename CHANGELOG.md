@@ -12,6 +12,8 @@ Feature protosal:
 
 ## v0.13.27 (2026-03-27)
 
+- [hooks] [compatibility] **Call of Duty: Black Ops III** - Display Commander no longer installs ChangeDisplaySettings / ShowWindow display-settings hooks when the game executable is `BlackOps3.exe`, avoiding conflicts with that title’s display handling.
+  Details: `game_fixes/game_exe_hook_skip.*`; skip in `InstallDisplaySettingsHooks` only.
 - [cleanup] [hooks] **Quieter logs** - Print less to logs.
 
 ## v0.13.26 (2026-03-27)
