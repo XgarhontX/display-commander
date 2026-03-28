@@ -18,7 +18,6 @@ namespace autoclick {
 // Global variables for auto-click functionality
 std::atomic<bool> g_auto_click_thread_running{false};
 std::thread g_auto_click_thread;
-HANDLE g_auto_click_timer_handle = nullptr;
 const bool g_move_mouse = true;
 const bool g_mouse_spoofing_enabled = true;
 
@@ -29,12 +28,10 @@ std::atomic<LONGLONG> g_last_ui_draw_time_ns{0};
 // Global variables for up/down key press functionality
 std::atomic<bool> g_up_down_key_thread_running{false};
 std::thread g_up_down_key_thread;
-HANDLE g_up_down_key_timer_handle = nullptr;
 
 // Global variables for button-only press functionality
 std::atomic<bool> g_button_only_thread_running{false};
 std::thread g_button_only_thread;
-HANDLE g_button_only_timer_handle = nullptr;
 
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test) {
@@ -64,7 +61,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
             // Small delay for mouse movement using accurate timing
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + (50 * utils::NS_TO_MS);
-            utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+            utils::wait_until_ns(wait_target_ns);
         }
     }
 
@@ -74,7 +71,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
     // Small delay between mouse down and up using accurate timing
     LONGLONG wait_start_ns = utils::get_now_ns();
     LONGLONG wait_target_ns = wait_start_ns + (10 * utils::NS_TO_MS);
-    utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+    utils::wait_until_ns(wait_target_ns);
     PostMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, lParam);
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s", is_test ? "Test" : "Auto", sequence_num, x, y,
@@ -177,7 +174,7 @@ void AutoClickThread() {
                 LogDebug("Auto-click: UI overlay is open, waiting for 2 seconds");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -188,7 +185,7 @@ void AutoClickThread() {
                 LogDebug("Auto-click: UI was drawn recently, waiting for 500ms");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -205,7 +202,7 @@ void AutoClickThread() {
                         // Wait for interval using accurate timing
                         LONGLONG wait_start_ns = utils::get_now_ns();
                         LONGLONG wait_target_ns = wait_start_ns + (static_cast<LONGLONG>(interval) * utils::NS_TO_MS);
-                        utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+                        utils::wait_until_ns(wait_target_ns);
                     }
                 }
             } else {
@@ -213,13 +210,13 @@ void AutoClickThread() {
                 // Wait a bit before retrying using accurate timing
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
             }
         } else {
             // Auto-click is disabled, wait for 1 second using accurate timing
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
-            utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
+            utils::wait_until_ns(wait_target_ns);
         }
     }
 
@@ -301,8 +298,7 @@ static const GamepadAction g_button_only_sequence[] = {
 // Helper function to execute a single gamepad action
 static bool ExecuteGamepadAction(
     const GamepadAction& action,
-    const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state,
-    HANDLE timer_handle) {
+    const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state) {
     switch (action.type) {
         case GamepadActionType::SET_STICK_AND_BUTTONS: {
             if (action.log_message != nullptr) {
@@ -321,7 +317,7 @@ static bool ExecuteGamepadAction(
                                                           : (action.duration_sec * utils::SEC_TO_NS);
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + duration_ns;
-            utils::wait_until_ns(wait_target_ns, timer_handle);
+            utils::wait_until_ns(wait_target_ns);
             return true;
         }
 
@@ -342,7 +338,7 @@ static bool ExecuteGamepadAction(
                 // Wait in 100ms chunks for early exit checking
                 LONGLONG current_ns = utils::get_now_ns();
                 LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), hold_target_ns);
-                utils::wait_until_ns(next_check_ns, timer_handle);
+                utils::wait_until_ns(next_check_ns);
             }
             return true;
         }
@@ -376,7 +372,7 @@ void UpDownKeyPressThread() {
                 LogDebug("Up/Down key press: UI overlay is open, waiting for 2 seconds");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -387,7 +383,7 @@ void UpDownKeyPressThread() {
                 LogDebug("Up/Down key press: UI was drawn recently, waiting for 500ms");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -397,7 +393,7 @@ void UpDownKeyPressThread() {
                 // Execute the sequence of actions
                 // Note: Override state works even when controller is disconnected - XInput hooks will spoof connection
                 for (const auto& action : g_up_down_sequence) {
-                    if (!ExecuteGamepadAction(action, shared_state, g_up_down_key_timer_handle)) {
+                    if (!ExecuteGamepadAction(action, shared_state)) {
                         // Early exit requested
                         break;
                     }
@@ -407,13 +403,13 @@ void UpDownKeyPressThread() {
                 LogDebug("Up/Down gamepad: Shared state not yet available, waiting...");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
             }
         } else {
             // Up/Down key press is disabled, wait for 1 second using accurate timing
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
-            utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
         }
     }
 
@@ -436,7 +432,7 @@ void ButtonOnlyPressThread() {
                 LogDebug("Button-only press: UI overlay is open, waiting for 2 seconds");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -447,7 +443,7 @@ void ButtonOnlyPressThread() {
                 LogDebug("Button-only press: UI was drawn recently, waiting for 500ms");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
                 continue;
             }
 
@@ -457,7 +453,7 @@ void ButtonOnlyPressThread() {
                 // Execute the sequence of actions
                 // Note: Override state works even when controller is disconnected - XInput hooks will spoof connection
                 for (const auto& action : g_button_only_sequence) {
-                    if (!ExecuteGamepadAction(action, shared_state, g_button_only_timer_handle)) {
+                    if (!ExecuteGamepadAction(action, shared_state)) {
                         // Early exit requested
                         break;
                     }
@@ -467,13 +463,13 @@ void ButtonOnlyPressThread() {
                 LogDebug("Button-only gamepad: Shared state not yet available, waiting...");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
             }
         } else {
             // Button-only press is disabled, wait for 1 second using accurate timing
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
-            utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                utils::wait_until_ns(wait_target_ns);
         }
     }
 

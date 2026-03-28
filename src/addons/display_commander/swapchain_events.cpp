@@ -1162,9 +1162,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     }
 }
 
-HANDLE g_timer_handle_pre = nullptr;
-HANDLE g_timer_handle_post = nullptr;
-static HANDLE g_fg2_timer_handle_pre = nullptr;
 static std::atomic<LONGLONG> g_fg2_onpresent_sync_frame_start_ns{0};
 LONGLONG TimerPresentPacingDelayStart() { return utils::get_now_ns(); }
 
@@ -1212,7 +1209,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool frame_generation_aware 
                 sleep_until_ns = now + k_fps_limiter_max_wait_ns;
                 LogWarn("[FPS limiter] Post-sleep capped at 100 ms (requested wait was longer); timing may be off.");
             }
-            utils::wait_until_ns(sleep_until_ns, g_timer_handle_post);
+            utils::wait_until_ns(sleep_until_ns);
             g_onpresent_sync_post_sleep_ns.store(sleep_until_ns - now);
         } else {
             g_onpresent_sync_post_sleep_ns.store(0);
@@ -1534,7 +1531,7 @@ static void HandleFpsLimiterFg2Pre() {
             wait_target_ns = start_time_ns + k_fps_limiter_max_wait_ns;
             LogWarn("[FPS limiter FG2] Pre-sleep capped at 100 ms.");
         }
-        utils::wait_until_ns(wait_target_ns, g_fg2_timer_handle_pre);
+        utils::wait_until_ns(wait_target_ns);
     }
     g_fg2_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns, std::memory_order_relaxed);
 }
@@ -1652,13 +1649,13 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                                 "[FPS limiter] Pre-sleep capped at 100 ms (requested wait was longer); timing may be "
                                 "off.");
                         }
-                        utils::wait_until_ns(wait_target_ns, g_timer_handle_pre);
+                        utils::wait_until_ns(wait_target_ns);
                         late_amount_ns.store(0);
                         g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - start_time_ns);
                     } else {
                         // Late - but still sleep until ideal_frame_start_ns to maintain frame spacing
                         // This ensures frames are always spaced by frame_time_ns from start to start
-                        // utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
+                        // utils::wait_until_ns(ideal_frame_start_ns);
                         late_amount_ns.store(start_time_ns - ideal_frame_start_ns);
                         g_onpresent_sync_pre_sleep_ns.store(0);
                     }

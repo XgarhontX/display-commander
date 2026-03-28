@@ -11,6 +11,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.33 (2026-03-28)
+
+- [bugfix] [critical] **Sleep timer crash** - Fixed a crash that could occur when the FPS limiter / `wait_until_ns` path used a **single shared waitable timer** from more than one thread. The timer handle is now **per-thread** (`thread_local` inside `wait_until_qpc`); callers use `utils::wait_until_ns(target_ns)` with no shared handle. Global timer variables were removed from swapchain, NVAPI delay, autoclick, and latent sync code.
+  Details: `utils/timing.cpp`, `utils/timing.hpp`.
+
 ## v0.13.32 (2026-03-28)
 
 - [ui] **Display Settings: Misc for rarely used VSync/tearing options** - On the Main tab, under VSync & Tearing (ReShade), **max frame latency** and **backbuffer count** (with live current count and flip-model hint) now live in a collapsible **Misc** section so everyday controls stay on one compact row.

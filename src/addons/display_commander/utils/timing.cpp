@@ -122,7 +122,8 @@ LONGLONG get_timer_resolution_qpc() { return timer_res_qpc; }
 
 // Wait until the specified QPC time is reached
 // Uses a combination of kernel waitable timers and busy waiting for precision
-void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
+void wait_until_qpc(LONGLONG target_qpc) {
+    thread_local HANDLE timer_handle = nullptr;
     {
         static bool once_setup_timer = false;
         if (!once_setup_timer) {
@@ -213,9 +214,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
     //  }
 }
 
-void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
-    utils::wait_until_qpc(target_ns / utils::QPC_TO_NS, timer_handle);
-}
+void wait_until_ns(LONGLONG target_ns) { utils::wait_until_qpc(target_ns / utils::QPC_TO_NS); }
 
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = {};

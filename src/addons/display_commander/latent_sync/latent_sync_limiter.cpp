@@ -7,8 +7,6 @@
 
 static uint64_t s_last_scan_time = 0;
 
-HANDLE m_timer_handle = nullptr;
-
 namespace dxgi::fps_limiter {
 std::atomic<LONGLONG> ns_per_refresh{0};
 std::atomic<double> correction_lines_delta{0};
@@ -158,7 +156,7 @@ void LatentSyncLimiter::LimitFrameRate() {
             LogError("LatentSyncLimiter::LimitFrameRate: delta_wait_time_ns > utils::SEC_TO_NS");
             return;
         }
-        utils::wait_until_ns(wait_target_ns, m_timer_handle);
+        utils::wait_until_ns(wait_target_ns);
     }
     last_wait_target_ns = utils::get_now_ns();
 }

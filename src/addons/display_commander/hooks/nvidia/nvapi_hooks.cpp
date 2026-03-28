@@ -36,9 +36,6 @@ NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
 NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 
-// Timer handle for delay-present-start wait (created on first use in wait_until_ns)
-static HANDLE g_timer_handle_delay_present_start = nullptr;
-
 // Function to look up NVAPI function ID from interface table
 namespace {
 NvU32 GetNvAPIFunctionId(const char* functionName) {
@@ -269,7 +266,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                     const LONGLONG target_ns = sim_start_ns + delay_ns;
                     const LONGLONG now_ns = utils::get_now_ns();
                     if (sim_start_ns > 0 && target_ns > now_ns) {
-                        utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
+                        utils::wait_until_ns(target_ns);
                     }
                 }
             }
