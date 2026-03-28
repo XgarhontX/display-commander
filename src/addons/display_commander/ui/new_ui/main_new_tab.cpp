@@ -2014,7 +2014,10 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
-    if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool updates_dc_open = imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (updates_dc_open) {
         imgui.Indent();
 
         // Use global version: when false, load DC from game folder (same as .exe) if addon is there; when true, load
@@ -2349,7 +2352,10 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
         }
         return;
     }
-    if (imgui.CollapsingHeader("Reshade", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool updates_reshade_open = imgui.CollapsingHeader("Reshade", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (updates_reshade_open) {
         imgui.Indent();
 
         // Prefer global ReShade (default off = prefer local)
@@ -2471,7 +2477,10 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
 }
 
 static void DrawUpdatesAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("Addons", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool updates_addons_open = imgui.CollapsingHeader("Addons", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (updates_addons_open) {
         imgui.Indent();
         imgui.TextDisabled("TODO");
         imgui.Unindent();
@@ -2795,7 +2804,10 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 static void DrawMainTabOptionalPanelDcFolders(display_commander::ui::IImGuiWrapper& imgui,
                                               reshade::api::effect_runtime* runtime) {
     g_rendering_ui_section.store("ui:tab:main_new:dc_folders", std::memory_order_release);
-    if (imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool dc_folders_open = imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (dc_folders_open) {
         imgui.Indent();
         DrawUpdatesSectionContent(imgui, runtime);
         imgui.Unindent();
@@ -2807,7 +2819,10 @@ static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IIm
     if (g_reshade_module == nullptr) return;
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
-    if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool brightness_section_open = imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (brightness_section_open) {
         imgui.Indent();
         if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
                             "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
@@ -2970,8 +2985,10 @@ static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IIm
                 imgui.SetTooltipEx("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
             }
         }
-        ui::colors::PushNestedHeaderColors(&imgui);
-        if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+        ui::colors::PushHeader2Colors(&imgui);
+        const bool brightness_misc_open = imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None);
+        ui::colors::PopCollapsingHeaderColors(&imgui);
+        if (brightness_misc_open) {
             imgui.Indent();
             if (SliderFloatSetting(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
             }
@@ -3002,7 +3019,6 @@ static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IIm
             }
             imgui.Unindent();
         }
-        ui::colors::PopNestedHeaderColors(&imgui);
         if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
             imgui.EndDisabled();
         }
@@ -3013,7 +3029,10 @@ static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IIm
 static void DrawMainTabOptionalPanelTextureFiltering(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:texture_filtering", std::memory_order_release);
-    if (imgui.CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool texture_filtering_open = imgui.CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (texture_filtering_open) {
         imgui.Indent();
 
         uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
@@ -3169,7 +3188,10 @@ static void DrawMainTabOptionalPanelTextureFiltering(display_commander::ui::IImG
 static void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
-    if (imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool audio_control_open = imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (audio_control_open) {
         imgui.Indent();
         DrawAudioSettings(imgui);
         imgui.Unindent();
@@ -3179,7 +3201,10 @@ static void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWr
 static void DrawMainTabOptionalPanelCpuControl(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
-    if (imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool cpu_control_open = imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (cpu_control_open) {
         imgui.Indent();
 
         SYSTEM_INFO sys_info = {};
@@ -3257,7 +3282,10 @@ static void DrawMainTabOptionalPanelWindowButtons(display_commander::ui::IImGuiW
 static void DrawMainTabOptionalPanelOverlayWindows(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:overlay_windows", std::memory_order_release);
-    if (imgui.CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool overlay_windows_open = imgui.CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (overlay_windows_open) {
         imgui.Indent();
 
         HWND game_window = display_commanderhooks::GetGameWindow();
@@ -3734,7 +3762,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     // Display Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
-    if (imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool display_settings_open = imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (display_settings_open) {
         imgui.Indent();
         DrawDisplaySettings(api, imgui, runtime);
         imgui.Unindent();
@@ -3744,7 +3775,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     // Monitor/Display Resolution Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
-    if (imgui.CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool resolution_control_open = imgui.CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (resolution_control_open) {
         imgui.Indent();
         display_commander::widgets::resolution_widget::DrawResolutionWidget(imgui);
         imgui.Unindent();
@@ -3756,7 +3790,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     g_rendering_ui_section.store("ui:tab:main_new:input", std::memory_order_release);
     // Input Blocking Section
-    if (imgui.CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool input_control_open = imgui.CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (input_control_open) {
         imgui.Indent();
 
         // Create 3 columns with fixed width
@@ -3873,7 +3910,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:window_control", std::memory_order_release);
-    if (imgui.CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool window_control_open = imgui.CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (window_control_open) {
         imgui.Indent();
 
         CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", imgui);
@@ -3963,14 +4003,20 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:performance_overlay", std::memory_order_release);
-    if (imgui.CollapsingHeader("Performance Overlay", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool performance_overlay_open = imgui.CollapsingHeader("Performance Overlay", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (performance_overlay_open) {
         imgui.Indent();
         DrawImportantInfo(imgui);
         imgui.Unindent();
     }
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
-    if (imgui.CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeaderColors(&imgui);
+    const bool advanced_settings_open = imgui.CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (advanced_settings_open) {
         imgui.Indent();
         DrawAdvancedSettings(imgui);
         imgui.Unindent();
@@ -4539,7 +4585,11 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             GetChosenFpsLimiterSiteName());
     }
     imgui.TextDisabled("Limiter path: %s", GetChosenFpsLimiterSiteName());
-    if (imgui.CollapsingHeader("FPS Limiter Debug", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+    ui::colors::PushHeader2Colors(&imgui);
+    const bool fps_limiter_debug_open =
+        imgui.CollapsingHeader("FPS Limiter Debug", display_commander::ui::wrapper_flags::TreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (fps_limiter_debug_open) {
         const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
         const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
         size_t active_sites = 0;
@@ -6008,7 +6058,11 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
     imgui.Spacing();
     if (presentmon::kPresentMonEnabled) {
         g_rendering_ui_section.store("ui:tab:main_new:presentmon", std::memory_order_release);
-        if (imgui.CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ui::colors::PushHeader2Colors(&imgui);
+        const bool presentmon_etw_open = imgui.CollapsingHeader(
+            "PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen);
+        ui::colors::PopCollapsingHeaderColors(&imgui);
+        if (presentmon_etw_open) {
             imgui.Indent();
             DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(imgui);
             imgui.Unindent();
@@ -6285,7 +6339,10 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
     CALL_GUARD(utils::get_now_ns());
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
-    if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeader2Colors(&imgui);
+    const bool vsync_tearing_open = imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (vsync_tearing_open) {
         imgui.Indent();
         if ((g_reshade_module != nullptr)) {
             DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
@@ -6333,7 +6390,10 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
         return;  // Nothing to show: not FLIP_SEQUENTIAL and no recent upgrade
     }
 
-    if (imgui.CollapsingHeader("DXGI", ImGuiTreeNodeFlags_None)) {
+    ui::colors::PushHeader2Colors(&imgui);
+    const bool dxgi_sub_open = imgui.CollapsingHeader("DXGI", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (dxgi_sub_open) {
         if (original_was_flip_sequential || upgrade_done) {
             bool force_discard = settings::g_mainTabSettings.force_flip_discard_upgrade.GetValue();
             if (imgui.Checkbox("Force Flip Discard upgrade", &force_discard)) {
@@ -6363,7 +6423,6 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
             imgui.SetTooltipEx("Opens: %s", kDxgiFlipModelDocUrl);
         }
         imgui.Spacing();
-        imgui.Unindent();
     }
 }
 
@@ -6413,9 +6472,13 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_VSyncAndTearing(imgui);
     {
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
-        if (ShouldShowDlssInformationSection() && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
-            imgui.Indent();
-            const DLSSGSummary dlss_summary = GetDLSSGSummary();
+        if (ShouldShowDlssInformationSection()) {
+            ui::colors::PushHeader2Colors(&imgui);
+            const bool dlss_info_open = imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None);
+            ui::colors::PopCollapsingHeaderColors(&imgui);
+            if (dlss_info_open) {
+                imgui.Indent();
+                const DLSSGSummary dlss_summary = GetDLSSGSummary();
             if (is_dxgi) {
                 if (!AreNGXParameterVTableHooksInstalled()) {
                     imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
@@ -6785,12 +6848,16 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 imgui.SetTooltipEx("Open the folder where you can place custom DLSS DLLs (created if missing).");
             }
 
-            imgui.Unindent();
+                imgui.Unindent();
+            }
         }
     }
     // NVIDIA Control subheader: Smooth Motion, RTX HDR, Max Pre-Rendered Frames (when NVAPI initialized)
     if (nvapi::EnsureNvApiInitialized()) {
-        if (imgui.CollapsingHeader("NVIDIA Control", ImGuiTreeNodeFlags_None)) {
+        ui::colors::PushHeader2Colors(&imgui);
+        const bool nvidia_control_open = imgui.CollapsingHeader("NVIDIA Control", ImGuiTreeNodeFlags_None);
+        ui::colors::PopCollapsingHeaderColors(&imgui);
+        if (nvidia_control_open) {
             {
                 static bool s_nvidiaControlOpenedOnce = false;
                 if (!s_nvidiaControlOpenedOnce) {
@@ -9585,25 +9652,27 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
-    // Depth 1: Nested subsection with indentation and distinct colors
-    imgui.Indent();  // Indent nested header
+    imgui.Indent();
     g_rendering_ui_section.store("ui:tab:main_new:frame_time_graph", std::memory_order_release);
-    ui::colors::PushNestedHeaderColors(&imgui);
-    if (imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();  // Indent content inside subsection
+    ui::colors::PushHeader2Colors(&imgui);
+    const bool frame_time_graph_open = imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (frame_time_graph_open) {
+        imgui.Indent();
         DrawImportantInfo_FrameTimeGraphContent(imgui);
-        imgui.Unindent();  // Unindent content inside subsection
+        imgui.Unindent();
         imgui.Spacing();
 
         g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
-        // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
-        if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
+        ui::colors::PushHeader3Colors(&imgui);
+        const bool refresh_rate_monitor_open =
+            imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None);
+        ui::colors::PopCollapsingHeaderColors(&imgui);
+        if (refresh_rate_monitor_open) {
             DrawImportantInfo_RefreshRateMonitorContent(imgui);
         }
-        imgui.Unindent();  // Unindent content
     }
-    ui::colors::PopNestedHeaderColors(&imgui);
-    imgui.Unindent();  // Unindent nested header section
+    imgui.Unindent();
 }
 
 static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui) {
