@@ -11,10 +11,14 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.31 (2026-03-28)
+
+- [ui] [hooks] **DXGI flip: need three back buffers** - If the game already uses a DXGI flip-model swap chain (FLIP_DISCARD or FLIP_SEQUENTIAL) and you set the backbuffer count override to 1 or 2, the Main tab now shows a clear warning that flip swap chains need at least three back buffers for reliable behavior. At swapchain creation, that override is automatically raised to 3 for flip chains so the applied count matches that requirement.
+  Details: `main_new_tab.cpp` (warning next to backbuffer override), `swapchain_events.cpp` (clamp override 1–2 → 3 when `is_flip`).
+
 ## v0.13.30 (2026-03-28)
 
-- [ui] **More quick FPS limit buttons** - On monitors at 60 Hz and above, the Main tab quick FPS presets (refresh ÷ N) used to stop at six divisors; they now use the same up-to-15 range as lower refresh rates, so you get more one-click caps (e.g. half, third, quarter refresh and beyond).
-  Details: `DrawQuickFpsLimitChanger` in `ui/new_ui/main_new_tab.cpp` (removed `max_divisor` cap for `y >= 60`).
+- [ui] **More quick FPS limit buttons** - Increase number of available fps limiter options shows all above 40hz.
 
 ## v0.13.29 (2026-03-27)
 

@@ -629,7 +629,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Override backbuffer count if user selected 1–4
-        const int backbuffer_override_dxgi = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        int backbuffer_override_dxgi = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (is_flip && (backbuffer_override_dxgi == 1 || backbuffer_override_dxgi == 2)) {
+            backbuffer_override_dxgi = 3;
+        }
         if (backbuffer_override_dxgi >= 1 && backbuffer_override_dxgi <= 4
             && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_dxgi)) {
             LogInfo("Increasing back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_dxgi);

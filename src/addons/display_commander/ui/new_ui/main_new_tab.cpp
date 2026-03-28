@@ -5374,6 +5374,17 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                     "frame; 1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no "
                     "restart).");
             }
+
+            imgui.SameLine();
+            bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
+            if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
+                settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
+                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
+                                  : "Prevent Tearing disabled");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            }
             if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
                                     300.f)) {
                 LogInfo("Max frame latency override changed to %d",
@@ -5414,16 +5425,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             }
         }
         if (is_dxgi_pt) {
-            imgui.SameLine();
-            bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-            if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
-                settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
-                                  : "Prevent Tearing disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
-            }
         } else if (desc_ptr_cb) {
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
@@ -5437,23 +5438,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
         if ((g_reshade_module != nullptr)) {
             imgui.TextColored(ui::colors::TEXT_WARNING,
                               "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
-        }
-    }
-
-    auto desc_ptr = g_last_swapchain_desc_post.load();
-    if (desc_ptr) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
-                                300.f)) {
-            s_restart_needed_vsync_tearing.store(true);
-            LogInfo("Backbuffer count override changed to %d",
-                    settings::g_mainTabSettings.backbuffer_count_override.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            std::ostringstream tooltip;
-            tooltip
-                << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
-                << "Current: " << desc_ptr->back_buffer_count << ". DXGI flip requires at least 2.";
-            imgui.SetTooltipEx("%s", tooltip.str().c_str());
         }
     }
 
@@ -5474,6 +5458,32 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     }
     static bool has_been_enabled = false;
     has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
+
+
+    auto desc_ptr = g_last_swapchain_desc_post.load();
+    if (desc_ptr) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
+                                300.f)) {
+            s_restart_needed_vsync_tearing.store(true);
+            LogInfo("Backbuffer count override changed to %d",
+                    settings::g_mainTabSettings.backbuffer_count_override.GetValue());
+        }
+        if (imgui.IsItemHovered()) {
+            std::ostringstream tooltip;
+            tooltip
+                << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
+                << "Current: " << desc_ptr->back_buffer_count
+                << ". DXGI flip-model swap chains should use at least 3 back buffers.";
+            imgui.SetTooltipEx("%s", tooltip.str().c_str());
+        }
+        const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (is_flip && (backbuffer_override == 1 || backbuffer_override == 2)) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_WARNING, "DXGI flip swapchain requires at least 3 backbuffers.");
+        }
+    }
+
+
 
     if (has_been_enabled) {
         imgui.SameLine();
