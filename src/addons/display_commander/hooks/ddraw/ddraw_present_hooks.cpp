@@ -135,7 +135,9 @@ HRESULT STDMETHODCALLTYPE IDirectDrawSurface_Flip_Detour(LPDIRECTDRAWSURFACE Thi
         dxgi::HandlePresentAfter(false);
     }
     HandleOpenGLGPUCompletion();
-    OnPresentUpdateAfter2(false);
+    if (use_fps_limiter) {
+        OnPresentUpdateAfter2(false);
+    }
     return res;
 }
 

@@ -76,7 +76,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(false);
+        if (use_fps_limiter) {
+            ::OnPresentUpdateAfter2(false);
+        }
         return res;
     }
 
@@ -91,7 +93,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     // Handle GPU completion for D3D9 (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 
-    ::OnPresentUpdateAfter2(false);
+    if (use_fps_limiter) {
+        ::OnPresentUpdateAfter2(false);
+    }
     return res;
 }
 
@@ -141,7 +145,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(false);
+        if (use_fps_limiter) {
+            ::OnPresentUpdateAfter2(false);
+        }
         return res;
     }
 
@@ -158,14 +164,18 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(false);
+        if (use_fps_limiter) {
+            ::OnPresentUpdateAfter2(false);
+        }
         return res;
     }
 
     // Handle GPU completion for D3D9 (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 
-    ::OnPresentUpdateAfter2(false);
+    if (use_fps_limiter) {
+        ::OnPresentUpdateAfter2(false);
+    }
     return D3DERR_INVALIDCALL;
 }
 
