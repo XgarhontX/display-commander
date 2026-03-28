@@ -5385,17 +5385,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
-            if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
-                                    300.f)) {
-                LogInfo("Max frame latency override changed to %d",
-                        settings::g_mainTabSettings.max_frame_latency_override.GetValue());
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Override IDXGISwapChain2::SetMaximumFrameLatency. No override = "
-                    "game default. 1 = lowest input latency (single frame queue); 2-16 = more CPU-GPU parallelism. "
-                    "Applied per swapchain at runtime.");
-            }
         } else {
             bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
             if (imgui.Checkbox("Force VSync ON", &vs_on)) {
@@ -5460,31 +5449,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
 
 
-    auto desc_ptr = g_last_swapchain_desc_post.load();
-    if (desc_ptr) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
-                                300.f)) {
-            s_restart_needed_vsync_tearing.store(true);
-            LogInfo("Backbuffer count override changed to %d",
-                    settings::g_mainTabSettings.backbuffer_count_override.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            std::ostringstream tooltip;
-            tooltip
-                << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
-                << "Current: " << desc_ptr->back_buffer_count
-                << ". DXGI flip-model swap chains should use at least 3 back buffers.";
-            imgui.SetTooltipEx("%s", tooltip.str().c_str());
-        }
-        const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-        if (is_flip && (backbuffer_override == 1 || backbuffer_override == 2)) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_WARNING, "DXGI flip swapchain requires at least 3 backbuffers.");
-        }
-    }
-
-
-
     if (has_been_enabled) {
         imgui.SameLine();
         if (imgui.Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
@@ -5515,8 +5479,56 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
         imgui.TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");
     }
 
-    imgui.Spacing();
-    imgui.Separator();
+    ui::colors::PushWarningHeader1Colors(&imgui);
+    const bool advanced2_open = imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (advanced2_open) {
+        imgui.Indent();
+
+
+        auto desc_ptr = g_last_swapchain_desc_post.load();
+        if (desc_ptr) {
+            if (is_dxgi_pt) {
+
+                if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
+                    300.f)) {
+                    LogInfo("Max frame latency override changed to %d",
+                    settings::g_mainTabSettings.max_frame_latency_override.GetValue());
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                    "Override IDXGISwapChain2::SetMaximumFrameLatency. No override = "
+                    "game default. 1 = lowest input latency (single frame queue); 2-16 = more CPU-GPU parallelism. "
+                    "Applied per swapchain at runtime.");
+                }
+            }
+
+            if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
+                                    300.f)) {
+                s_restart_needed_vsync_tearing.store(true);
+                LogInfo("Backbuffer count override changed to %d",
+                        settings::g_mainTabSettings.backbuffer_count_override.GetValue());
+            }
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Current: %d", desc_ptr->back_buffer_count);
+            if (imgui.IsItemHovered()) {
+                std::ostringstream tooltip;
+                tooltip
+                    << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
+                    << "Current: " << desc_ptr->back_buffer_count
+                    << ". DXGI flip-model swap chains should use at least 3 back buffers.";
+                imgui.SetTooltipEx("%s", tooltip.str().c_str());
+            }
+            const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+            if (is_flip && (backbuffer_override == 1)) {
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_WARNING, "DXGI flip swapchain requires at least 2 backbuffers.");
+            }
+        }
+
+        imgui.Unindent();
+    }
+
     imgui.Spacing();
 }
 
@@ -6274,6 +6286,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
         if ((g_reshade_module != nullptr)) {
             DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
         } else {
@@ -6298,6 +6311,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
                     "running.");
             }
         }
+        imgui.Unindent();
     }
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:end", std::memory_order_release);
 }

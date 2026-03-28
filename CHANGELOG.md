@@ -11,10 +11,16 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.32 (2026-03-28)
+
+- [ui] **Display Settings: Misc for rarely used VSync/tearing options** - On the Main tab, under VSync & Tearing (ReShade), **max frame latency** and **backbuffer count** (with live current count and flip-model hint) now live in a collapsible **Misc** section so everyday controls stay on one compact row.
+  Details: `DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade` in `main_new_tab.cpp`.
+- [ui] **CollapsingHeader styling** - Misc uses the warning-style header (dark yellow bar, near-white title text). Reusable `PushHeaderColors` / `PushWarningHeader1Colors` / `PopCollapsingHeaderColors` helpers and row colors live in `res/ui_colors.hpp`.
+
 ## v0.13.31 (2026-03-28)
 
-- [ui] [hooks] **DXGI flip: need three back buffers** - If the game already uses a DXGI flip-model swap chain (FLIP_DISCARD or FLIP_SEQUENTIAL) and you set the backbuffer count override to 1 or 2, the Main tab now shows a clear warning that flip swap chains need at least three back buffers for reliable behavior. At swapchain creation, that override is automatically raised to 3 for flip chains so the applied count matches that requirement.
-  Details: `main_new_tab.cpp` (warning next to backbuffer override), `swapchain_events.cpp` (clamp override 1–2 → 3 when `is_flip`).
+- [ui] [hooks] **DXGI flip: need two back buffers** - Added a warning if user tries to set backbuffers to 1 with flip swapchain, don't set it.
+- [ui] **Show backbuffer count** - Show current back buffer count.
 
 ## v0.13.30 (2026-03-28)
 

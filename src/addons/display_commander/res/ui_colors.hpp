@@ -9,6 +9,10 @@
  *  - Depth 0 / 1 / 2 layout
  *  - Indent / Unindent usage
  *  - Which semantic text/icon colors to use
+ * Section titles: `HEADER` / `HEADER_2` / `HEADER_3` (blue), `WARNING_HEADER*` (yellow),
+ *   `EXPERIMENTAL_HEADER*` (red).
+ * CollapsingHeader: `Push*Header*Colors`, draw `CollapsingHeader`, then `PopCollapsingHeaderColors` before
+ *   drawing expanded body so inner widgets keep default `ImGuiCol_Text`.
  */
 #pragma once
 
@@ -67,6 +71,24 @@ constexpr ImVec4 TEXT_HIGHLIGHT = ImVec4(0.8f, 1.0f, 0.8f, 1.0f);    // Highligh
 constexpr ImVec4 TEXT_VALUE = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);        // Values/numbers (yellow)
 constexpr ImVec4 TEXT_LABEL = ImVec4(0.8f, 0.8f, 1.0f, 1.0f);        // Labels (light blue)
 
+// ---------------------------------------------------------------------------
+// Section banner / title text (use for "=== Section ===" lines and subtitles)
+// ---------------------------------------------------------------------------
+// Standard hierarchy (blue): top-level title, subsection, tertiary.
+constexpr ImVec4 HEADER = ImVec4(0.80f, 0.80f, 1.00f, 1.0f);
+constexpr ImVec4 HEADER_2 = ImVec4(0.62f, 0.66f, 0.95f, 1.0f);
+constexpr ImVec4 HEADER_3 = ImVec4(0.48f, 0.54f, 0.82f, 1.0f);
+
+// Warning-styled hierarchy (yellow / amber): caution blocks and sub-lines.
+constexpr ImVec4 WARNING_HEADER = ImVec4(1.00f, 0.82f, 0.20f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_2 = ImVec4(0.95f, 0.70f, 0.18f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_3 = ImVec4(0.78f, 0.56f, 0.15f, 1.0f);
+
+// Experimental / high-risk hierarchy (red): experimental tab emphasis and nested notes.
+constexpr ImVec4 EXPERIMENTAL_HEADER = ImVec4(1.00f, 0.38f, 0.40f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_2 = ImVec4(0.90f, 0.32f, 0.36f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_3 = ImVec4(0.72f, 0.28f, 0.30f, 1.0f);
+
 // ============================================================================
 // Button Colors
 // ============================================================================
@@ -102,6 +124,46 @@ constexpr ImVec4 HEADER_NESTED_BG_ACTIVE = ImVec4(0.25f, 0.25f, 0.30f, 1.0f);   
 // Nested header text color (uses TEXT_LABEL for visual distinction)
 constexpr ImVec4 HEADER_NESTED_TEXT = TEXT_LABEL;  // Light blue for nested headers
 
+// CollapsingHeader row backgrounds (ImGuiCol_Header / Hovered / Active) — use with HEADER / HEADER_2 / HEADER_3 text
+constexpr ImVec4 HEADER_ROW_BG = ImVec4(0.14f, 0.16f, 0.22f, 1.0f);
+constexpr ImVec4 HEADER_ROW_BG_HOVERED = ImVec4(0.18f, 0.22f, 0.30f, 1.0f);
+constexpr ImVec4 HEADER_ROW_BG_ACTIVE = ImVec4(0.22f, 0.26f, 0.36f, 1.0f);
+
+constexpr ImVec4 HEADER_2_ROW_BG = ImVec4(0.13f, 0.14f, 0.20f, 1.0f);
+constexpr ImVec4 HEADER_2_ROW_BG_HOVERED = ImVec4(0.17f, 0.19f, 0.27f, 1.0f);
+constexpr ImVec4 HEADER_2_ROW_BG_ACTIVE = ImVec4(0.20f, 0.23f, 0.33f, 1.0f);
+
+constexpr ImVec4 HEADER_3_ROW_BG = ImVec4(0.12f, 0.13f, 0.17f, 1.0f);
+constexpr ImVec4 HEADER_3_ROW_BG_HOVERED = ImVec4(0.15f, 0.17f, 0.23f, 1.0f);
+constexpr ImVec4 HEADER_3_ROW_BG_ACTIVE = ImVec4(0.18f, 0.20f, 0.28f, 1.0f);
+
+// Warning-styled CollapsingHeader row (level 1): dark warm yellow bar + white title text
+constexpr ImVec4 WARNING_HEADER_ROW_BG = ImVec4(0.34f, 0.27f, 0.09f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_ROW_BG_HOVERED = ImVec4(0.40f, 0.32f, 0.11f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_ROW_BG_ACTIVE = ImVec4(0.44f, 0.35f, 0.12f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_ROW_TEXT = ImVec4(0.98f, 0.98f, 0.99f, 1.0f);
+
+constexpr ImVec4 WARNING_HEADER_2_ROW_BG = ImVec4(0.18f, 0.14f, 0.05f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_2_ROW_BG_HOVERED = ImVec4(0.24f, 0.19f, 0.07f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_2_ROW_BG_ACTIVE = ImVec4(0.28f, 0.22f, 0.08f, 1.0f);
+
+constexpr ImVec4 WARNING_HEADER_3_ROW_BG = ImVec4(0.15f, 0.12f, 0.04f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_3_ROW_BG_HOVERED = ImVec4(0.20f, 0.16f, 0.05f, 1.0f);
+constexpr ImVec4 WARNING_HEADER_3_ROW_BG_ACTIVE = ImVec4(0.23f, 0.18f, 0.06f, 1.0f);
+
+// Experimental / danger CollapsingHeader rows (red tint)
+constexpr ImVec4 EXPERIMENTAL_HEADER_ROW_BG = ImVec4(0.22f, 0.11f, 0.11f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_ROW_BG_HOVERED = ImVec4(0.30f, 0.14f, 0.14f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_ROW_BG_ACTIVE = ImVec4(0.34f, 0.16f, 0.16f, 1.0f);
+
+constexpr ImVec4 EXPERIMENTAL_HEADER_2_ROW_BG = ImVec4(0.18f, 0.09f, 0.09f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_2_ROW_BG_HOVERED = ImVec4(0.24f, 0.12f, 0.12f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_2_ROW_BG_ACTIVE = ImVec4(0.28f, 0.14f, 0.14f, 1.0f);
+
+constexpr ImVec4 EXPERIMENTAL_HEADER_3_ROW_BG = ImVec4(0.15f, 0.08f, 0.08f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_3_ROW_BG_HOVERED = ImVec4(0.20f, 0.10f, 0.10f, 1.0f);
+constexpr ImVec4 EXPERIMENTAL_HEADER_3_ROW_BG_ACTIVE = ImVec4(0.23f, 0.11f, 0.11f, 1.0f);
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -127,16 +189,63 @@ inline void PopIconColor(display_commander::ui::IImGuiWrapper* w) {
     w->PopStyleColor(1);
 }
 
-inline void PushNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+inline void PushCollapsingHeaderColors(display_commander::ui::IImGuiWrapper* w, const ImVec4& header_bg,
+                                       const ImVec4& header_bg_hovered, const ImVec4& header_bg_active,
+                                       const ImVec4& text) {
     if (w == nullptr) return;
-    w->PushStyleColor(ImGuiCol_Header, HEADER_NESTED_BG);
-    w->PushStyleColor(ImGuiCol_HeaderHovered, HEADER_NESTED_BG_HOVERED);
-    w->PushStyleColor(ImGuiCol_HeaderActive, HEADER_NESTED_BG_ACTIVE);
-    w->PushStyleColor(ImGuiCol_Text, HEADER_NESTED_TEXT);
+    w->PushStyleColor(ImGuiCol_Header, header_bg);
+    w->PushStyleColor(ImGuiCol_HeaderHovered, header_bg_hovered);
+    w->PushStyleColor(ImGuiCol_HeaderActive, header_bg_active);
+    w->PushStyleColor(ImGuiCol_Text, text);
 }
-inline void PopNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+
+inline void PopCollapsingHeaderColors(display_commander::ui::IImGuiWrapper* w) {
     if (w == nullptr) return;
     w->PopStyleColor(4);
+}
+
+inline void PushNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, HEADER_NESTED_BG, HEADER_NESTED_BG_HOVERED, HEADER_NESTED_BG_ACTIVE, HEADER_NESTED_TEXT);
+}
+inline void PopNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+    PopCollapsingHeaderColors(w);
+}
+
+inline void PushHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, HEADER_ROW_BG, HEADER_ROW_BG_HOVERED, HEADER_ROW_BG_ACTIVE, HEADER);
+}
+inline void PushHeader2Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, HEADER_2_ROW_BG, HEADER_2_ROW_BG_HOVERED, HEADER_2_ROW_BG_ACTIVE, HEADER_2);
+}
+inline void PushHeader3Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, HEADER_3_ROW_BG, HEADER_3_ROW_BG_HOVERED, HEADER_3_ROW_BG_ACTIVE, HEADER_3);
+}
+
+/** Warning-styled CollapsingHeader (primary): dark yellow row, white label (`WARNING_HEADER_ROW_TEXT`). */
+inline void PushWarningHeader1Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, WARNING_HEADER_ROW_BG, WARNING_HEADER_ROW_BG_HOVERED, WARNING_HEADER_ROW_BG_ACTIVE,
+                              WARNING_HEADER_ROW_TEXT);
+}
+inline void PushWarningHeader2Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, WARNING_HEADER_2_ROW_BG, WARNING_HEADER_2_ROW_BG_HOVERED, WARNING_HEADER_2_ROW_BG_ACTIVE,
+                              WARNING_HEADER_2);
+}
+inline void PushWarningHeader3Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, WARNING_HEADER_3_ROW_BG, WARNING_HEADER_3_ROW_BG_HOVERED, WARNING_HEADER_3_ROW_BG_ACTIVE,
+                              WARNING_HEADER_3);
+}
+
+inline void PushExperimentalHeader1Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, EXPERIMENTAL_HEADER_ROW_BG, EXPERIMENTAL_HEADER_ROW_BG_HOVERED,
+                              EXPERIMENTAL_HEADER_ROW_BG_ACTIVE, EXPERIMENTAL_HEADER);
+}
+inline void PushExperimentalHeader2Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, EXPERIMENTAL_HEADER_2_ROW_BG, EXPERIMENTAL_HEADER_2_ROW_BG_HOVERED,
+                              EXPERIMENTAL_HEADER_2_ROW_BG_ACTIVE, EXPERIMENTAL_HEADER_2);
+}
+inline void PushExperimentalHeader3Colors(display_commander::ui::IImGuiWrapper* w) {
+    PushCollapsingHeaderColors(w, EXPERIMENTAL_HEADER_3_ROW_BG, EXPERIMENTAL_HEADER_3_ROW_BG_HOVERED,
+                              EXPERIMENTAL_HEADER_3_ROW_BG_ACTIVE, EXPERIMENTAL_HEADER_3);
 }
 
 }  // namespace ui::colors
