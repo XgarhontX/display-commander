@@ -6447,6 +6447,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc_post.load();
         if (is_dxgi_pt) {
+            PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);
             if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 300.f)) {
                 LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
             }
@@ -6572,6 +6573,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
     const bool has_d3d9 = display_commanderhooks::d3d9::g_d3d9_present_hooks_installed.load();
 
     if (has_dxgi) {
+        PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);
         if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 100.f)) {
             LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
         }
@@ -7200,6 +7202,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
          || current_api == reshade::api::device_api::d3d12);
 
+    PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);
     imgui.TextColored(ui::colors::TEXT_LABEL, "Current Present Mode:");
     imgui.SameLine();
     ImVec4 present_mode_color = ui::colors::TEXT_DIMMED;
@@ -7300,7 +7303,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     ui::colors::PushHeader2Colors(&imgui);
-    const bool vsync_tearing_open = imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None);
+    const bool vsync_tearing_open = true;// imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (vsync_tearing_open) {
         imgui.Indent();

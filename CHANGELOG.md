@@ -11,6 +11,8 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+
+
 ## v0.13.38 (2026-03-29)
 
 - [ui] [settings] **DXGI Control optional Main tab panel** - The **Misc** block under **VSync & Tearing** (max frame latency, buffer count with current count / flip warning) and the separate **DXGI** subsection (**Force Flip Discard upgrade**) are no longer in **Display Settings**. Enable **Show DXGI Control** under **Advanced Settings** → **Main tab optional panels** (D3D10/11/12 only). Panel id `dxgi_control` (default after **DLSS Control**). No-ReShade DXGI path: max frame latency and buffer count moved here from the inline VSync row.
@@ -25,6 +27,8 @@ Feature protosal:
   Details: `show_main_tab_input_control`, `MainTabOptionalSectionKind::InputControl`, `DrawMainTabOptionalPanelInputControl` in `main_new_tab.cpp`; `main_tab_settings.*`.
 - [ui] **FPS limiter column alignment** - On the Main tab, **FPS Limiter Mode**, advanced **Reflex**, **FPS limiter preset**, and **ReShade runtime** use the same horizontal label column as the FPS Limit and Background FPS Limit rows (measured checkbox gutter; Dummy + SameLine). Inside the indented Advanced block, one ImGui indent level is subtracted so those controls still line up with the slider rows above.
   Details: `PushFpsLimiterSliderColumnAlign`, `DrawDisplaySettings_FpsLimiterAdvanced`, `DrawDisplaySettings_FpsLimiterOnPresentSync` in `main_new_tab.cpp`.
+- [ui] **VSync & Tearing column alignment** - Under **VSync & Tearing**, the DXGI **VSync** combo (ReShade and no-ReShade) and the **Current Present Mode:** line use the same `PushFpsLimiterSliderColumnAlign` rule as **FPS limiter preset** (checkbox gutter minus one indent, matching the extra header indent under **Display Settings**).
+  Details: `DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade`, `DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode`, `DrawDisplaySettings_VSyncAndTearing_PresentModeLine` in `main_new_tab.cpp`.
 - [ui] **FPS Limiter Mode → Reflex spacing** - **FPS Limiter Debug** (experimental) is drawn after the advanced FPS block so it no longer sits between **FPS Limiter Mode** and **Reflex**; removed the extra vertical `Spacing` before the Reflex row.
   Details: `DrawDisplaySettings_FpsLimiter` / `DrawDisplaySettings_FpsLimiterAdvanced` in `main_new_tab.cpp`.
 - [ui] **FPS limiter source labels** - The Main tab and performance overlay now describe the active FPS limiter with plain-language names (for example DXGI swapchain Present, NVAPI Reflex marker) instead of internal identifiers like `dxgi_swapchain`. The line is labeled **FPS limiter source** instead of “Limiter path,” and the overlay checkbox is **FPS limiter source**.
