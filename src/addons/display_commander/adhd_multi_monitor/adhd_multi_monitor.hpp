@@ -8,7 +8,7 @@
 
 namespace adhd_multi_monitor {
 
-// Simple ADHD Multi-Monitor Manager - single class implementation
+// Black curtain manager (game display / other displays) — single class implementation
 class AdhdMultiMonitorManager {
    public:
     AdhdMultiMonitorManager();
@@ -19,7 +19,7 @@ class AdhdMultiMonitorManager {
 
     // Cleanup resources
     void Shutdown();
-    // Enable/disable ADHD mode: (enabled for game display, enabled for other displays)
+    // Enable/disable black curtain: (game display, other displays)
     void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays);
     bool IsEnabledForGameDisplay() const { return enabled_for_game_display_.load(); }
     bool IsEnabledForOtherDisplays() const { return enabled_for_other_displays_.load(); }
@@ -71,7 +71,7 @@ class AdhdMultiMonitorManager {
     bool background_window_created_;
 
     static constexpr const wchar_t* BACKGROUND_WINDOW_CLASS = L"AdhdMultiMonitorBackground";
-    static constexpr const wchar_t* BACKGROUND_WINDOW_TITLE = L"ADHD Multi-Monitor Background";
+    static constexpr const wchar_t* BACKGROUND_WINDOW_TITLE = L"Display Commander Black Curtain";
 };
 
 // Global instance

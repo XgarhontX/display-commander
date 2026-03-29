@@ -2,12 +2,12 @@
 
 #include <cstdint>
 
-// Simple API for ADHD Multi-Monitor Mode
+// Simple API for black curtain (game display / other displays)
 // This replaces the complex integration system with a single class approach
 
 namespace adhd_multi_monitor {
 
-// Debug info for the ADHD background window (for tooltips / diagnostics)
+// Debug info for the black curtain background window (for tooltips / diagnostics)
 struct BackgroundWindowDebugInfo {
     void* hwnd = nullptr;   // HWND as void* to avoid windows.h in this header
     bool not_null = false;
@@ -18,10 +18,10 @@ struct BackgroundWindowDebugInfo {
 // Simple API functions
 namespace api {
 
-// Initialize the ADHD multi-monitor system
+// Initialize the black curtain subsystem
 bool Initialize();
 
-// Enable/disable ADHD mode: (enabled for game display, enabled for other displays)
+// Enable/disable black curtain: (game display, other displays)
 void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays);
 bool IsEnabledForGameDisplay();
 bool IsEnabledForOtherDisplays();
@@ -31,7 +31,7 @@ bool IsEnabledForOtherDisplays();
 // Check if multiple monitors are available
 bool HasMultipleMonitors();
 
-// Fill debug info for the ADHD background window (hwnd, position, size, visibility). Safe from any thread.
+// Fill debug info for the background window (hwnd, position, size, visibility). Safe from any thread.
 void GetBackgroundWindowDebugInfo(BackgroundWindowDebugInfo* out);
 
 }  // namespace api

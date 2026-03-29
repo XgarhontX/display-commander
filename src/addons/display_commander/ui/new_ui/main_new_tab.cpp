@@ -5457,7 +5457,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
-    // ADHD Multi-Monitor Mode controls
+    // Black curtain (game / other displays) controls
     DrawAdhdMultiMonitorControls(imgui);
 
     // Apply Changes button
@@ -10124,22 +10124,23 @@ static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::I
 
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
     CALL_GUARD(utils::get_now_ns());
-    // ADHD on game display is shown even with one monitor; Multi-Monitor Mode only when multiple monitors
+    // Black curtain (game display) is shown even with one monitor; other displays only when multiple monitors
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
     imgui.BeginGroup();
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
     if (CheckboxSetting(settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display,
-                        "ADHD on game display", imgui)) {
-        LogInfo("ADHD on game display %s",
+                        "Black curtain (game display)", imgui)) {
+        LogInfo("Black curtain (game display) %s",
                 settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue() ? "enabled"
                                                                                                     : "disabled");
     }
 
     if (hasMultipleMonitors) {
         imgui.SameLine();
-        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode", imgui)) {
-            LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
+        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "Black curtain (other displays)",
+                            imgui)) {
+            LogInfo("Black curtain (other displays) %s",
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
         }
     }
@@ -10150,8 +10151,8 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
         adhd_multi_monitor::api::GetBackgroundWindowDebugInfo(&info);
         char buf[384];
         int n = std::snprintf(buf, sizeof(buf),
-                              "ADHD on game display: black window on game's monitor.\n"
-                              "ADHD Multi-Monitor Mode: cover all other monitors.\n\n"
+                              "Black curtain (game display): black window on the game's monitor.\n"
+                              "Black curtain (other displays): covers all other monitors.\n\n"
                               "Background window: HWND %p, %s\n"
                               "Position: (%d, %d), Size: %d x %d\n"
                               "Visible: %s",
@@ -10161,8 +10162,8 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltipEx("%s", buf);
         } else {
             imgui.SetTooltipEx(
-                "ADHD on game display: black window on game's monitor.\n"
-                "ADHD Multi-Monitor Mode: cover all other monitors.");
+                "Black curtain (game display): black window on the game's monitor.\n"
+                "Black curtain (other displays): covers all other monitors.");
         }
     }
 }

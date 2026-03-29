@@ -47,7 +47,7 @@ bool AdhdMultiMonitorManager::Initialize() {
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     if (!RegisterClassExW(&wc)) {
-        LogError("Failed to register ADHD background window class");
+        LogError("Failed to register black curtain background window class");
         return false;
     }
 
@@ -166,7 +166,7 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
                     SetWindowLongPtrW(hwnd, GWL_EXSTYLE,
                                      GetWindowLongPtrW(hwnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
                 } else {
-                    LogError("Failed to create ADHD background window on pump thread");
+                    LogError("Failed to create black curtain background window on pump thread");
                 }
             }
             hwnd = background_hwnd_.load();

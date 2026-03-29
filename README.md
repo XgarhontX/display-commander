@@ -29,7 +29,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Window mode**: Borderless windowed (aspect ratio or explicit width/height), borderless fullscreen, or no changes
 - **Monitor targeting**: Choose which monitor to use; view current display info and refresh rate
-- **Background black curtain**: Fill unused screen space behind a smaller game window (ADHD multi-monitor mode)
+- **Black curtain**: Optional full-screen black layers on the game monitor and/or other monitors (windowed games, multi-monitor)
 - **Alignment**: Snap window to corners or center
 - **Window controls**: Minimize, restore, maximize (applied on a background thread to avoid crashes)
 - **Display hotkeys**: Move to previous/next monitor (Win+Left / Win+Right), move to primary/secondary (numpad +/-), minimize/restore (Win+Down / Win+Up)
@@ -71,7 +71,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 ### Input & hotkeys
 
-- **Configurable hotkeys**: Full Hotkeys tab — window/display, volume, brightness, ADHD mode, independent window toggle, etc.
+- **Configurable hotkeys**: Full Hotkeys tab — window/display, volume, brightness, black curtain (other displays), independent window toggle, etc.
 - **XInput**: Controller support and hooks for remapping / compatibility
 - **Windows.Gaming.Input**: Option to suppress WGI so games use XInput (helps with continue-rendering-in-background)
 - **Input remapping**: Controller remapping and related presets

@@ -29,7 +29,7 @@ class MainTabSettings {
     ui::new_ui::ComboSetting window_aspect_width;
     ui::new_ui::ComboSetting alignment;
 
-    // ADHD Multi-Monitor Mode Settings
+    // Black curtain settings (game display / other displays); persisted keys keep adhd_* names
     ui::new_ui::BoolSetting adhd_single_monitor_enabled_for_game_display;
     ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
 

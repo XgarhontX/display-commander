@@ -1193,12 +1193,12 @@ void InputRemapper::execute_action(const std::string& action_name) {
             LogError("InputRemapper::execute_action() - Failed to decrease system volume");
         }
     } else if (action_name == "adhd toggle" || action_name == "adhd multi-monitor toggle") {
-        // Toggle ADHD Multi-Monitor Mode
+        // Toggle black curtain on other displays (same setting as Main tab second checkbox / hotkey)
         bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
         bool new_state = !current_state;
         settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
-        trigger_action_notification("ADHD Multi-Monitor Mode " + std::string(new_state ? "On" : "Off"));
-        LogInfo("InputRemapper::execute_action() - ADHD Multi-Monitor Mode %s via action",
+        trigger_action_notification("Black curtain (other displays) " + std::string(new_state ? "On" : "Off"));
+        LogInfo("InputRemapper::execute_action() - Black curtain (other displays) %s via action",
                 new_state ? "enabled" : "disabled");
     } else if (action_name == "stopwatch toggle" || action_name == "stopwatch start/pause") {
         // Toggle stopwatch (start/pause)

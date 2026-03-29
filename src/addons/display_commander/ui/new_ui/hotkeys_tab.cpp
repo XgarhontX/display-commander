@@ -339,7 +339,8 @@ void InitializeHotkeyDefinitions() {
              oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
-        {"adhd_toggle", "ADHD Multi-Monitor Mode", "ctrl shift d", "Toggle ADHD Multi-Monitor Mode",
+        {"adhd_toggle", "Black curtain (other displays)", "ctrl shift d",
+         "Toggle black curtain on other monitors (not the game display checkbox)",
          []() {
              bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
              bool new_state = !current_state;
@@ -347,7 +348,7 @@ void InitializeHotkeyDefinitions() {
              bool game_display = settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue();
              adhd_multi_monitor::api::SetEnabled(game_display, new_state);
              std::ostringstream oss;
-             oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via hotkey";
+             oss << "Black curtain (other displays) " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
         {"autoclick", "Auto-Click Toggle", "", "Toggle Auto-Click sequences (requires experimental features)",

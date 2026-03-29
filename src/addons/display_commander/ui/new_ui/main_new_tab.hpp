@@ -37,7 +37,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui);
 // Draw window controls section
 void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw ADHD Multi-Monitor Mode controls section
+// Draw black curtain (game / other displays) controls on Main tab
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw important information section (Flip State)
