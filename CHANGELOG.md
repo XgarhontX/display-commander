@@ -13,6 +13,11 @@ Feature protosal:
 
 
 
+## v0.13.41 (2026-03-29)
+
+- [new feature] [ui] [settings] **NVIDIA GPU utilization in performance overlay** - Optional **GPU util** under Performance Overlay → NVAPI stats shows GPU engine busy %% from `NvAPI_GPU_GetDynamicPstatesInfoEx` (driver ~1 s rolling average, first physical GPU). NVAPI calls are throttled (~150 ms) while the option is on.
+  Details: `show_overlay_nvapi_gpu_util`, `nvapi/gpu_dynamic_utilization.*`, `nvapi_loader` resolves `NvAPI_EnumPhysicalGPUs` / `NvAPI_GPU_GetDynamicPstatesInfoEx`.
+
 ## v0.13.40 (2026-03-29)
 
 - [ui] [hooks] **Reflex UI and NVAPI hooks on 32-bit D3D11/D3D12** - Added support for reflex injection in 32-bit games.

@@ -139,6 +139,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::BoolSetting show_cpu_fps;
+    /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
+    ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
     ui::new_ui::BoolSetting show_fg_mode;
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;

@@ -28,6 +28,7 @@
 #include "../../latency/reflex_provider.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
+#include "../../nvapi/gpu_dynamic_utilization.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/nvapi_init.hpp"
 #include "../../nvapi/nvidia_profile_search.hpp"
@@ -399,6 +400,18 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
+            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+    }
+    imgui.NextColumn();
+
+    bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
+    if (imgui.Checkbox("GPU util", &show_overlay_nvapi_gpu_util)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.SetValue(show_overlay_nvapi_gpu_util);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Shows NVIDIA GPU engine busy %% in the performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; "
+            "driver-reported ~1 s rolling average). Uses the first enumerated physical GPU. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
 
@@ -7660,6 +7673,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
+    bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
@@ -8346,6 +8360,37 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.Text("%.1f%% cpu busy (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
             } else {
                 imgui.Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
+            }
+        }
+    }
+
+    if (show_overlay_nvapi_gpu_util) {
+        nvapi::PollGpuDynamicUtilizationForOverlay();
+        unsigned gpu_pct = 0;
+        if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
+            const double raw = static_cast<double>(gpu_pct);
+            static double smoothed_nv_gpu_util = 0.0;
+            static double displayed_nv_gpu_util = 0.0;
+            static LONGLONG s_nv_gpu_util_last_display_ns = 0;
+            constexpr double k_nv_gpu_alpha = 0.1;
+            smoothed_nv_gpu_util =
+                (1.0 - k_nv_gpu_alpha) * smoothed_nv_gpu_util + k_nv_gpu_alpha * raw;
+            const LONGLONG now_ns_nv = utils::get_now_ns();
+            constexpr LONGLONG k_nv_gpu_display_interval_ns =
+                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+            if (now_ns_nv - s_nv_gpu_util_last_display_ns >= k_nv_gpu_display_interval_ns) {
+                s_nv_gpu_util_last_display_ns = now_ns_nv;
+                displayed_nv_gpu_util = smoothed_nv_gpu_util;
+            }
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("%.1f%% GPU (NV)", displayed_nv_gpu_util);
+            } else {
+                imgui.Text("%.1f%%", displayed_nv_gpu_util);
+            }
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltipEx(
+                    "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
+                    "first physical GPU).");
             }
         }
     }

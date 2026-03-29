@@ -20,6 +20,8 @@ static constexpr NvU32 ID_SYS_GetDriverAndBranchVersion = 0x2926aaad;
 static constexpr NvU32 ID_DISP_GetAdaptiveSyncData = 0xb73d1ee9;
 static constexpr NvU32 ID_DISP_GetDisplayIdByDisplayName = 0xae457190;
 static constexpr NvU32 ID_Disp_GetVRRInfo = 0xdf8fda57;
+static constexpr NvU32 ID_EnumPhysicalGPUs = 0xe5ac921f;
+static constexpr NvU32 ID_GPU_GetDynamicPstatesInfoEx = 0x60ded2ed;
 static constexpr NvU32 ID_DRS_CreateSession = 0x0694d52e;
 static constexpr NvU32 ID_DRS_DestroySession = 0xdad9cff8;
 static constexpr NvU32 ID_DRS_LoadSettings = 0x375dbd6b;
@@ -103,6 +105,9 @@ bool Load() {
     g_ptrs.DISP_GetDisplayIdByDisplayName =
         Query<NvAPI_DISP_GetDisplayIdByDisplayName_pfn>(query, ID_DISP_GetDisplayIdByDisplayName);
     g_ptrs.Disp_GetVRRInfo = Query<NvAPI_Disp_GetVRRInfo_pfn>(query, ID_Disp_GetVRRInfo);
+    g_ptrs.EnumPhysicalGPUs = Query<NvAPI_EnumPhysicalGPUs_pfn>(query, ID_EnumPhysicalGPUs);
+    g_ptrs.GPU_GetDynamicPstatesInfoEx =
+        Query<NvAPI_GPU_GetDynamicPstatesInfoEx_pfn>(query, ID_GPU_GetDynamicPstatesInfoEx);
     g_ptrs.DRS_CreateSession = Query<NvAPI_DRS_CreateSession_pfn>(query, ID_DRS_CreateSession);
     g_ptrs.DRS_DestroySession = Query<NvAPI_DRS_DestroySession_pfn>(query, ID_DRS_DestroySession);
     g_ptrs.DRS_LoadSettings = Query<NvAPI_DRS_LoadSettings_pfn>(query, ID_DRS_LoadSettings);
