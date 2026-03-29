@@ -5553,26 +5553,26 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                 }
             }
 
-            if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
+            if (ComboSettingWrapper(settings::g_mainTabSettings.buffer_count_override, "Buffer count", imgui,
                                     300.f)) {
                 s_restart_needed_vsync_tearing.store(true);
-                LogInfo("Backbuffer count override changed to %d",
-                        settings::g_mainTabSettings.backbuffer_count_override.GetValue());
+                LogInfo("Buffer count override changed to %d",
+                        settings::g_mainTabSettings.buffer_count_override.GetValue());
             }
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Current: %d", desc_ptr->back_buffer_count);
             if (imgui.IsItemHovered()) {
                 std::ostringstream tooltip;
                 tooltip
-                    << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
+                    << "Override swapchain buffer count at creation (requires restart). No override = game default.\n"
                     << "Current: " << desc_ptr->back_buffer_count
-                    << ". DXGI flip-model swap chains should use at least 3 back buffers.";
+                    << ". DXGI flip-model swap chains should use at least 3 buffers.";
                 imgui.SetTooltipEx("%s", tooltip.str().c_str());
             }
-            const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-            if (is_flip && (backbuffer_override == 1)) {
+            const int buffer_override = settings::g_mainTabSettings.buffer_count_override.GetValue();
+            if (is_flip && (buffer_override == 1)) {
                 imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_WARNING, "DXGI flip swapchain requires at least 2 backbuffers.");
+                imgui.TextColored(ui::colors::TEXT_WARNING, "DXGI flip swapchain requires at least 2 buffers.");
             }
         }
 
@@ -5650,14 +5650,14 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
     }
 
     imgui.SameLine();
-    if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui, 100.f)) {
+    if (ComboSettingWrapper(settings::g_mainTabSettings.buffer_count_override, "Buffer count", imgui, 100.f)) {
         s_restart_needed_vsync_tearing.store(true);
-        LogInfo("Backbuffer count override changed to %d",
-                settings::g_mainTabSettings.backbuffer_count_override.GetValue());
+        LogInfo("Buffer count override changed to %d",
+                settings::g_mainTabSettings.buffer_count_override.GetValue());
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Override swapchain backbuffer count at creation (requires restart). No override = game default. "
+            "Override swapchain buffer count at creation (requires restart). No override = game default. "
             "Applies when game creates swapchain.");
     }
 

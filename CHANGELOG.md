@@ -11,6 +11,10 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.36 (2026-03-28)
+
+- [ui] **Terminology** - Renamed the term "Back Buffer" to "Buffer" to avoid confusing terminology.
+
 ## v0.13.35 (2026-03-28)
 
 - [bugfix] [hooks] **Flip-chain upgrade: two back buffers, not three** - When enabling the experimental flip swap chain, the addon now raises the back buffer count only to **2** (the minimum flip model needs) instead of **3**, reducing extra VRAM and matching the usual DXGI flip requirement.

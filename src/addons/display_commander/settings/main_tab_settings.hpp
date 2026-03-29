@@ -82,8 +82,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting force_vsync_off;
     ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
-    /** 0 = No override (game default), 1–4 = force backbuffer count at swapchain creation. Requires restart. */
-    ui::new_ui::ComboSetting backbuffer_count_override;
+    /** 0 = No override (game default), 1–4 = force buffer count at swapchain creation. Requires restart. */
+    ui::new_ui::ComboSetting buffer_count_override;
     /** DXGI only: when game uses FLIP_SEQUENTIAL, upgrade to FLIP_DISCARD in OnCreateSwapchainCapture2. */
     ui::new_ui::BoolSetting force_flip_discard_upgrade;
 

@@ -509,13 +509,14 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "OnCreateSwapchainCapture - ";
             oss << "API: " << static_cast<int>(api) << ", ";
             oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
-            oss << "Back Buffers: " << desc.back_buffer_count << ", ";
+            // Warning: desc.back_buffer_count is the number of buffers, different meaning than what dxgi/vulkan/opengl use.
+            oss << "Buffers: " << desc.back_buffer_count << ", ";
             oss << "Present Mode: " << D3DSwapEffectToString(desc.present_mode) << ", ";
             oss << "Sync Interval: " << desc.sync_interval << ", ";
             oss << "Device Creation Flags: " << D3DPresentFlagsToString(desc.present_flags) << ", ";
-            oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
-            oss << "Back Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
-            oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage << ", ";
+            oss << "Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
+            oss << "Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
+            oss << "Buffer Usage: " << (long long)desc.back_buffer.usage << ", ";
             oss << "Multisample: " << desc.back_buffer.texture.samples << ", ";
             LogInfo(oss.str().c_str());
         }
@@ -528,12 +529,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Override backbuffer count if user selected 1–4
-        const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-        if (backbuffer_override >= 1 && backbuffer_override <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override)) {
-            LogInfo("D3D9: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override);
-            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override);
+        // Override buffer count if user selected 1–4
+        const int buffer_override = settings::g_mainTabSettings.buffer_count_override.GetValue();
+        if (buffer_override >= 1 && buffer_override <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override)) {
+            LogInfo("D3D9: Overriding buffer count from %u to %d", desc.back_buffer_count, buffer_override);
+            desc.back_buffer_count = static_cast<uint32_t>(buffer_override);
             modified = true;
         }
 
@@ -628,15 +629,15 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Override backbuffer count if user selected 1–4
-        int backbuffer_override_dxgi = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-        if (is_flip && (backbuffer_override_dxgi == 1)) {
-            backbuffer_override_dxgi = 0;
+        // Override buffer count if user selected 1–4
+        int buffer_override_dxgi = settings::g_mainTabSettings.buffer_count_override.GetValue();
+        if (is_flip && (buffer_override_dxgi == 1)) {
+            buffer_override_dxgi = 0;
         }
-        if (backbuffer_override_dxgi >= 1 && backbuffer_override_dxgi <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_dxgi)) {
-            LogInfo("Increasing back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_dxgi);
-            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_dxgi);
+        if (buffer_override_dxgi >= 1 && buffer_override_dxgi <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_dxgi)) {
+            LogInfo("Increasing buffer count from %u to %d", desc.back_buffer_count, buffer_override_dxgi);
+            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_dxgi);
             modified = true;
         }
 
@@ -666,7 +667,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             // Check if current present mode is NOT a flip model
 
             if (desc.back_buffer_count < 2) {
-                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 2", desc.back_buffer_count);
+                LogInfo("DXGI FLIP UPGRADE: Increasing buffer count from %u to 2", desc.back_buffer_count);
 
                 desc.back_buffer_count = 2;
                 modified = true;
@@ -705,7 +706,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
@@ -842,18 +843,18 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Override backbuffer count if user selected 1–4
-        const int backbuffer_override_gl = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-        if (backbuffer_override_gl >= 1 && backbuffer_override_gl <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_gl)) {
-            LogInfo("OpenGL: Overriding back buffer count from %u to %d", desc.back_buffer_count,
-                    backbuffer_override_gl);
-            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_gl);
+        // Override buffer count if user selected 1–4
+        const int buffer_override_gl = settings::g_mainTabSettings.buffer_count_override.GetValue();
+        if (buffer_override_gl >= 1 && buffer_override_gl <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_gl)) {
+            LogInfo("OpenGL: Overriding buffer count from %u to %d", desc.back_buffer_count,
+                    buffer_override_gl);
+            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_gl);
             modified = true;
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
@@ -923,18 +924,18 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Override backbuffer count if user selected 1–4
-        const int backbuffer_override_vk = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-        if (backbuffer_override_vk >= 1 && backbuffer_override_vk <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_vk)) {
-            LogInfo("Vulkan: Overriding back buffer count from %u to %d", desc.back_buffer_count,
-                    backbuffer_override_vk);
-            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_vk);
+        // Override buffer count if user selected 1–4
+        const int buffer_override_vk = settings::g_mainTabSettings.buffer_count_override.GetValue();
+        if (buffer_override_vk >= 1 && buffer_override_vk <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_vk)) {
+            LogInfo("Vulkan: Overriding buffer count from %u to %d", desc.back_buffer_count,
+                    buffer_override_vk);
+            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_vk);
             modified = true;
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
@@ -945,7 +946,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
                 // Log the format change
                 std::ostringstream format_oss;
-                format_oss << "Vulkan Backbuffer format override: " << static_cast<int>(original_format) << " -> "
+                format_oss << "Vulkan buffer format override: " << static_cast<int>(original_format) << " -> "
                            << static_cast<int>(target_format);
                 LogInfo("%s", format_oss.str().c_str());
             }

@@ -29,22 +29,22 @@ bool ApplyD3D9PresentParameterUpgrades(D3DPRESENT_PARAMETERS* pp, bool is_create
         modified = true;
     }
 
-    // Override back buffer count if user selected 1–4
-    const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
-    if (backbuffer_override >= 1 && backbuffer_override <= 4
-        && pp->BackBufferCount != static_cast<UINT>(backbuffer_override)) {
-        LogInfo("D3D9 (no-ReShade): Overriding back buffer count from %u to %d", pp->BackBufferCount, backbuffer_override);
-        pp->BackBufferCount = static_cast<UINT>(backbuffer_override);
+    // Override buffer count if user selected 1–4
+    const int buffer_override = settings::g_mainTabSettings.buffer_count_override.GetValue();
+    if (buffer_override >= 1 && buffer_override <= 4
+        && pp->BackBufferCount + 1 != static_cast<UINT>(buffer_override)) {
+        LogInfo("D3D9 (no-ReShade): Overriding buffer count from %u to %d", pp->BackBufferCount +1, buffer_override);
+        pp->BackBufferCount = static_cast<UINT>(buffer_override) - 1;
         modified = true;
     }
 
     // FLIPEX and VSync upgrades only for CreateDeviceEx (D3D9Ex)
     if (is_create_device_ex && settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()
         && pp->SwapEffect != D3DSWAPEFFECT_FLIPEX) {
-        if (pp->BackBufferCount < 3) {
-            LogInfo("D3D9 FLIPEX (no-ReShade): Increasing back buffer count from %u to 3 (required for FLIPEX)",
-                    pp->BackBufferCount);
-            pp->BackBufferCount = 3;
+        if (pp->BackBufferCount + 1 < 2) {
+            LogInfo("D3D9 FLIPEX (no-ReShade): Increasing buffer count from %u to 2 (required for FLIPEX)",
+                    pp->BackBufferCount + 1);
+            pp->BackBufferCount = 2 - 1;
             modified = true;
         }
         LogInfo("D3D9 FLIPEX (no-ReShade): Upgrading swap effect from %u to FLIPEX (5)", pp->SwapEffect);
