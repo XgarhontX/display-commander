@@ -13,6 +13,8 @@ Feature protosal:
 
 ## v0.13.38 (2026-03-29)
 
+- [ui] [settings] **NVIDIA Control as optional Main tab panel** - The **NVIDIA Control** block (Smooth Motion, RTX HDR, driver FPS limit, low latency, etc.) is no longer inside **Display Settings** on the Main tab. Enable it under **Advanced** → **Main tab optional panels** → **Show NVIDIA Control**. Order id `nvidia_control` (default before **DC folders**). The panel is drawn only when NVAPI initializes (NVIDIA GPU). The separate **NVIDIA Profile** tab (optional top-level tab) is unchanged.
+  Details: `show_main_tab_nvidia_control`, `MainTabOptionalSectionKind::NvidiaControl`, `DrawMainTabOptionalPanelNvidiaControl` in `main_new_tab.cpp`; `main_tab_settings.*`.
 - [ui] [settings] **Input Control as optional Main tab panel** - **Input Control** (input blocking, clip cursor, gamepad remapping toggle) is no longer always shown after the other optional panels. Turn it on under **Advanced** → **Main tab optional panels** → **Show Input Control**. It participates in **Panel order** with id `input_control` (default: before **DC folders**).
   Details: `show_main_tab_input_control`, `MainTabOptionalSectionKind::InputControl`, `DrawMainTabOptionalPanelInputControl` in `main_new_tab.cpp`; `main_tab_settings.*`.
 - [ui] **FPS limiter column alignment** - On the Main tab, **FPS Limiter Mode**, advanced **Reflex**, **FPS limiter preset**, and **ReShade runtime** use the same horizontal label column as the FPS Limit and Background FPS Limit rows (measured checkbox gutter; Dummy + SameLine). Inside the indented Advanced block, one ImGui indent level is subtracted so those controls still line up with the slider rows above.
