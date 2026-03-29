@@ -13,10 +13,14 @@ Feature protosal:
 
 
 
+## v0.13.42 (2026-03-29)
+
+- [cleanup] **NVAPI GPU util sampling on monitoring thread** - The performance overlay only sets `g_nvapi_gpu_util_request_frame_id` from `g_global_frame_id`; continuous monitoring runs `NvAPI_GPU_GetDynamicPstatesInfoEx` when the request is at most 100 frames old and at least 100 frames have passed since the last query.
+  Details: `globals.hpp` (`g_nvapi_gpu_util_request_frame_id`, `g_nvapi_gpu_util_last_query_frame_id`), `gpu_dynamic_utilization.*`, `continuous_monitoring.cpp`, `main_new_tab.cpp`.
+
 ## v0.13.41 (2026-03-29)
 
-- [new feature] [ui] [settings] **NVIDIA GPU utilization in performance overlay** - Optional **GPU util** under Performance Overlay → NVAPI stats shows GPU engine busy %% from `NvAPI_GPU_GetDynamicPstatesInfoEx` (driver ~1 s rolling average, first physical GPU). NVAPI calls are throttled (~150 ms) while the option is on.
-  Details: `show_overlay_nvapi_gpu_util`, `nvapi/gpu_dynamic_utilization.*`, `nvapi_loader` resolves `NvAPI_EnumPhysicalGPUs` / `NvAPI_GPU_GetDynamicPstatesInfoEx`.
+- [new feature] [ui] [settings] **NVIDIA GPU utilization in performance overlay** - Optional **GPU util** under Performance Overlay
 
 ## v0.13.40 (2026-03-29)
 

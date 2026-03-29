@@ -8365,7 +8365,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     if (show_overlay_nvapi_gpu_util) {
-        nvapi::PollGpuDynamicUtilizationForOverlay();
+        nvapi::RequestGpuDynamicUtilizationFromOverlay(true);
         unsigned gpu_pct = 0;
         if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
             const double raw = static_cast<double>(gpu_pct);

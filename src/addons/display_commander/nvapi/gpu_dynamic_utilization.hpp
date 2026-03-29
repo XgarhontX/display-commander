@@ -2,11 +2,13 @@
 
 namespace nvapi {
 
-// Throttled NVAPI sampling (~150 ms) for overlay use; cached values are atomic.
-// Call from the performance overlay when the option is enabled.
-void PollGpuDynamicUtilizationForOverlay();
+// Performance overlay: set request to current g_global_frame_id while enabled, or clear when disabled.
+void RequestGpuDynamicUtilizationFromOverlay(bool enabled);
 
-// Last good sample from PollGpuDynamicUtilizationForOverlay (0-100). Returns false if never sampled successfully.
+// Continuous monitoring: service overlay request (NVAPI) under frame-based freshness and spacing rules.
+void ProcessGpuDynamicUtilizationRequestInContinuousMonitoring();
+
+// Last good sample from Process... (0-100). Returns false if never sampled successfully.
 bool GetCachedGpuDynamicUtilizationPercent(unsigned& out_percent);
 
 }  // namespace nvapi

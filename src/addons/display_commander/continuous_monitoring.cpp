@@ -10,6 +10,7 @@
 #include "hooks/nvidia/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
+#include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/nvapi_init.hpp"
 #include "nvapi/nvapi_loader.hpp"
 #include "nvapi/reflex_manager.hpp"
@@ -839,6 +840,8 @@ void ContinuousMonitoringThread() {
 
             // Reset keyboard frame states for next frame
             display_commanderhooks::keyboard_tracker::ResetFrame();
+
+            nvapi::ProcessGpuDynamicUtilizationRequestInContinuousMonitoring();
         }
         g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 
