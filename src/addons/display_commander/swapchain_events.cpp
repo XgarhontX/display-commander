@@ -4,8 +4,6 @@
 #include "display/display_initial_state.hpp"
 #include "display/hdr_control.hpp"
 #include "globals.hpp"
-#include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
-#include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
@@ -224,20 +222,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     // Try to hook DX9 Present calls if this is a DX9 device
     // Get the underlying DX9 device from the ReShade device
     else if (api == reshade::api::device_api::d3d9) {
-        if (auto* device = swapchain->get_device()) {
-            IUnknown* iunknown = reinterpret_cast<IUnknown*>(device->get_native());
-            Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
-            if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
-                display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
-                if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device.Get())) {
-                    LogInfo("[hookToSwapChain] D3D9 Present hooks installed for device 0x%p", d3d9_device.Get());
-                    // Only install device vtable logging when we have Device9Ex and Present hooks;
-                    // on base IDirect3DDevice9 the device from get_native() can be a ReShade proxy
-                    // whose vtable layout may not match, causing crashes (e.g. ACCESS_VIOLATION in game).
-                    display_commanderhooks::d3d9::InstallD3D9DeviceVtableLogging(d3d9_device.Get());
-                }
-            }
-        }
     } else if (api == reshade::api::device_api::vulkan) {
         LogInfo("[hookToSwapChain] Vulkan API detected, not supported yet");
     } else {
@@ -1810,9 +1794,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_device()->get_native());
 
         Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
-        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
-            display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
-        }
         // Save DCDxgiSwapchainData for D3D9 to global (no IDXGISwapChain) so selected runtime can be compared.
         if (private_data.d3d9_device == nullptr) {
             private_data.dxgi_swapchain = nullptr;

@@ -24,7 +24,6 @@
 #include "../utils/pe_static_imports.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
-#include "d3d9/d3d9_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "input/dinput_hooks.hpp"
@@ -1823,15 +1822,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] PCLStats ETW hooks installed (advapi32.dll)");
         } else {
             LogInfo("[OnModuleLoaded] PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
-        }
-    }
-    // d3d9.dll – D3D9 hook state (device vtable hooks installed when ReShade gives us a device)
-    else if (lowerModuleName.find(L"d3d9.dll") != std::wstring::npos) {
-        LogInfo("[OnModuleLoaded] d3d9.dll: %ws", moduleName.c_str());
-        if (display_commanderhooks::d3d9::InstallDX9Hooks(hModule)) {
-            LogInfo("[OnModuleLoaded] D3D9 hooks state installed successfully");
-        } else {
-            LogInfo("[OnModuleLoaded] D3D9 hooks not installed (e.g. already installed or shutdown in progress)");
         }
     }
     // opengl32.dll – WGL / OpenGL present and context hooks

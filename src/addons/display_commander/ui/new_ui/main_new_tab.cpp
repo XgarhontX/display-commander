@@ -10,8 +10,6 @@
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/d3d9/d3d9_no_reshade_device_state.hpp"
-#include "../../hooks/d3d9/d3d9_present_hooks.hpp"
 #include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/nvidia/ngx_hooks.hpp"
@@ -2339,17 +2337,6 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
     }
 }
 
-static void DrawUpdatesAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
-    ui::colors::PushHeaderColors(&imgui);
-    const bool updates_addons_open = imgui.CollapsingHeader("Addons", ImGuiTreeNodeFlags_None);
-    ui::colors::PopCollapsingHeaderColors(&imgui);
-    if (updates_addons_open) {
-        imgui.Indent();
-        imgui.TextDisabled("TODO");
-        imgui.Unindent();
-    }
-}
-
 static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui,
                                       reshade::api::effect_runtime* runtime) {
     using namespace display_commander::utils;
@@ -2643,7 +2630,6 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 
     DrawUpdatesDisplayCommanderHeader(imgui);
     DrawUpdatesReshadeHeader(imgui, game_dir);
-    DrawUpdatesAddonsHeader(imgui);
 }
 
 static void DrawMainTabOptionalPanelDcFolders(display_commander::ui::IImGuiWrapper& imgui,
@@ -6110,137 +6096,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     imgui.Spacing();
 }
 
-// VSync/tearing/FLIP options when running without ReShade (e.g. D3D9 FLIPEX path from CreateDevice upgrade).
-static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD(utils::get_now_ns());
-    const std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
-    const bool has_dxgi = traffic_apis.find("DXGI") != std::string::npos;
-    const bool has_d3d9 = display_commanderhooks::d3d9::g_d3d9_present_hooks_installed.load();
-
-    if (has_dxgi) {
-        PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 100.f)) {
-            LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every frame; "
-                "1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no restart).");
-        }
-    } else {
-        bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-        if (imgui.Checkbox("Force VSync ON", &vs_on)) {
-            s_restart_needed_vsync_tearing.store(true);
-            if (vs_on) {
-                settings::g_mainTabSettings.force_vsync_off.SetValue(false);
-            }
-            settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-            LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Forces sync interval = 1 (requires restart).");
-        }
-        imgui.SameLine();
-
-        bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-        if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
-            s_restart_needed_vsync_tearing.store(true);
-            if (vs_off) {
-                settings::g_mainTabSettings.force_vsync_on.SetValue(false);
-            }
-            settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-            LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Forces sync interval = 0 (requires restart).");
-        }
-    }
-
-    if (has_dxgi) {
-        imgui.SameLine();
-        bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-        if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
-            settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
-        }
-    }
-
-    if (has_dxgi) {
-        imgui.SameLine();
-        bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
-        if (imgui.Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
-            settings::g_advancedTabSettings.enable_flip_chain.SetValue(enable_flip);
-            s_restart_needed_vsync_tearing.store(true);
-            LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
-                "This setting requires a game restart to take effect.\n"
-                "Only works with DirectX 10/11/12 (DXGI) games.");
-        }
-    }
-
-    if (has_d3d9) {
-        imgui.SameLine();
-        bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue();
-        if (imgui.Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
-            settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(enable_d9ex_with_flip);
-            LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled"
-                                          : "Enable D9EX with Flip Model disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("D3D9: use CreateDeviceEx + flip-model present (requires restart).");
-        }
-    }
-
-    // Last D3D9 (no-ReShade) device creation state
-    {
-        auto snap = display_commanderhooks::d3d9::g_last_d3d9_no_reshade_device_snapshot.load();
-        if (snap != nullptr) {
-            imgui.Spacing();
-            const char* api_str = snap->created_with_ex ? "CreateDeviceEx (D3D9Ex)" : "CreateDevice (D3D9)";
-            const char* swap_str = "?";
-            switch (snap->swap_effect) {
-                case 1:  swap_str = "DISCARD"; break;
-                case 2:  swap_str = "FLIP"; break;
-                case 3:  swap_str = "COPY"; break;
-                case 4:  swap_str = "OVERLAY"; break;
-                case 5:  swap_str = "FLIPEX"; break;
-                default: break;
-            }
-            const char* interval_str = "?";
-            if (snap->presentation_interval == 0) {
-                interval_str = "Default";
-            } else if (snap->presentation_interval == 0x80000000u) {
-                interval_str = "Immediate";
-            } else if (snap->presentation_interval >= 1 && snap->presentation_interval <= 4) {
-                interval_str = (snap->presentation_interval == 1) ? "VSync 1" : "VSync";
-            }
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Last D3D9 (no-ReShade): %s, %s, %u back buffer(s), %s, %s",
-                              api_str, swap_str, snap->back_buffer_count, interval_str,
-                              snap->windowed ? "windowed" : "fullscreen");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "State of the last D3D9 device created via our CreateDevice/CreateDeviceEx hooks (no-ReShade "
-                    "path).");
-            }
-        }
-    }
-
-    if (s_restart_needed_vsync_tearing.load()) {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");
-    }
-
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-}
-
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
@@ -6844,11 +6699,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (vsync_tearing_open) {
         imgui.Indent();
-        if ((g_reshade_module != nullptr)) {
-            DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
-        } else {
-            DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(imgui);
-        }
+        DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
 
         VSyncTearingTooltipContext tooltip_ctx;
         bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(imgui, &tooltip_ctx);

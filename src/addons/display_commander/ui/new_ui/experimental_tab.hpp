@@ -24,20 +24,8 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
 // Draw time slowdown controls section
 void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw D3D9 FLIPEX controls section
-void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw disable flip chain controls section
 void DrawDisableFlipChainControls();
-
-// Draw developer tools section
-void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw debug output hooks section
-void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw anisotropic filtering upgrade section
-void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui);
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

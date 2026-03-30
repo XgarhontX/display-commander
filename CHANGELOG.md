@@ -14,7 +14,18 @@ Feature protosal:
 
 ## v0.13.46 (2026-03-29)
 
+- [removal] [ui] **Main tab VSync & Tearing** - Removed `DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode` (traffic-based DXGI/D3D9 controls and “Last D3D9 (no-ReShade)” status). The section always uses `DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade` now.
+- [removal] [cleanup] **file_sha256** - Removed unused `utils/file_sha256.cpp` / `file_sha256.hpp` (`ComputeFileSha256` via BCrypt). Nothing in the addon referenced them after earlier standalone UI cleanup.
+- [removal] [hooks] [settings] [experimental] **D3D9 DXT/BC CreateTexture dimension fix** - Removed `D3D9FixCreateTextureDimensions` and all hook logic that rounded `CreateTexture` / `CreateVolumeTexture` / `CreateCubeTexture` sizes to multiples of 4 for compressed formats; removed the Experimental **Direct3D 9** UI block that toggled it. `UpgradePoolForDevice9Ex` (managed pool for D3D9Ex) is unchanged.
+- [removal] [ui] **Main tab DC folders** - Removed the **Addons** updates subsection (`DrawUpdatesAddonsHeader`), which only showed a TODO placeholder under ReShade/Display Commander headers. Add-on folder access remains on the Add-ons tab and the **Addons** button in the DC folders row.
+- [removal] [ui] [experimental] **Experimental tab** - Removed the **Anisotropic Filtering Upgrade** section (master enable and per-filter upgrades). `force_anisotropic_filtering` and related keys in `experimental_tab_settings` still apply if set in config; Main tab **Anisotropic Level** is unchanged.
+- [removal] [ui] [experimental] **Debug / Experimental tab** - Removed the **Debug Output Hooks** section (log-to-ReShade toggle, statistics, reset). Hooks and `debug_output_log_to_reshade` / `debug_output_show_stats` in config still apply.
+- [removal] [ui] [experimental] **Debug / Experimental tab** - Removed the **Developer Tools** section (link dependencies list, OnCreateSwapchain apply toggle, resolution spoof controls, debugger break / crash test / unload ReShade buttons). Related `experimental_tab_settings` keys still apply if set in config.
+- [removal] [ui] [experimental] **Experimental → Monitor Settings** - Removed the monitor / resolution / refresh **DrawMonitorSettings** UI (and the **Monitor Settings** sub-tab). The three persisted `BoolSetting`s (`AutoApplyResolution`, `AutoApplyRefresh`, `ApplyDisplaySettingsAtStart`) remain in `monitor_settings.*` for existing config and `main_entry` reset logic.
+- [ui] [experimental] **Experimental tab** - Removed the **Direct3D 9 FLIPEX Upgrade** block (FlipEx toggles, status text, and how-it-works copy). D3D9 FlipEx is still configurable from the Main tab (VSync & Tearing).
+- [cleanup] **DisplayCommander.log** - always rotate log.
 - [removal] [experimental] [settings] [ui] [hooks] **Removed unused code**.
+- [removal] **Removed boiii.exe mod** specific code -- It's no longer needed.
 
 ## v0.13.45 (2026-03-29)
 

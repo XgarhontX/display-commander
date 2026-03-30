@@ -1,10 +1,13 @@
 #include "display_commander_logger.hpp"
 #include "srwlock_wrapper.hpp"
+#include "timing.hpp"
 #include "../globals.hpp"
+
 #include <cstdarg>
+#include <atomic>
+#include <cstdio>
 #include <exception>
 #include <filesystem>
-#include <iomanip>
 #include <sstream>
 
 namespace {
@@ -14,6 +17,9 @@ const std::string kFlushSentinel("\x01", 1);
 
 // Max enqueued messages; when exceeded we drop the new message to avoid unbounded growth
 constexpr size_t kMaxQueueSize = 16384;
+
+// First FormatMessage (any thread) sets this via CAS; log lines show seconds since then (monotonic via get_now_ns).
+std::atomic<LONGLONG> g_log_epoch_ns{0};
 
 // Map logger::LogLevel (Debug=0, Info=1, Warning=2, Error=3) to globals::LogLevel (Error=1, Warning=2, Info=3, Debug=4).
 // Log when message is at or above min severity, i.e. when (globals) message level <= GetMinLogLevel().
@@ -168,7 +174,7 @@ bool DisplayCommanderLogger::OpenLogFile() {
         return true;  // Already open
     }
 
-    // Check if log rotation is needed (if file exists and is older than 8 hours)
+    // If a log file already exists, rotate it to .old before appending (every process start / open).
     if (ShouldRotateLog()) {
         RotateLog();
     }
@@ -201,19 +207,23 @@ void DisplayCommanderLogger::WriteToFile(const std::string& formatted_message) {
 }
 
 std::string DisplayCommanderLogger::FormatMessage(LogLevel level, const std::string& message) {
-    // Get current time
-    SYSTEMTIME time;
-    GetLocalTime(&time);
+    const LONGLONG now = utils::get_now_ns();
+    LONGLONG epoch = g_log_epoch_ns.load(std::memory_order_relaxed);
+    if (epoch == 0) {
+        LONGLONG expected = 0;
+        if (!g_log_epoch_ns.compare_exchange_strong(expected, now, std::memory_order_relaxed)) {
+            epoch = expected;
+        } else {
+            epoch = now;
+        }
+    }
+    const LONGLONG delta_ns = now >= epoch ? (now - epoch) : 0;
+    const double rel_sec = static_cast<double>(delta_ns) / static_cast<double>(utils::SEC_TO_NS);
+    char rel_buf[32];
+    (void)snprintf(rel_buf, sizeof(rel_buf), "[+%.3f]", rel_sec);
 
-    // Format timestamp (matching ReShade format: HH:MM:SS:mmm)
-    std::ostringstream timestamp;
-    timestamp << std::setfill('0') << std::setw(2) << time.wHour << ":" << std::setw(2) << time.wMinute << ":"
-              << std::setw(2) << time.wSecond << ":" << std::setw(3) << time.wMilliseconds;
-
-    // Format the complete log line (matching ReShade format)
     std::ostringstream log_line;
-    log_line << timestamp.str() << " [" << std::setw(5) << GetCurrentThreadId() << "] | " << std::setw(5)
-             << GetLogLevelString(level) << " | " << message;
+    log_line << rel_buf << " | " << GetLogLevelString(level) << " | " << message;
 
     std::string line_string = log_line.str();
 
@@ -253,49 +263,11 @@ std::string DisplayCommanderLogger::GetLogLevelString(LogLevel level) {
 }
 
 bool DisplayCommanderLogger::ShouldRotateLog() {
-    // Check if log file exists
-    if (!std::filesystem::exists(log_path_)) {
-        return false;  // No file to rotate
-    }
-
-    try {
-        // Use Windows API to get file last write time
-        HANDLE hFile = CreateFileA(log_path_.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (hFile == INVALID_HANDLE_VALUE) {
-            return false;  // Can't open file, don't rotate
-        }
-
-        FILETIME ftLastWrite;
-        if (!GetFileTime(hFile, nullptr, nullptr, &ftLastWrite)) {
-            CloseHandle(hFile);
-            return false;  // Can't get file time, don't rotate
-        }
-        CloseHandle(hFile);
-
-        // Get current time
-        FILETIME ftNow;
-        GetSystemTimeAsFileTime(&ftNow);
-
-        // Convert FILETIME to ULARGE_INTEGER for comparison
-        ULARGE_INTEGER ulLastWrite, ulNow;
-        ulLastWrite.LowPart = ftLastWrite.dwLowDateTime;
-        ulLastWrite.HighPart = ftLastWrite.dwHighDateTime;
-        ulNow.LowPart = ftNow.dwLowDateTime;
-        ulNow.HighPart = ftNow.dwHighDateTime;
-
-        // Calculate difference in 100-nanosecond intervals
-        ULONGLONG diff = ulNow.QuadPart - ulLastWrite.QuadPart;
-
-        // 8 hours = 8 * 60 * 60 * 10000000 (100-nanosecond intervals)
-        constexpr ULONGLONG rotation_threshold = 8ULL * 60 * 60 * 10000000;
-
-        // Rotate if file is older than 8 hours
-        return diff >= rotation_threshold;
-    } catch (const std::exception&) {
-        // If we can't check the time, don't rotate
+    if (log_path_.empty()) {
         return false;
     }
+    std::error_code ec;
+    return std::filesystem::is_regular_file(log_path_, ec) && !ec;
 }
 
 void DisplayCommanderLogger::RotateLog() {
