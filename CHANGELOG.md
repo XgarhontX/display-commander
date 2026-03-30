@@ -44,6 +44,16 @@ Feature protosal:
   Details: `scripts/run-clang-tidy-unused.sh` now supports `--fail-on-warning <n>` and JSON summary metadata (mode, target/exclude regex, filter state, checks, jobs, UTC timestamp).
 - [cleanup] **Added generated/suppressed threshold gating** - CI can now gate separately on total generated and suppressed warnings, which is useful for proxy/vendor-heavy targets.
   Details: `scripts/run-clang-tidy-unused.sh` now supports `--fail-on-generated <n>` and `--fail-on-suppressed <n>`.
+- [cleanup] **Improved suppressed-reason parsing in summaries** - Extended summary now counts both `in <reason>` and `with <reason>` suppression phrases from clang-tidy output.
+  Details: `--summary-all-lines` now reports buckets like `non-user code` and `with check filters` when present.
+- [ui] [cleanup] **Removed Main tab audio VU strip block** - The per-channel output level strip (bars + labels + percentages) was removed from the Main tab audio section to simplify the panel.
+  Details: deleted the VU strip drawing block in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` (rendering section id `ui:tab:main_new:audio:vu_strip`).
+- [ui] [cleanup] **Main tab audio section cleanup follow-up** - Applied a follow-up simplification pass in the Main tab audio area to keep the UI lean after removing the VU strip.
+  Details: additional cleanup around the same audio block in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` with strict-unused checks kept clean for this file.
+- [ui] [cleanup] **Removed Focus/Restore window buttons** - The **Focus** and **Restore window** controls were removed to simplify the Main tab window-actions area.
+  Details: removed the related UI button draws from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+- [cleanup] **Added compact JSON output and git revision metadata** - JSON summaries can now be emitted in compact form for smaller CI artifacts, and include current revision for traceability.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--json-summary-compact` and writes `metadata.git_rev` when available.
 
 - [cleanup] [settings] **Added reusable clang-tidy runner script** - Added a helper script so you can run project-wide clang-tidy checks (including unused-declaration focused checks) with one command instead of retyping long arguments.
   Details: added `scripts/run-clang-tidy-unused.sh` with presets for `unused` and `all`, plus options for build directory, jobs, target regex, and optional output log file.

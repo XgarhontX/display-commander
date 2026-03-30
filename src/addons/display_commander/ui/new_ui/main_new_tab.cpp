@@ -6383,55 +6383,6 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    g_rendering_ui_section.store("ui:tab:main_new:audio:vu_strip", std::memory_order_release);
-    // Per-channel VU meter strip: graphical representation with labels (default render endpoint; mixed output)
-    if (effective_meter_count > 0 && effective_meter_count <= s_vu_smoothed.size()) {
-        const float bar_height = 288.0f;
-        const float bar_width = 72.0f;
-        const float gap = 24.0f;
-        const float label_height = imgui.GetTextLineHeight();
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Level (output)");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Per-channel peak level (default output device, mixed).");
-        }
-        auto draw_list = imgui.GetWindowDrawList();
-        const ImVec2 cursor = imgui.GetCursorScreenPos();
-        const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
-        if (draw_list != nullptr) {
-            for (unsigned int i = 0; i < effective_meter_count; ++i) {
-                const float level = (std::min)(1.0f, s_vu_smoothed[i]);
-                const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
-                const ImVec2 bg_min(x, cursor.y);
-                const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
-                const float fill_h = level * bar_height;
-                const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
-                const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
-                draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
-                draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
-                draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
-            }
-        }
-        imgui.Dummy(ImVec2(total_width, bar_height));
-        // Channel labels and raw values centered under each bar
-        const float label_y = cursor.y + bar_height + 2.0f;
-        const float line_height = imgui.GetTextLineHeightWithSpacing();
-        for (unsigned int i = 0; i < effective_meter_count; ++i) {
-            const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
-            const float bar_center_x = cursor.x + (static_cast<float>(i) * (bar_width + gap)) + (bar_width * 0.5f);
-            const float label_w = imgui.CalcTextSize(ch_label).x;
-            imgui.SetCursorScreenPos(ImVec2(bar_center_x - (label_w * 0.5f), label_y));
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
-            const float level = (std::min)(1.0f, s_vu_smoothed[i]);
-            char raw_buf[32];
-            (void)std::snprintf(raw_buf, sizeof(raw_buf), "%.1f%%", level * 100.0f);
-            const float raw_w = imgui.CalcTextSize(raw_buf).x;
-            imgui.SetCursorScreenPos(ImVec2(bar_center_x - (raw_w * 0.5f), label_y + label_height + 2.0f));
-            imgui.TextColored(ui::colors::TEXT_SUBTLE, "%s", raw_buf);
-        }
-        imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + label_height + 2.0f + line_height));
-        imgui.Dummy(ImVec2(total_width, label_height + 2.0f + line_height));
-    }
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg", std::memory_order_release);
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = settings::g_mainTabSettings.mute_in_background.GetValue();
@@ -6618,22 +6569,6 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx("Minimize the current game window.");
     }
 
-    imgui.SameLine();
-
-    // Focus Window Button (restore if minimized, then bring to foreground)
-    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
-    if (imgui.Button(ICON_FK_OK " Focus")) {
-        HWND focus_hwnd = g_last_swapchain_hwnd.load();
-        std::thread([focus_hwnd]() {
-            LogDebug("Focus button pressed (bg thread)");
-            ShowWindow(focus_hwnd, SW_RESTORE);
-            SetForegroundWindow(focus_hwnd);
-        }).detach();
-    }
-    imgui.PopStyleColor();
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Focus the game window. Restores the window if minimized.");
-    }
 
     imgui.SameLine();
 
@@ -6727,22 +6662,6 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
         } else {
             imgui.SetTooltipEx("Open DisplayCommander.ini (config path not available).");
         }
-    }
-
-    imgui.SameLine();
-
-    // Restore Window Button
-    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
-    if (imgui.Button(ICON_FK_UNDO " Restore Window")) {
-        std::thread([hwnd]() {
-            LogDebug("Restore Window button pressed (bg thread)");
-            ShowWindow(hwnd, SW_RESTORE);
-            display_commanderhooks::SendFakeActivationMessages(hwnd);
-        }).detach();
-    }
-    imgui.PopStyleColor();
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Restore the minimized game window.");
     }
 
     imgui.SameLine();
