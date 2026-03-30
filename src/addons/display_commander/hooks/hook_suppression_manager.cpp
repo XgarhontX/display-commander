@@ -132,7 +132,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             }
 
             if (!current_value) {
-                LogInfo("To suppress %s hooks, set %s=1 in [%s] section of DisplayCommander.toml",
+                LogInfo("To suppress %s hooks, set %s=1 in [%s] section of DisplayCommander.ini",
                         GetHookTypeName(hookType).c_str(), setting->GetKey().c_str(), setting->GetSection().c_str());
             }
             logged_hook_types.insert(hookType);

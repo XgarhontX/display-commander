@@ -58,7 +58,6 @@ target_include_directories(zzz_display_commander SYSTEM PRIVATE
   $<BUILD_INTERFACE:${_dc_repo_root}/external/nvapi>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/minhook/include>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/vulkan-headers/include>
-  $<BUILD_INTERFACE:${_dc_repo_root}/external/tomlplusplus/include> # 100kb
 )
 if(MSVC)
   # Single /arch flag: MSVC does not allow multiple /arch options (x86 build was failing with /arch:SSE2 /arch:AVX /arch:AVX2).

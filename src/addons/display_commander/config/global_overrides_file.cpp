@@ -20,7 +20,7 @@ bool g_global_overrides_loaded = false;
 const char* const GLOBAL_OVERRIDES_TEMPLATE = R"(# Display Commander — Global overrides
 # Location: %LocalAppData%\Programs\Display_Commander\global_overrides.toml
 #
-# Same format as default_settings.toml, but values here override the game's DisplayCommander.toml
+# Same format as default_settings.toml, but values here override the game's DisplayCommander.ini
 # even when the game config already has the key. Use keys that match what they override.
 #
 # [DisplayCommander]

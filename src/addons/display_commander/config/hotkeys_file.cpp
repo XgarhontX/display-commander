@@ -1,6 +1,4 @@
 
-#include <toml++/toml.hpp>
-
 #include "hotkeys_file.hpp"
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
@@ -118,43 +116,53 @@ void TryMigrateFromGameIni() {
         return;
     }
 
-    // Try .toml (current format)
-    if (std::filesystem::exists(toml_path)) {
-        try {
-#if TOML_EXCEPTIONS
-            toml::table tbl = toml::parse_file(toml_path.string());
-#else
-            auto pr = toml::parse_file(toml_path.string());
-            if (!pr) {
-                // ignore parse errors
-            } else {
-            toml::table tbl = std::move(pr).table();
-#endif
-            auto* dc = tbl.get("DisplayCommander");
-            if (dc && dc->is_table()) {
-                std::map<std::string, std::string> kv_map;
-                for (auto&& [k, v] : *dc->as_table()) {
-                    std::string key = std::string(k.str());
-                    if (!v.is_value()) continue;
-                    std::string val;
-                    if (v.is_string()) val = std::string(v.as_string()->get());
-                    else if (v.is_integer()) val = std::to_string(v.as_integer()->get());
-                    else if (v.is_boolean()) val = v.as_boolean()->get() ? "1" : "0";
-                    else continue;
-                    kv_map[key] = val;
-                }
-                int migrated = MigrateHotkeyKeysFromMap(kv_map);
-                if (migrated > 0) {
-                    LogInfo("Hotkeys: migrated %d keys from %s to hotkeys.toml (shared)", migrated, toml_path.string().c_str());
-                    SaveHotkeysFile();
-                }
-            }
-#if !TOML_EXCEPTIONS
-            }
-#endif
-        } catch (const toml::parse_error&) {
-            // Ignore parse errors
+    // Try .toml (old/current formats were simple [section] + key = "value" lines).
+    if (!std::filesystem::exists(toml_path)) return;
+
+    std::ifstream file(toml_path);
+    if (!file.is_open()) return;
+
+    bool in_display_commander = false;
+    std::map<std::string, std::string> kv_map;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        line = line.substr(start);
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+
+        if (line.front() == '[' && line.back() == ']') {
+            std::string section = line.substr(1, line.size() - 2);
+            in_display_commander = (section == "DisplayCommander");
+            continue;
         }
+
+        if (!in_display_commander) continue;
+
+        size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+
+        std::string k = line.substr(0, eq);
+        std::string v = line.substr(eq + 1);
+        k.erase(0, k.find_first_not_of(" \t"));
+        k.erase(k.find_last_not_of(" \t") + 1);
+        v.erase(0, v.find_first_not_of(" \t"));
+        v.erase(v.find_last_not_of(" \t") + 1);
+
+        if (v.size() >= 2
+            && ((v.front() == '"' && v.back() == '"') || (v.front() == '\'' && v.back() == '\''))) {
+            v = v.substr(1, v.size() - 2);
+        }
+
+        kv_map[k] = v;
+    }
+
+    int migrated = MigrateHotkeyKeysFromMap(kv_map);
+    if (migrated > 0) {
+        LogInfo("Hotkeys: migrated %d keys from %s to hotkeys.toml (shared)", migrated, toml_path.string().c_str());
+        SaveHotkeysFile();
     }
 }
 

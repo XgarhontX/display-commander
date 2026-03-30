@@ -36,7 +36,7 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 
 // Hook detour functions
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -48,7 +48,7 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
 }
 
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -61,7 +61,7 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
 
 LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -74,7 +74,7 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
 
 LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -88,7 +88,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
 // SetWindowPos_Detour function moved to api_hooks.cpp to avoid duplicate hook creation
 
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {

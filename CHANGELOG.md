@@ -16,11 +16,19 @@ Feature protosal:
 
 - [removal] [cleanup] [hooks] [ui] **Hook statistics counters removed from XInput/DirectInput/Windowing paths** - Display Commander no longer collects and displays per-hook total/unsuppressed counters for these hooks, reducing internal bookkeeping while keeping hook behavior unchanged.
   Details: removed hook-stat counter updates from `hooks/input/xinput_hooks.cpp`, `hooks/input/dinput_hooks.cpp`, `hooks/windows_hooks/api_hooks.cpp`, and `hooks/system/display_settings_hooks.cpp`; removed the XInput hook statistics block from `widgets/xinput_widget/xinput_widget.cpp`.
+- [removal] [cleanup] [ui] **SDR content brightness (Windows) implementation removed** - Removed the internal Windows SDR white-level adjustment implementation (dwmapi ordinal hook). This removes the feature wiring while keeping the rest of the display UI intact.
+  Details: deleted `src/addons/display_commander/display/sdr_white_level.cpp` and removed the `display/sdr_white_level.hpp` include from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
 
 - [removal] [cleanup] [hooks] **Display Commander cross-load and multi-instance detection removed** - Display Commander now runs only as the currently loaded module and no longer chain-loads another DC copy from local/global version folders. This avoids hidden loader handoff paths and keeps startup behavior explicit.
   Details: removed loader-only global/local `LoadLibraryW(addon_path)` branches and removed early multiple-Display-Commander detection/refusal flow in `src/addons/display_commander/main_entry.cpp`.
 - [removal] [ui] **Main tab DC folders cleanup** - Removed the **Display Commander** and **Reshade** blocks from **DC folders** to simplify that panel and remove controls tied to now-removed cross/global loading paths.
   Details: removed `DrawUpdatesDisplayCommanderHeader` and `DrawUpdatesReshadeHeader` usage/implementations in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+- [cleanup] [settings] **Game default overrides: TOML parsing removed** - The embedded per-exe “game default overrides” are now hardcoded in code instead of being parsed from `game_default_overrides.toml`, keeping behavior identical while removing the parsing dependency.
+  Details: updated `src/addons/display_commander/config/default_overrides.cpp`; UI still reports the same active overrides and “Apply to config” persists them unchanged.
+- [removal] [cleanup] [settings] **TOML config backend removed (toml++ parsing eliminated)** - Display Commander no longer relies on `toml++` for its config parsing. `DisplayCommander.ini` is now the primary config storage again, and an existing `DisplayCommander.toml` is migrated once on first load.
+  Details: updated `src/addons/display_commander/config/display_commander_config.cpp`, removed `toml++` from hotkeys/chords one-time migrations (`config/hotkeys_file.cpp`, `config/chords_file.cpp`), and removed `external/tomlplusplus/include` from `src/addons/display_commander/CMakeLists.txt`.
+- [cleanup] [compatibility] **ReShade DLL load path simplified (local then global)** - ReShade is now loaded with a strict two-step fallback: prefer `Reshade64.dll` / `Reshade32.dll` next to the game exe, and only if missing fall back to the global `Display_Commander\Reshade` DLL.
+  Details: removed `ReshadeLocationType` + multi-location selection from `src/addons/display_commander/utils/reshade_load_path.hpp/.cpp`.
 
 ## v0.13.54 (2026-03-29)
 

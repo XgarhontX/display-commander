@@ -1,6 +1,4 @@
 
-#include <toml++/toml.hpp>
-
 #include "chords_file.hpp"
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
@@ -59,6 +57,7 @@ void TryMigrateFromGameConfig() {
         std::ifstream file(ini_path);
         if (!file.is_open()) return;
         bool in_display_commander = false;
+        bool in_input_remapping = false;
         std::string line;
         int migrated = 0;
         while (std::getline(file, line)) {
@@ -67,10 +66,12 @@ void TryMigrateFromGameConfig() {
             line.erase(line.find_last_not_of(" \t\r\n") + 1);
             if (line.empty() || line[0] == ';' || line[0] == '#') continue;
             if (line.front() == '[' && line.back() == ']') {
-                in_display_commander = (std::string(line.begin() + 1, line.end() - 1) == "DisplayCommander");
+                const std::string section(line.begin() + 1, line.end() - 1);
+                in_display_commander = (section == "DisplayCommander");
+                in_input_remapping = (section == "DisplayCommander.InputRemapping");
                 continue;
             }
-            if (!in_display_commander) continue;
+            if (!in_display_commander && !in_input_remapping) continue;
             size_t eq = line.find('=');
             if (eq == std::string::npos) continue;
             std::string k = line.substr(0, eq);
@@ -79,13 +80,24 @@ void TryMigrateFromGameConfig() {
             k.erase(k.find_last_not_of(" \t") + 1);
             v.erase(0, v.find_first_not_of(" \t"));
             v.erase(v.find_last_not_of(" \t") + 1);
-            std::string composite = "DisplayCommander." + k;
-            if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
-            if (k == "enable_default_chords" || k == "guide_button_solo_ui_toggle_only") {
-                v = NormalizeBoolValue(v);
+
+            if (in_display_commander) {
+                if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
+                if (k == "enable_default_chords" || k == "guide_button_solo_ui_toggle_only") {
+                    v = NormalizeBoolValue(v);
+                }
+                std::string composite = "DisplayCommander." + k;
+                g_chords_cache[composite] = v;
+                ++migrated;
+            } else if (in_input_remapping) {
+                if (!IsChordConfigKey("DisplayCommander.InputRemapping", k.c_str())) continue;
+                if (k == "Enabled" || k == "BlockInputOnHomeButton") {
+                    v = NormalizeBoolValue(v);
+                }
+                std::string composite = "DisplayCommander.InputRemapping." + k;
+                g_chords_cache[composite] = v;
+                ++migrated;
             }
-            g_chords_cache[composite] = v;
-            ++migrated;
         }
         if (migrated > 0) {
             LogInfo("Chords: migrated %d keys from %s to chords.toml (shared)", migrated, ini_path.string().c_str());
@@ -94,74 +106,70 @@ void TryMigrateFromGameConfig() {
         return;
     }
 
-    // Try .toml - DisplayCommander table and optionally InputRemapping
-    if (std::filesystem::exists(toml_path)) {
-        try {
-#if TOML_EXCEPTIONS
-            toml::table tbl = toml::parse_file(toml_path.string());
-#else
-            auto pr = toml::parse_file(toml_path.string());
-            if (!pr) {
-                // ignore parse errors (same as catch below when exceptions are used)
-            } else {
-            toml::table tbl = std::move(pr).table();
-#endif
-            int migrated = 0;
-            auto* dc = tbl.get("DisplayCommander");
-            if (dc && dc->is_table()) {
-                for (auto&& [k, v] : *dc->as_table()) {
-                    std::string key = std::string(k.str());
-                    std::string composite = "DisplayCommander." + key;
-                    if (!IsChordConfigKey("DisplayCommander", key.c_str())) continue;
-                    std::string val;
-                    if (v.is_string())
-                        val = std::string(v.as_string()->get());
-                    else if (v.is_integer())
-                        val = std::to_string(v.as_integer()->get());
-                    else if (v.is_boolean())
-                        val = v.as_boolean()->get() ? "1" : "0";
-                    else
-                        continue;
-                    if (key == "enable_default_chords" || key == "guide_button_solo_ui_toggle_only") {
-                        val = NormalizeBoolValue(val);
-                    }
-                    g_chords_cache[composite] = val;
-                    ++migrated;
-                }
-            }
-            auto* input_remap = tbl.get("DisplayCommander.InputRemapping");
-            if (input_remap && input_remap->is_table()) {
-                for (auto&& [k, v] : *input_remap->as_table()) {
-                    std::string key = std::string(k.str());
-                    std::string composite = "DisplayCommander.InputRemapping." + key;
-                    if (!IsChordConfigKey("DisplayCommander.InputRemapping", key.c_str())) continue;
-                    std::string val;
-                    if (v.is_string())
-                        val = std::string(v.as_string()->get());
-                    else if (v.is_integer())
-                        val = std::to_string(v.as_integer()->get());
-                    else if (v.is_boolean())
-                        val = v.as_boolean()->get() ? "1" : "0";
-                    else
-                        continue;
-                    if (key == "Enabled" || key == "BlockInputOnHomeButton") {
-                        val = NormalizeBoolValue(val);
-                    }
-                    g_chords_cache[composite] = val;
-                    ++migrated;
-                }
-            }
-            if (migrated > 0) {
-                LogInfo("Chords: migrated %d keys from %s to chords.toml (shared)", migrated,
-                        toml_path.string().c_str());
-                SaveChordsFile();
-            }
-#if !TOML_EXCEPTIONS
-            }
-#endif
-        } catch (const toml::parse_error&) {
-            // Ignore
+    // Try .toml (old/current formats were simple [section] + key = "value" lines).
+    if (!std::filesystem::exists(toml_path)) return;
+
+    std::ifstream file(toml_path);
+    if (!file.is_open()) return;
+
+    bool in_display_commander = false;
+    bool in_input_remapping = false;
+    std::string line;
+    int migrated = 0;
+
+    while (std::getline(file, line)) {
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start != std::string::npos) line = line.substr(start);
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+
+        if (line.front() == '[' && line.back() == ']') {
+            const std::string section(line.begin() + 1, line.end() - 1);
+            in_display_commander = (section == "DisplayCommander");
+            in_input_remapping = (section == "DisplayCommander.InputRemapping");
+            continue;
         }
+
+        if (!in_display_commander && !in_input_remapping) continue;
+
+        size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+
+        std::string k = line.substr(0, eq);
+        std::string v = line.substr(eq + 1);
+        k.erase(0, k.find_first_not_of(" \t"));
+        k.erase(k.find_last_not_of(" \t") + 1);
+        v.erase(0, v.find_first_not_of(" \t"));
+        v.erase(v.find_last_not_of(" \t") + 1);
+
+        if (v.size() >= 2
+            && ((v.front() == '"' && v.back() == '"') || (v.front() == '\'' && v.back() == '\''))) {
+            v = v.substr(1, v.size() - 2);
+        }
+
+        if (in_display_commander) {
+            if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
+            if (k == "enable_default_chords" || k == "guide_button_solo_ui_toggle_only") {
+                v = NormalizeBoolValue(v);
+            }
+            std::string composite = "DisplayCommander." + k;
+            g_chords_cache[composite] = v;
+            ++migrated;
+        } else if (in_input_remapping) {
+            if (!IsChordConfigKey("DisplayCommander.InputRemapping", k.c_str())) continue;
+            if (k == "Enabled" || k == "BlockInputOnHomeButton") {
+                v = NormalizeBoolValue(v);
+            }
+            std::string composite = "DisplayCommander.InputRemapping." + k;
+            g_chords_cache[composite] = v;
+            ++migrated;
+        }
+    }
+
+    if (migrated > 0) {
+        LogInfo("Chords: migrated %d keys from %s to chords.toml (shared)", migrated,
+                toml_path.string().c_str());
+        SaveChordsFile();
     }
 }
 

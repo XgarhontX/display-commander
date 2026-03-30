@@ -6,7 +6,6 @@
 #include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../display/hdr_control.hpp"
-#include "../../display/sdr_white_level.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
@@ -2118,7 +2117,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
     }
     if (imgui.IsItemHovered() && !config_path_row.empty()) {
-        imgui.SetTooltipEx("Open this game's DisplayCommander.toml in the default editor.\n%s",
+        imgui.SetTooltipEx("Open this game's DisplayCommander.ini in the default editor.\n%s",
                            config_path_row.c_str());
     }
     if (config_path_row.empty()) {
@@ -3644,7 +3643,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 std::string value_display = (e.value == "1") ? "On" : (e.value == "0") ? "Off" : e.value;
                 tooltip += "  - " + e.display_name + " = " + value_display + "\n";
             }
-            tooltip += "\nClick \"Apply to config\" to save these to DisplayCommander.toml.";
+            tooltip += "\nClick \"Apply to config\" to save these to DisplayCommander.ini.";
             imgui.SetTooltipEx("%s", tooltip.c_str());
         }
         imgui.SameLine();
@@ -3652,7 +3651,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             display_commander::config::ApplyDefaultOverridesToConfig();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Save the current override values to this game's DisplayCommander.toml.");
+            imgui.SetTooltipEx("Save the current override values to this game's DisplayCommander.ini.");
         }
         imgui.Spacing();
     }
@@ -7831,7 +7830,7 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.SameLine();
 
-    // Open DisplayCommander.toml (config) Button
+    // Open DisplayCommander.ini (config) Button
     imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
     if (imgui.Button(ICON_FK_FILE " Config")) {
         std::string config_path =
@@ -7839,13 +7838,13 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
         if (!config_path.empty()) {
             std::thread([config_path]() {
                 LogDebug("Open DisplayCommander.toml button pressed (bg thread)");
-                LogInfo("Opening DisplayCommander.toml: %s", config_path.c_str());
+                LogInfo("Opening DisplayCommander.ini: %s", config_path.c_str());
                 HINSTANCE result = ShellExecuteA(nullptr, "open", config_path.c_str(), nullptr, nullptr, SW_SHOW);
                 if (reinterpret_cast<intptr_t>(result) <= 32) {
-                    LogError("Failed to open DisplayCommander.toml: %s (Error: %ld)", config_path.c_str(),
+                    LogError("Failed to open DisplayCommander.ini: %s (Error: %ld)", config_path.c_str(),
                              reinterpret_cast<intptr_t>(result));
                 } else {
-                    LogInfo("Successfully opened DisplayCommander.toml: %s", config_path.c_str());
+                    LogInfo("Successfully opened DisplayCommander.ini: %s", config_path.c_str());
                 }
             }).detach();
         }
@@ -7858,7 +7857,7 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltipEx("Open DisplayCommander config in the default text editor.\nFull path: %s",
                                config_path.c_str());
         } else {
-            imgui.SetTooltipEx("Open DisplayCommander.toml (config path not available).");
+            imgui.SetTooltipEx("Open DisplayCommander.ini (config path not available).");
         }
     }
 

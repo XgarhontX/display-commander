@@ -1,6 +1,4 @@
 
-#include <toml++/toml.hpp>
-
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_commander_config.hpp"
 #include "chords_file.hpp"
@@ -26,158 +24,81 @@
 
 namespace display_commander::config {
 
-// Shared section representation for INI (migration) and TOML
+// Shared section representation for INI
 struct ConfigSection {
     std::string name;
     std::vector<std::pair<std::string, std::string>> key_values;
 };
 
-// Simple INI file parser used only for migration from .ini to .toml
+// Simple INI-style parser used for reading/writing DisplayCommander.ini.
+// Also tolerant enough to read the old DisplayCommander.toml (since it was stored as simple
+// [section] + key = "value" lines).
 class IniFile {
    public:
     bool LoadFromFile(const std::string& filepath) {
         std::ifstream file(filepath);
-        if (!file.is_open()) {
-            return false;
-        }
+        if (!file.is_open()) return false;
 
         sections_.clear();
         std::string line;
         ConfigSection* current_section = nullptr;
 
         while (std::getline(file, line)) {
+            // Remove leading/trailing whitespace
             line.erase(0, line.find_first_not_of(" \t\r\n"));
             line.erase(line.find_last_not_of(" \t\r\n") + 1);
 
-            if (line.empty() || line[0] == ';' || line[0] == '#') {
-                continue;
-            }
+            if (line.empty() || line[0] == ';' || line[0] == '#') continue;
 
             if (line[0] == '[' && line.back() == ']') {
                 std::string section_name = line.substr(1, line.length() - 2);
                 sections_.push_back({section_name, {}});
                 current_section = &sections_.back();
-            } else if (current_section != nullptr) {
-                size_t equal_pos = line.find('=');
-                if (equal_pos != std::string::npos) {
-                    std::string key = line.substr(0, equal_pos);
-                    std::string value = line.substr(equal_pos + 1);
-                    key.erase(0, key.find_first_not_of(" \t"));
-                    key.erase(key.find_last_not_of(" \t") + 1);
-                    value.erase(0, value.find_first_not_of(" \t"));
-                    value.erase(value.find_last_not_of(" \t") + 1);
-                    current_section->key_values.push_back({key, value});
-                }
+                continue;
             }
+
+            if (current_section == nullptr) continue;
+
+            size_t equal_pos = line.find('=');
+            if (equal_pos == std::string::npos) continue;
+
+            std::string key = line.substr(0, equal_pos);
+            std::string value = line.substr(equal_pos + 1);
+
+            // Remove leading/trailing whitespace from key/value
+            key.erase(0, key.find_first_not_of(" \t"));
+            key.erase(key.find_last_not_of(" \t") + 1);
+            value.erase(0, value.find_first_not_of(" \t"));
+            value.erase(value.find_last_not_of(" \t") + 1);
+
+            // DisplayCommander.toml stored everything as strings, so the values were often quoted.
+            if (value.size() >= 2
+                && ((value.front() == '"' && value.back() == '"') || (value.front() == '\'' && value.back() == '\''))) {
+                value = value.substr(1, value.size() - 2);
+            }
+
+            current_section->key_values.push_back({key, value});
         }
 
         return true;
     }
 
-    template <typename F>
-    void ForEachKeyValue(F&& fn) const {
-        for (const auto& s : sections_) {
-            for (const auto& kv : s.key_values) {
-                fn(s.name, kv.first, kv.second);
-            }
-        }
-    }
-
-   private:
-    std::vector<ConfigSection> sections_;
-};
-
-// TOML config file backend (primary storage)
-class TomlFile {
-   public:
-    static std::string NodeToString(const toml::node& node) {
-        if (node.is_string()) {
-            return std::string(node.as_string()->get());
-        }
-        if (node.is_integer()) {
-            return std::to_string(node.as_integer()->get());
-        }
-        if (node.is_floating_point()) {
-            return std::to_string(node.as_floating_point()->get());
-        }
-        if (node.is_boolean()) {
-            return node.as_boolean()->get() ? "1" : "0";
-        }
-        if (node.is_array()) {
-            std::string result;
-            const auto& arr = *node.as_array();
-            for (size_t i = 0; i < arr.size(); ++i) {
-                if (i > 0) result += '\0';
-                const auto& el = arr[i];
-                if (el.is_string()) {
-                    result += std::string(el.as_string()->get());
-                } else if (el.is_integer()) {
-                    result += std::to_string(el.as_integer()->get());
-                } else if (el.is_boolean()) {
-                    result += el.as_boolean()->get() ? "1" : "0";
-                }
-            }
-            return result;
-        }
-        return "";
-    }
-
-    bool LoadFromFile(const std::string& filepath) {
-        try {
-#if TOML_EXCEPTIONS
-            toml::table tbl = toml::parse_file(filepath);
-#else
-            auto pr = toml::parse_file(filepath);
-            if (!pr) {
-                return false;
-            }
-            toml::table tbl = std::move(pr).table();
-#endif
-            sections_.clear();
-
-            for (auto&& [k, v] : tbl) {
-                std::string section_name = std::string(k.str());
-                if (!v.is_table()) {
-                    continue;
-                }
-                ConfigSection sec;
-                sec.name = section_name;
-                for (auto&& [k2, v2] : *v.as_table()) {
-                    std::string key = std::string(k2.str());
-                    std::string value = NodeToString(v2);
-                    sec.key_values.push_back({key, value});
-                }
-                if (!sec.key_values.empty()) {
-                    sections_.push_back(std::move(sec));
-                }
-            }
-            return true;
-        } catch (const toml::parse_error& e) {
-            (void)e;
-            return false;
-        }
-    }
-
     bool SaveToFile(const std::string& filepath) {
         std::string temp_filepath = filepath + ".temp";
+        std::ofstream file(temp_filepath);
+        if (!file.is_open()) return false;
+
+        for (const auto& section : sections_) {
+            file << "[" << section.name << "]\n";
+            for (const auto& kv : section.key_values) {
+                file << kv.first << "=" << kv.second << "\n";
+            }
+            file << "\n";
+        }
+
+        file.close();
+
         try {
-            toml::table root;
-            for (const auto& section : sections_) {
-                toml::table sec_table;
-                for (const auto& kv : section.key_values) {
-                    // Store as string; TOML will quote if needed
-                    sec_table.insert_or_assign(kv.first, std::string(kv.second));
-                }
-                root.insert_or_assign(section.name, std::move(sec_table));
-            }
-
-            std::ofstream file(temp_filepath);
-            if (!file.is_open()) {
-                return false;
-            }
-            file << root;
-            file.close();
-
             std::filesystem::rename(temp_filepath, filepath);
             return true;
         } catch (const std::exception&) {
@@ -188,13 +109,22 @@ class TomlFile {
 
     bool GetValue(const std::string& section, const std::string& key, std::string& value) const {
         for (const auto& s : sections_) {
-            if (s.name == section) {
-                for (const auto& kv : s.key_values) {
-                    if (kv.first == key) {
-                        value = kv.second;
-                        return true;
-                    }
+            if (s.name != section) continue;
+            for (const auto& kv : s.key_values) {
+                if (kv.first != key) continue;
+                value = kv.second;
+
+                // Back-compat: older INI stored integer-ish device IDs, but current code expects the extended string IDs.
+                if ((key.find("device_id") != std::string::npos || key.find("display_device_id") != std::string::npos
+                     || key == "target_display")
+                    && !value.empty()
+                    && std::all_of(value.begin(), value.end(), ::isdigit)) {
+                    value.clear();
+                    // Remove the invalid value from the in-memory representation so it's not re-saved.
+                    const_cast<IniFile*>(this)->SetValue(section, key, "");
                 }
+
+                return true;
             }
         }
         return false;
@@ -202,16 +132,14 @@ class TomlFile {
 
     void SetValue(const std::string& section, const std::string& key, const std::string& value) {
         for (auto& s : sections_) {
-            if (s.name == section) {
-                for (auto& kv : s.key_values) {
-                    if (kv.first == key) {
-                        kv.second = value;
-                        return;
-                    }
-                }
-                s.key_values.push_back({key, value});
+            if (s.name != section) continue;
+            for (auto& kv : s.key_values) {
+                if (kv.first != key) continue;
+                kv.second = value;
                 return;
             }
+            s.key_values.push_back({key, value});
+            return;
         }
         sections_.push_back({section, {{key, value}}});
     }
@@ -219,17 +147,14 @@ class TomlFile {
     bool GetValue(const std::string& section, const std::string& key, std::vector<std::string>& values) const {
         values.clear();
         std::string value_str;
-        if (GetValue(section, key, value_str)) {
-            std::stringstream ss(value_str);
-            std::string item;
-            while (std::getline(ss, item, '\0')) {
-                if (!item.empty()) {
-                    values.push_back(item);
-                }
-            }
-            return !values.empty();
+        if (!GetValue(section, key, value_str)) return false;
+
+        std::stringstream ss(value_str);
+        std::string item;
+        while (std::getline(ss, item, '\0')) {
+            if (!item.empty()) values.push_back(item);
         }
-        return false;
+        return !values.empty();
     }
 
     void SetValue(const std::string& section, const std::string& key, const std::vector<std::string>& values) {
@@ -263,14 +188,14 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
         config_dir = std::filesystem::path(std::wstring(config_directory->data(), config_directory->size()));
     }
     if (config_dir.empty()) {
-        const std::string toml_path = GetConfigFilePath();
-        config_dir = std::filesystem::path(toml_path).parent_path();
+        const std::string ini_path = GetConfigFilePath();
+        config_dir = std::filesystem::path(ini_path).parent_path();
     }
 
     const std::string toml_path = (config_dir / "DisplayCommander.toml").string();
     const std::string ini_path = (config_dir / "DisplayCommander.ini").string();
-    config_path_ = toml_path;
-    config_file_ = std::make_unique<TomlFile>();
+    config_path_ = ini_path;
+    config_file_ = std::make_unique<IniFile>();
 
     // Initialize logger with DisplayCommander.log in the config directory
     std::string log_path = (config_dir / "DisplayCommander.log").string();
@@ -281,36 +206,27 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
 
     EnsureConfigFileExists();
 
-    // Prefer .toml; migrate from .ini if only .ini exists
-    const bool toml_exists = std::filesystem::exists(config_path_);
+    // Prefer .ini; migrate from old .toml if only .toml exists.
     const bool ini_exists = std::filesystem::exists(ini_path);
+    const bool toml_exists = std::filesystem::exists(toml_path);
 
-    if (toml_exists) {
+    if (ini_exists) {
         if (config_file_->LoadFromFile(config_path_)) {
             LogInfo("DisplayCommanderConfigManager: Loaded config from %s", config_path_.c_str());
         } else {
             LogInfo("DisplayCommanderConfigManager: Opened config file at %s (load failed, using empty)",
                     config_path_.c_str());
         }
-    } else if (ini_exists) {
-        IniFile ini;
-        if (ini.LoadFromFile(ini_path)) {
-            ini.ForEachKeyValue([this](const std::string& section, const std::string& key, const std::string& value) {
-                config_file_->SetValue(section, key, value);
-            });
-            if (config_file_->SaveToFile(config_path_)) {
-                std::error_code ec;
-                std::filesystem::remove(ini_path, ec);
-                LogInfo("DisplayCommanderConfigManager: Migrated config from %s to %s and removed .ini",
-                        ini_path.c_str(), config_path_.c_str());
-            } else {
-                LogInfo(
-                    "DisplayCommanderConfigManager: Migrated config from %s to memory; save to %s failed (will retry "
-                    "on next save)",
-                    ini_path.c_str(), config_path_.c_str());
-            }
+    } else if (toml_exists) {
+        if (config_file_->LoadFromFile(toml_path) && config_file_->SaveToFile(config_path_)) {
+            std::error_code ec;
+            std::filesystem::remove(toml_path, ec);
+            LogInfo("DisplayCommanderConfigManager: Migrated config from %s to %s and removed .toml",
+                    toml_path.c_str(), config_path_.c_str());
         } else {
-            LogInfo("DisplayCommanderConfigManager: Created new config file at %s", config_path_.c_str());
+            LogInfo("DisplayCommanderConfigManager: Migrated config from %s to memory; save to %s failed (will retry "
+                    "on next save)",
+                    toml_path.c_str(), config_path_.c_str());
         }
     } else {
         LogInfo("DisplayCommanderConfigManager: Created new config file at %s", config_path_.c_str());
@@ -588,16 +504,6 @@ void DisplayCommanderConfigManager::EnsureConfigFileExists() {
 }
 
 std::string DisplayCommanderConfigManager::GetConfigFilePath() {
-    char exe_path[MAX_PATH];
-    DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
-    if (path_length == 0) {
-        GetCurrentDirectoryA(MAX_PATH, exe_path);
-    }
-    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
-    return (exe_dir / "DisplayCommander.toml").string();
-}
-
-std::string DisplayCommanderConfigManager::GetConfigFilePathIni() {
     char exe_path[MAX_PATH];
     DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     if (path_length == 0) {

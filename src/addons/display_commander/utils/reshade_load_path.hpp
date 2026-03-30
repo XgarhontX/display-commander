@@ -6,41 +6,9 @@
 
 namespace display_commander::utils {
 
-// Location type for ReShade: Config (DC config dir), Local (game folder), Global (fixed base), or SpecificVersion (Dll\X.Y.Z).
-enum class ReshadeLocationType {
-    Config,          // DC config directory (DisplayCommander.toml location)
-    Local,           // game folder (Reshade32/64 in same folder as game exe)
-    Global,          // one fixed location: %LocalAppData%\...\Display_Commander\Reshade (default when no local)
-    SpecificVersion  // Reshade\Dll\X.Y.Z (versioned subfolders)
-};
-
-// One tracked ReShade location (directory containing Reshade64.dll / Reshade32.dll).
-struct ReshadeLocation {
-    ReshadeLocationType type;
-    std::string version;  // normalized X.Y.Z
-    std::filesystem::path directory;
-};
-
-// ReShade load config: single string ReshadeSelectedVersion.
-// "global" = load from base folder. "local" = game folder if present else global. "latest" = Dll\<highest>.
-// "X.Y.Z" = Dll\X.Y.Z. "no" = do not load ReShade.
-
-// Result of choosing one ReShade location from the list and settings.
-struct ChooseReshadeVersionResult {
-    std::filesystem::path directory;  // empty if "no" or no valid location
-    std::string fallback_selected;    // set when user chose X.Y.Z but we loaded another
-    std::string fallback_loaded;      // version actually used in that case
-};
-
-// Returns all tracked ReShade locations (Config + Local + Global + SpecificVersion). Search order: DC config dir, then exe dir, then global/base.
-std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& game_directory);
-
-// Picks one directory from locations based on selected_setting ("no" | "local" | "latest" | "global" | "X.Y.Z").
-ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocation>& locations,
-                                                const std::string& selected_setting);
-
-// Returns the directory that should contain Reshade64.dll / Reshade32.dll for the current config and game.
-// Empty path when ReShade load is disabled ("no"). Pass game_directory (e.g. exe parent path).
+// Returns the directory that should contain Reshade64.dll / Reshade32.dll.
+// Behavior: if ReShade is not loaded yet, try local (game_directory) first, then global
+// (%LocalAppData%\Programs\Display_Commander\Reshade). Empty path when load is disabled ("no").
 std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path& game_directory);
 
 // Overload for UI/callers without game context: uses empty game_directory (no Local entry).

@@ -28,8 +28,7 @@ static const char* const RESHADE_VERSIONS_FALLBACK[] = {"6.6.2", "6.7.3"};
 static const size_t RESHADE_VERSIONS_FALLBACK_COUNT =
     sizeof(RESHADE_VERSIONS_FALLBACK) / sizeof(RESHADE_VERSIONS_FALLBACK[0]);
 
-// When SpecificVersion is selected but that version is not installed, we load the highest available
-// version instead (see ChooseReshadeVersionResult.fallback_selected / fallback_loaded).
+// Offline version list (no network fetch). (Used for UI dropdowns only.)
 
 // Combined list: hardcoded versions only, sorted descending. Built once per app start.
 static std::vector<std::string> s_reshade_versions_combined;
@@ -49,38 +48,6 @@ static bool DirectoryHasReshadeDll(const std::filesystem::path& dir) {
 #endif
 }
 
-// Returns the version string (subdir name) of the highest available ReShade under base_dll (e.g. base/Dll),
-// or empty if none found. "Available" = subdir has the ReShade DLL for current bitness.
-static std::string GetHighestAvailableVersionInDllDir(const std::filesystem::path& base_dll) {
-    std::vector<std::string> available;
-    std::error_code ec;
-    if (!std::filesystem::exists(base_dll, ec) || !std::filesystem::is_directory(base_dll, ec)) {
-        return "";
-    }
-    for (const auto& entry : std::filesystem::directory_iterator(base_dll, ec)) {
-        if (ec) {
-            continue;
-        }
-        if (!entry.is_directory(ec)) {
-            continue;
-        }
-        std::string name = entry.path().filename().string();
-        if (name.empty() || name == "." || name == "..") {
-            continue;
-        }
-        if (DirectoryHasReshadeDll(entry.path())) {
-            available.push_back(name);
-        }
-    }
-    if (available.empty()) {
-        return "";
-    }
-    namespace vc = display_commander::utils::version_check;
-    std::sort(available.begin(), available.end(),
-              [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
-    return available.front();
-}
-
 static void EnsureReShadeVersionListFetched() {
     if (s_version_list_built.exchange(true)) {
         return;
@@ -98,7 +65,7 @@ static void EnsureReShadeVersionListFetched() {
 }  // namespace
 
 // Effective selected version: read KEY_SELECTED_VERSION; if empty, migrate from legacy KEY_LOAD_SOURCE.
-// Returns "no" | "local" | "latest" | "global" | "X.Y.Z". Empty config is migrated to "global".
+// Returns "no" or a non-"no" value (legacy values are kept for UI consistency).
 static std::string GetReshadeSelectedVersionEffective() {
     using namespace display_commander::config;
     auto& config = DisplayCommanderConfigManager::GetInstance();
@@ -119,219 +86,27 @@ static std::string GetReshadeSelectedVersionEffective() {
     return "global";
 }
 
-static std::string GetReshadeVersionInDirectoryNormalized(const std::filesystem::path& dir) {
-    if (dir.empty()) return "";
-    std::filesystem::path dll_path = dir / L"Reshade64.dll";
-    if (!std::filesystem::exists(dll_path)) return "";
-    std::string raw = ::GetDLLVersionString(dll_path.wstring());
-    if (raw.empty()) return "";
-    return display_commander::utils::version_check::NormalizeVersionToXyz(raw);
-}
-
-std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& game_directory) {
-    std::vector<ReshadeLocation> out;
-    namespace vc = display_commander::utils::version_check;
-
-    // Config: DC config directory (searched first, then exe dir)
-    auto dc_config = g_dc_config_directory.load(std::memory_order_acquire);
-    if (dc_config && !dc_config->empty()) {
-        std::filesystem::path config_path(*dc_config);
-        if (DirectoryHasReshadeDll(config_path)) {
-            ReshadeLocation loc;
-            loc.type = ReshadeLocationType::Config;
-            loc.version = GetReshadeVersionInDirectoryNormalized(config_path);
-            loc.directory = std::move(config_path);
-            out.push_back(std::move(loc));
-        }
-    }
-
-    const std::filesystem::path base = GetGlobalReshadeDirectory();
-
-    // Local: game folder (exe dir)
-    if (!game_directory.empty() && DirectoryHasReshadeDll(game_directory)) {
-        ReshadeLocation loc;
-        loc.type = ReshadeLocationType::Local;
-        loc.version = GetReshadeVersionInDirectoryNormalized(game_directory);
-        loc.directory = game_directory;
-        out.push_back(std::move(loc));
-    }
-
-    // Global and SpecificVersion require non-empty base
-    if (base.empty()) return out;
-
-    // Global: base folder
-    if (DirectoryHasReshadeDll(base)) {
-        ReshadeLocation loc;
-        loc.type = ReshadeLocationType::Global;
-        loc.version = GetReshadeVersionInDirectoryNormalized(base);
-        loc.directory = base;
-        out.push_back(std::move(loc));
-    }
-
-    // SpecificVersion: base/Dll/X.Y.Z
-    std::filesystem::path dll_base = base / L"Dll";
-    std::error_code ec;
-    if (std::filesystem::exists(dll_base, ec) && std::filesystem::is_directory(dll_base, ec)) {
-        for (const auto& entry : std::filesystem::directory_iterator(dll_base, ec)) {
-            if (ec) continue;
-            if (!entry.is_directory(ec)) continue;
-            std::string name = entry.path().filename().string();
-            if (name.empty() || name == "." || name == "..") continue;
-            if (DirectoryHasReshadeDll(entry.path())) {
-                ReshadeLocation loc;
-                loc.type = ReshadeLocationType::SpecificVersion;
-                loc.version = vc::NormalizeVersionToXyz(name);
-                loc.directory = entry.path();
-                out.push_back(std::move(loc));
-            }
-        }
-    }
-    return out;
-}
-
-ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocation>& locations,
-                                                const std::string& selected_setting) {
-    ChooseReshadeVersionResult result;
-    const std::string setting = selected_setting.empty() ? "global" : selected_setting;
-
-    if (setting == "no") {
-        return result;
-    }
-
-    namespace vc = display_commander::utils::version_check;
-    const std::filesystem::path base = GetGlobalReshadeDirectory();
-
-    auto by_version_desc = [](const ReshadeLocation& a, const ReshadeLocation& b) {
-        return vc::CompareVersions(a.version, b.version) > 0;
-    };
-
-    if (setting == "local") {
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Config) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Local) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Global) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        std::vector<ReshadeLocation> sorted = locations;
-        std::sort(sorted.begin(), sorted.end(), by_version_desc);
-        if (!sorted.empty()) {
-            result.directory = sorted.front().directory;
-        }
-        return result;
-    }
-
-    if (setting == "latest") {
-        std::vector<ReshadeLocation> sorted = locations;
-        std::sort(sorted.begin(), sorted.end(), by_version_desc);
-        if (!sorted.empty()) {
-            result.directory = sorted.front().directory;
-        }
-        return result;
-    }
-
-    if (setting == "global") {
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Config) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Global) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        // Fallback: no Global (base has no DLLs), use highest versioned location
-        std::vector<ReshadeLocation> sorted = locations;
-        std::sort(sorted.begin(), sorted.end(), by_version_desc);
-
-        // fallback to local
-        for (const auto& loc : locations) {
-            if (loc.type == ReshadeLocationType::Local) {
-                result.directory = loc.directory;
-                return result;
-            }
-        }
-        if (!sorted.empty()) {
-            result.fallback_selected = "global";
-            result.fallback_loaded = sorted.front().version;
-            result.directory = sorted.front().directory;
-        }
-        // If sorted.empty(), leave result.directory empty — do not use base when DLLs are not there
-        return result;
-    }
-
-    // Specific X.Y.Z
-    const std::string normalized = vc::NormalizeVersionToXyz(setting);
-    for (const auto& loc : locations) {
-        if (loc.type == ReshadeLocationType::SpecificVersion && loc.version == normalized) {
-            result.directory = loc.directory;
-            return result;
-        }
-    }
-    std::vector<ReshadeLocation> sorted = locations;
-    std::sort(sorted.begin(), sorted.end(), by_version_desc);
-    if (sorted.empty()) {
-        // No valid locations with DLLs — leave result.directory empty
-        return result;
-    }
-    result.fallback_selected = setting;
-    result.fallback_loaded = sorted.front().version;
-    result.directory = sorted.front().directory;
-    return result;
-}
-
-static const char* ReshadeLocationTypeToString(ReshadeLocationType t) {
-    switch (t) {
-        case ReshadeLocationType::Config:          return "Config";
-        case ReshadeLocationType::Local:           return "Local";
-        case ReshadeLocationType::Global:          return "Global";
-        case ReshadeLocationType::SpecificVersion: return "SpecificVersion";
-        default:                                   return "?";
-    }
-}
-
 std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path& game_directory) {
-    std::string selected = GetReshadeSelectedVersionEffective();
+    const std::string selected = GetReshadeSelectedVersionEffective();
     LogInfo("[reshade] selected = %s", selected.c_str());
-    if (selected == "no") {
-        return std::filesystem::path();
+    if (selected == "no") return std::filesystem::path();
+
+    // New simplified chain:
+    // 1) if Reshade64/32.dll exists next to the game exe (local), use it
+    // 2) else try the global base folder: %LocalAppData%\\Programs\\Display_Commander\\Reshade\\Reshade64/32.dll
+    if (!game_directory.empty() && DirectoryHasReshadeDll(game_directory)) {
+        LogInfo("[reshade] loading from local dir: %s", std::filesystem::absolute(game_directory).string().c_str());
+        return game_directory;
     }
-    if (game_directory.empty()) {
-        LogError("[reshade] game_directory is empty");
+
+    const std::filesystem::path base = GetGlobalReshadeDirectory();
+    if (!base.empty() && DirectoryHasReshadeDll(base)) {
+        LogInfo("[reshade] loading from global dir: %s", std::filesystem::absolute(base).string().c_str());
+        return base;
     }
-    std::vector<ReshadeLocation> locations = GetReshadeLocations(game_directory);
-    if (locations.empty()) {
-        LogInfo("[reshade] no ReShade locations found (global base has no DLLs, no local, no Dll\\X.Y.Z)");
-    }
-    for (size_t i = 0; i < locations.size(); ++i) {
-        const ReshadeLocation& loc = locations[i];
-        std::string dir_log = loc.directory.empty()
-                                  ? "(empty)"
-                                  : std::filesystem::absolute(loc.directory).string();
-        LogInfo("[reshade] location[%zu] type=%s version=%s dir=%s", i, ReshadeLocationTypeToString(loc.type),
-                loc.version.c_str(), dir_log.c_str());
-    }
-    ChooseReshadeVersionResult choose = ChooseReshadeVersion(locations, selected);
-    std::string chosen_dir_log = choose.directory.empty()
-                                     ? "(empty)"
-                                     : std::filesystem::absolute(choose.directory).string();
-    LogInfo("[reshade] chosen dir=%s fallback_selected=%s fallback_loaded=%s", chosen_dir_log.c_str(),
-            choose.fallback_selected.c_str(), choose.fallback_loaded.c_str());
-    return choose.directory;
+
+    LogInfo("[reshade] no local/global ReShade DLL found");
+    return std::filesystem::path();
 }
 
 std::filesystem::path GetReshadeDirectoryForLoading() { return GetReshadeDirectoryForLoading(std::filesystem::path()); }

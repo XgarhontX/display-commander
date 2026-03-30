@@ -20,7 +20,7 @@ bool g_default_settings_loaded = false;
 const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User default settings
 # Location: %LocalAppData%\Programs\Display_Commander\default_settings.toml
 
-# This file is optional. When a game's DisplayCommander.toml does not contain a setting,
+# This file is optional. When a game's DisplayCommander.ini does not contain a setting,
 # Display Commander can use the value from here as the default for that game.
 # Edit this file to set your preferred defaults for all games (they apply only when
 # the game config does not already have the key).

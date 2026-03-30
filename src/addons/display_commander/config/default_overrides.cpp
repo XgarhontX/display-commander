@@ -1,14 +1,11 @@
 
-
-#include <toml++/toml.hpp>
-
 // Source Code <Display Commander> // follow this order for includes in all files
-#include "../globals.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
 #include "default_overrides.hpp"
 #include "display_commander_config.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 
+// Libraries <standard C++>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
@@ -18,7 +15,10 @@
 #include <utility>
 #include <vector>
 
+// Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
+
+// Libraries <Windows>
 
 #undef what
 
@@ -26,20 +26,51 @@ namespace display_commander::config {
 
 namespace {
 
-constexpr int IDR_GAME_DEFAULT_OVERRIDES = 304;
-
 // exe_name_lower -> (section -> (key -> value))
 using OverrideMap = std::map<std::string, std::map<std::string, std::map<std::string, std::string>>>;
 
-OverrideMap g_override_map;
-bool g_loaded = false;
+const OverrideMap& GetOverrideMap() {
+    static const OverrideMap overrides = {
+        {"re2.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"re3.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"re7.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"re8.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"sekiro.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"eldenring.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"armoredcore6.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"hitman3.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+        {"devilmaycry5.exe",
+         {{"DisplayCommander",
+           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
+    };
+    return overrides;
+}
+
+std::atomic<bool> g_exe_name_initialized{false};
 std::string g_current_exe_lower;
+SRWLOCK g_exe_name_srwlock = SRWLOCK_INIT;
 // (section, key) pairs for which we returned an override during Load
 std::set<std::pair<std::string, std::string>> g_active_overrides;
 SRWLOCK g_srwlock = SRWLOCK_INIT;
 
 // Key -> human-readable name for UI tooltip
-static const std::map<std::string, std::string>& GetKeyDisplayNames() {
+const std::map<std::string, std::string>& GetKeyDisplayNames() {
     static const std::map<std::string, std::string> names = {
         {"ContinueRendering", "Continue Rendering in Background"},
         {"PreventMinimize", "Prevent Minimize"},
@@ -48,7 +79,7 @@ static const std::map<std::string, std::string>& GetKeyDisplayNames() {
         {"EnableFlipChain", "Enable Flip Chain"},
         {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
         {"AutoColorspace", "Auto color space"},
-        {"window_mode", "Window Mode"},
+        {"WindowMode", "Window Mode"},
     };
     return names;
 }
@@ -58,145 +89,26 @@ std::string ToLower(std::string s) {
     return s;
 }
 
-// "hitman3.exe.DisplayCommander" -> ("hitman3.exe", "DisplayCommander"). Section is after last dot.
-std::pair<std::string, std::string> SplitTableName(const std::string& table_name) {
-    size_t last_dot = table_name.rfind('.');
-    if (last_dot == std::string::npos) {
-        return {ToLower(table_name), ""};
-    }
-    std::string exe_part = table_name.substr(0, last_dot);
-    std::string section_part = table_name.substr(last_dot + 1);
-    return {ToLower(exe_part), section_part};
-}
-
-static std::string NodeToString(const toml::node& node) {
-    if (node.is_string()) return std::string(node.as_string()->get());
-    if (node.is_integer()) return std::to_string(node.as_integer()->get());
-    if (node.is_floating_point()) return std::to_string(node.as_floating_point()->get());
-    if (node.is_boolean()) return node.as_boolean()->get() ? "1" : "0";
-    return "";
-}
-
-// TOML parses [hitman3.exe.DisplayCommander] as nested tables: tbl["hitman3"]["exe"]["DisplayCommander"].
-// Recursively find leaf tables (tables that contain at least one non-table value) and add them by
-// joining path to "exe.section" and splitting on last dot.
-static void CollectLeafTables(const toml::table& tbl, std::vector<std::string>& path, OverrideMap& out_map) {
-    bool has_non_table = false;
-    for (auto&& [k, v] : tbl) {
-        if (!v.is_table()) {
-            has_non_table = true;
-            break;
-        }
-    }
-    if (has_non_table) {
-        std::string table_name;
-        for (size_t i = 0; i < path.size(); ++i) {
-            if (i > 0) table_name += '.';
-            table_name += path[i];
-        }
-        auto [exe_lower, section] = SplitTableName(table_name);
-        if (section.empty()) return;
-        auto& sec_map = out_map[exe_lower][section];
-        for (auto&& [k2, v2] : tbl) {
-            std::string key(k2.str());
-            std::string value = NodeToString(v2);
-            if (!value.empty()) sec_map[key] = value;
-        }
-        return;
-    }
-    for (auto&& [k, v] : tbl) {
-        if (v.is_table()) {
-            path.push_back(std::string(k.str()));
-            CollectLeafTables(*v.as_table(), path, out_map);
-            path.pop_back();
-        }
-    }
-}
-
-void LoadFromResource() {
-    if (g_hmodule == nullptr) {
-        static std::atomic<bool> s_warned{false};
-        if (!s_warned.exchange(true)) {
-            LogWarn("Game default overrides: g_hmodule is null, cannot load embedded resource");
-        }
-        return;
-    }
-    HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCEA(IDR_GAME_DEFAULT_OVERRIDES), RT_RCDATA);
-    if (hRes == nullptr) {
-        static std::atomic<bool> s_warned_not_found{false};
-        if (!s_warned_not_found.exchange(true)) {
-            LogWarn(
-                "Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is "
-                "embedded)",
-                IDR_GAME_DEFAULT_OVERRIDES);
-        }
-        return;
-    }
-    HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-    if (hLoaded == nullptr) {
-        static std::atomic<bool> s_warned_load_failed{false};
-        if (!s_warned_load_failed.exchange(true)) {
-            LogWarn("Game default overrides: LoadResource failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
-        }
-        return;
-    }
-    const void* pData = LockResource(hLoaded);
-    const DWORD size = SizeofResource(g_hmodule, hRes);
-    if (pData == nullptr || size == 0) {
-        static std::atomic<bool> s_warned_lock_failed{false};
-        if (!s_warned_lock_failed.exchange(true)) {
-            LogWarn("Game default overrides: LockResource/size failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
-        }
-        return;
-    }
-
-    std::string content(static_cast<const char*>(pData), size);
-    try {
-#if TOML_EXCEPTIONS
-        toml::table tbl = toml::parse(content);
-#else
-        auto pr = toml::parse(content);
-        if (!pr) {
-            static std::atomic<bool> s_warned_parse{false};
-            if (!s_warned_parse.exchange(true)) {
-                LogWarn("Game default overrides: parse error %s",
-                        std::string(pr.error().description()).c_str());
-            }
-            return;
-        }
-        toml::table tbl = std::move(pr).table();
-#endif
-        std::vector<std::string> path;
-        CollectLeafTables(tbl, path, g_override_map);
-        g_loaded = true;
-        LogInfo("Game default overrides: loaded from resource (%zu exe entries)", g_override_map.size());
-    } catch (const toml::parse_error& e) {
-        static std::atomic<bool> s_warned_parse{false};
-        if (!s_warned_parse.exchange(true)) {
-            LogWarn("Game default overrides: parse error %s", std::string(e.description()).c_str());
-        }
-        return;
-    }
-}
-
 void EnsureLoaded() {
-    if (g_loaded) return;
-    LoadFromResource();
+    if (g_exe_name_initialized.load(std::memory_order_acquire)) return;
+
+    utils::SRWLockExclusive lock(g_exe_name_srwlock);
+    if (g_exe_name_initialized.load(std::memory_order_relaxed)) return;
+
     g_current_exe_lower = GetCurrentExeNameLower();
-    // Log exe check and result only once per process to avoid log spam
-    static std::atomic<bool> s_logged_exe_check{false};
-    if (s_logged_exe_check.exchange(true)) return;
+
+    // Log exe check and result only once per process to avoid log spam.
     const std::string& exe = g_current_exe_lower;
     LogInfo("Game default overrides: checking against exe %.260s", exe.empty() ? "(unknown)" : exe.c_str());
-    if (g_loaded && !g_override_map.empty()) {
-        if (g_override_map.count(g_current_exe_lower)) {
-            LogInfo("Game default override found for %.260s", exe.c_str());
-        } else {
-            LogInfo("No game default override for %.260s", exe.c_str());
-        }
-    } else if (!g_loaded) {
-        LogInfo("No game default override for %.260s (resource not loaded)", exe.c_str());
+
+    const auto& override_map = GetOverrideMap();
+    if (!exe.empty() && override_map.count(exe)) {
+        LogInfo("Game default override found for %.260s", exe.c_str());
+    } else {
+        LogInfo("No game default override for %.260s", exe.empty() ? "(unknown)" : exe.c_str());
     }
+
+    g_exe_name_initialized.store(true, std::memory_order_release);
 }
 
 }  // namespace
@@ -215,9 +127,12 @@ std::string GetCurrentExeNameLower() {
 
 bool GetDefaultOverride(const char* section, const char* key, std::string& out_value) {
     EnsureLoaded();
-    if (!g_loaded || section == nullptr || key == nullptr) return false;
-    auto it_exe = g_override_map.find(g_current_exe_lower);
-    if (it_exe == g_override_map.end()) return false;
+    if (section == nullptr || key == nullptr) return false;
+    if (g_current_exe_lower.empty()) return false;
+
+    const auto& override_map = GetOverrideMap();
+    auto it_exe = override_map.find(g_current_exe_lower);
+    if (it_exe == override_map.end()) return false;
     auto it_sec = it_exe->second.find(section);
     if (it_sec == it_exe->second.end()) return false;
     auto it_key = it_sec->second.find(key);
@@ -241,8 +156,9 @@ std::vector<DefaultOverrideEntry> GetActiveOverrideEntries() {
     EnsureLoaded();
     std::vector<DefaultOverrideEntry> result;
     const std::string exe = g_current_exe_lower;
-    auto it_exe = g_override_map.find(exe);
-    if (it_exe == g_override_map.end()) return result;
+    const auto& override_map = GetOverrideMap();
+    auto it_exe = override_map.find(exe);
+    if (it_exe == override_map.end()) return result;
 
     utils::SRWLockShared lock(g_srwlock);
     const auto& display_names = GetKeyDisplayNames();

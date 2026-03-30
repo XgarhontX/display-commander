@@ -91,7 +91,7 @@ bool HWNDBelongsToCurrentProcess(HWND hwnd) {
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -118,7 +118,7 @@ HWND WINAPI GetForegroundWindow_Direct() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetForegroundWindow_Direct();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -140,7 +140,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -175,7 +175,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr && IsWindow(game_hwnd)) {
         // Call original function first
@@ -271,7 +271,7 @@ BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
 
 // Hooked SetThreadExecutionState function
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     // Check prevent display sleep & screensaver mode setting
     ScreensaverMode screensaver_mode =
         static_cast<ScreensaverMode>(settings::g_mainTabSettings.screensaver_mode.GetValue());
@@ -288,7 +288,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
@@ -301,7 +301,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowLongA function
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
@@ -314,7 +314,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongW function
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
@@ -326,7 +326,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongPtrA function
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
@@ -339,7 +339,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
@@ -384,7 +384,7 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
 
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     return SetCursor_Direct(hCursor);
 }
 
@@ -396,7 +396,7 @@ int WINAPI ShowCursor_Direct(BOOL bShow) {
 
 // Hooked ShowCursor function
 int WINAPI ShowCursor_Detour(BOOL bShow) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
 
     if (ShouldBlockMouseInput()) {
         bShow = FALSE;
@@ -415,7 +415,7 @@ static std::atomic<bool> installed_dc_addvectoredexceptionhandler_hook{false};
 
 // Hooked AddVectoredExceptionHandler function
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     // Log the call for debugging
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
     if (installed_dc_addvectoredexceptionhandler_hook) {
@@ -595,7 +595,7 @@ bool InstallWindowsApiHooks() {
 }
 
 bool InstallApiHooks() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD(utils::get_now_ns());
     if (g_api_hooks_installed.load()) {
         return true;
     }

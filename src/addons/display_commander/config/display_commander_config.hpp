@@ -10,14 +10,14 @@
 namespace display_commander::config {
 
 // Forward declaration
-class TomlFile;
+class IniFile;
 
 // Configuration manager for DisplayCommander settings
 class DisplayCommanderConfigManager {
    public:
     static DisplayCommanderConfigManager& GetInstance();
 
-    // Initialize the config system. If config_directory is set, use it as the config dir (DisplayCommander.toml location); otherwise use exe directory.
+    // Initialize the config system. If config_directory is set, use it as the config dir (DisplayCommander.ini location); otherwise use exe directory.
     void Initialize(std::optional<std::wstring_view> config_directory = std::nullopt);
 
     // Get configuration value (compatible with reshade::get_config_value API)
@@ -68,9 +68,8 @@ class DisplayCommanderConfigManager {
 
     void EnsureConfigFileExists();
     std::string GetConfigFilePath();
-    std::string GetConfigFilePathIni();
 
-    std::unique_ptr<TomlFile> config_file_;
+    std::unique_ptr<IniFile> config_file_;
     std::string config_path_;
     mutable SRWLOCK config_mutex_ = SRWLOCK_INIT;
     bool initialized_ = false;
