@@ -316,24 +316,9 @@ inline void LogDxgiErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
 IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original = nullptr;
 IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original = nullptr;
 
-// Streamline proxy swap chain (only Present/Present1 hooked for FPS limiter)
-IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Streamline_Original = nullptr;
-IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Streamline_Original = nullptr;
-
 IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original = nullptr;
 IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original = nullptr;
 IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original = nullptr;
-IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original = nullptr;
-IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original = nullptr;
-IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original = nullptr;
-IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Original = nullptr;
-
-// Streamline proxy factory vtable originals
-IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Streamline_Original = nullptr;
-IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original = nullptr;
-IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original = nullptr;
-IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original =
-    nullptr;
 
 // Additional original function pointers
 IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original = nullptr;
@@ -384,13 +369,6 @@ IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original = nullptr;
 // Hook state and swapchain tracking
 namespace {
 std::atomic<bool> g_dxgi_present_hooks_installed{false};
-std::atomic<bool> g_createswapchain_vtable_hooked{false};
-
-// Factory vtable hooks (idempotent per process - all IDXGIFactory1 share same vtable)
-std::atomic<bool> g_factory_create_swapchain_hooked{false};
-std::atomic<bool> g_factory_create_swapchain_for_hwnd_hooked{false};
-std::atomic<bool> g_factory_create_swapchain_for_core_window_hooked{false};
-std::atomic<bool> g_factory_create_swapchain_for_composition_hooked{false};
 
 }  // namespace
 
@@ -447,8 +425,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         }
     }
 
-    // Increment DXGI Present counter
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
 
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_swapchain);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
@@ -512,8 +488,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         }
     }
 
-    // Increment DXGI Present1 counter
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
 
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_swapchain1);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain1);
@@ -553,114 +527,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     return res;
 }
 
-// Streamline proxy swap chain: Present detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
-static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChain* This, UINT SyncInterval,
-                                                                          UINT PresentFlags) {
-    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
-    if (This != nullptr) {
-        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(This, &data);
-    }
-    if (in_present_call.load() > 0) {
-        if (IDXGISwapChain_Present_Streamline_Original != nullptr)
-            return IDXGISwapChain_Present_Streamline_Original(This, SyncInterval, PresentFlags);
-        return This->Present(SyncInterval, PresentFlags);
-    }
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
-    const LONGLONG now_ns = utils::get_now_ns();
-    display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
-    CALL_GUARD(now_ns);
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
-    bool use_fps_limiter = false;
-    if (GetEffectiveUseStreamlineProxyFpsLimiter()) {
-        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
-                         FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
-        use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
-        if (use_fps_limiter) {
-            ::OnPresentFlags2(true, true);
-            RecordNativeFrameTime();
-        }
-        if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy) {
-            RecordFrameTime(FrameTimeMode::kPresent);
-        }
-    }
-    if (IDXGISwapChain_Present_Streamline_Original == nullptr) {
-        return This->Present(effective_interval, PresentFlags);
-    }
-    auto res = IDXGISwapChain_Present_Streamline_Original(This, effective_interval, PresentFlags);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGISwapChain::Present (Streamline)", res, &s_err_count);
-    if (use_fps_limiter) {
-        HandlePresentAfter(true);
-    }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
-    }
-    CALL_GUARD_NO_TS();;
-    return res;
-}
-
-// Streamline proxy swap chain: Present1 detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
-static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(
-    IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
-    IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
-    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
-    if (baseSwapChain != nullptr) {
-        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(baseSwapChain, &data);
-    }
-    CALL_GUARD_NO_TS();;
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
-    bool use_fps_limiter = false;
-    if (GetEffectiveUseStreamlineProxyFpsLimiter()) {
-        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
-                         FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);
-        use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);
-        if (use_fps_limiter) {
-            ::OnPresentFlags2(true, false);
-            RecordNativeFrameTime();
-        }
-        if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy) {
-            RecordFrameTime(FrameTimeMode::kPresent);
-        }
-    }
-    in_present_call.fetch_add(1);
-    if (IDXGISwapChain_Present1_Streamline_Original == nullptr) {
-        auto res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
-        in_present_call.fetch_sub(1);
-        return res;
-    }
-    auto res = IDXGISwapChain_Present1_Streamline_Original(This, effective_interval, PresentFlags, pPresentParameters);
-    in_present_call.fetch_sub(1);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGISwapChain1::Present1 (Streamline)", res, &s_err_count);
-    if (use_fps_limiter) {
-        HandlePresentAfter(false);
-    }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : baseSwapChain;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
-    }
-    return res;
-}
-
 // Hooked IDXGISwapChain::GetDesc function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DXGI_SWAP_CHAIN_DESC* pDesc) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI GetDesc counter
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETDESC].fetch_add(1);
 
     // Call original function
     if (IDXGISwapChain_GetDesc_Original != nullptr) {
@@ -669,58 +538,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DX
             static int s_err_count = 0;
             LogDxgiErrorUpTo10("IDXGISwapChain::GetDesc", hr, &s_err_count);
         }
-        /*
-                // Hide HDR capabilities if enabled
-                if (SUCCEEDED(hr) && pDesc != nullptr &&
-           settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
-                    // Check if the format is HDR-capable and hide it
-                    bool is_hdr_format = false;
-                    switch (pDesc->BufferDesc.Format) {
-                        case DXGI_FORMAT_R10G10B10A2_UNORM:     // 10-bit HDR (commonly used for HDR10)
-                        case DXGI_FORMAT_R11G11B10_FLOAT:        // 11-bit HDR (HDR11)
-                        case DXGI_FORMAT_R16G16B16A16_FLOAT:    // 16-bit HDR (HDR16)
-                        case DXGI_FORMAT_R32G32B32A32_FLOAT:    // 32-bit HDR (HDR32)
-                        case DXGI_FORMAT_R16G16B16A16_UNORM:    // 16-bit HDR (alternative)
-                        case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    // 9-bit HDR (shared exponent)
-                            is_hdr_format = true;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    if (is_hdr_format) {
-                        // Force to SDR format
-                        pDesc->BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-                        static int hdr_format_hidden_log_count = 0;
-                        if (hdr_format_hidden_log_count < 3) {
-                            LogInfo("HDR hiding: GetDesc - hiding HDR format %d, forcing to R8G8B8A8_UNORM",
-                                   static_cast<int>(pDesc->BufferDesc.Format));
-                            hdr_format_hidden_log_count++;
-                        }
-                    }
-
-                    // Remove HDR-related flags
-                    if ((pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
-                        // Keep tearing flag but remove any HDR-specific flags
-                        pDesc->Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-                    } else {
-                        pDesc->Flags = 0;
-                    }
-                }
-
-                // Log the description if successful (only on first few calls to avoid spam)
-                if (SUCCEEDED(hr) && pDesc != nullptr) {
-                    static int getdesc_log_count = 0;
-                    if (getdesc_log_count < 3) {
-                        LogInfo("SwapChain Desc - Width: %u, Height: %u, Format: %u, RefreshRate: %u/%u, BufferCount:
-           %u", pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format,
-                               pDesc->BufferDesc.RefreshRate.Numerator, pDesc->BufferDesc.RefreshRate.Denominator,
-                               pDesc->BufferCount);
-                        getdesc_log_count++;
-                    }
-                }
-        */
         return hr;
     }
 
@@ -731,8 +548,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DX
 // Hooked IDXGISwapChain1::GetDesc1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, DXGI_SWAP_CHAIN_DESC1* pDesc) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI GetDesc1 counter
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETDESC1].fetch_add(1);
 
     // Call original function
     if (IDXGISwapChain_GetDesc1_Original != nullptr) {
@@ -803,8 +618,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
                                                                        DXGI_COLOR_SPACE_TYPE ColorSpace,
                                                                        UINT* pColorSpaceSupport) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI CheckColorSpaceSupport counter
-    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT].fetch_add(1);
 
     // Log the color space check (only on first few calls to avoid spam)
     static int checkcolorspace_log_count = 0;
@@ -867,394 +680,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
     return This->CheckColorSpaceSupport(ColorSpace, pColorSpaceSupport);
 }
 
-// Hooked IDXGIFactory::CreateSwapChain function
-HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This, IUnknown* pDevice,
-                                                              DXGI_SWAP_CHAIN_DESC* pDesc,
-                                                              IDXGISwapChain** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    // Increment DXGI Factory CreateSwapChain counter
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-
-    // Log the swapchain creation parameters (only on first few calls to avoid spam)
-    static int createswapchain_log_count = 0;
-    if (createswapchain_log_count < 3 && pDesc != nullptr) {
-        LogInfo(
-            "IDXGIFactory::CreateSwapChain - Width: %u, Height: %u, Format: %u, BufferCount: %u, SwapEffect: %u, "
-            "Windowed: %s",
-            pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format, pDesc->BufferCount,
-            pDesc->SwapEffect, pDesc->Windowed ? "true" : "false");
-        createswapchain_log_count++;
-    }
-
-    // Call original function
-    if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
-        HRESULT hr = IDXGIFactory_CreateSwapChain_Original(This, pDevice, pDesc, ppSwapChain);
-        {
-            static int s_err_count = 0;
-            LogDxgiErrorUpTo10("IDXGIFactory::CreateSwapChain", hr, &s_err_count);
-        }
-
-        // If successful, hook the newly created swapchain
-        if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-            LogInfo("IDXGIFactory::CreateSwapChain succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
-            // causes sekiro to crash
-            HookSwapchain(*ppSwapChain);
-        }
-
-        return hr;
-    }
-
-    // Fallback to direct call if hook failed
-    return This->CreateSwapChain(pDevice, pDesc, ppSwapChain);
-}
-
-// IDXGIFactory1::CreateSwapChainForHwnd (vtable index 14). Log errors and hook new swapchain on success.
-HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
-    IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
-    IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-
-    if (IDXGIFactory1_CreateSwapChainForHwnd_Original == nullptr) {
-        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
-        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
-            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                                    ppSwapChain);
-        return E_NOINTERFACE;
-    }
-    HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
-                                                               pRestrictToOutput, ppSwapChain);
-    {
-        static int s_err_count = 0;
-        LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd", hr, &s_err_count);
-    }
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo("IDXGIFactory1::CreateSwapChainForHwnd succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
-        HookSwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-// IDXGIFactory1::CreateSwapChainForCoreWindow (vtable index 15). Log errors and hook new swapchain on success.
-HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXGIFactory1* This, IUnknown* pDevice,
-                                                                            IUnknown* pWindow,
-                                                                            const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                                                            IDXGIOutput* pRestrictToOutput,
-                                                                            IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-
-    if (IDXGIFactory1_CreateSwapChainForCoreWindow_Original == nullptr) {
-        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
-        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
-            return factory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-        return E_NOINTERFACE;
-    }
-    HRESULT hr = IDXGIFactory1_CreateSwapChainForCoreWindow_Original(This, pDevice, pWindow, pDesc, pRestrictToOutput,
-                                                                     ppSwapChain);
-    {
-        static int s_err_count = 0;
-        LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForCoreWindow", hr, &s_err_count);
-    }
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo("IDXGIFactory1::CreateSwapChainForCoreWindow succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
-        HookSwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-// IDXGIFactory2::CreateSwapChainForComposition (vtable index 24). Log errors and hook new swapchain on success.
-HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDXGIFactory2* This, IUnknown* pDevice,
-                                                                             const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                                                             IDXGIOutput* pRestrictToOutput,
-                                                                             IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-
-    if (IDXGIFactory2_CreateSwapChainForComposition_Original == nullptr) {
-        return E_NOINTERFACE;
-    }
-    HRESULT hr =
-        IDXGIFactory2_CreateSwapChainForComposition_Original(This, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
-    {
-        static int s_err_count = 0;
-        LogDxgiErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition", hr, &s_err_count);
-    }
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo("IDXGIFactory2::CreateSwapChainForComposition succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
-        HookSwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-// Streamline proxy factory detours (same behavior as above but call Streamline originals)
-static HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Streamline_Detour(IDXGIFactory* This, IUnknown* pDevice,
-                                                                                DXGI_SWAP_CHAIN_DESC* pDesc,
-                                                                                IDXGISwapChain** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-    if (IDXGIFactory_CreateSwapChain_Streamline_Original == nullptr) {
-        return This->CreateSwapChain(pDevice, pDesc, ppSwapChain);
-    }
-    HRESULT hr = IDXGIFactory_CreateSwapChain_Streamline_Original(This, pDevice, pDesc, ppSwapChain);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGIFactory::CreateSwapChain (Streamline)", hr, &s_err_count);
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo("IDXGIFactory::CreateSwapChain (Streamline) succeeded, hooking proxy swapchain Present/Present1: 0x%p",
-                *ppSwapChain);
-        HookStreamlineProxySwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Detour(
-    IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
-    IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-    if (IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original == nullptr) {
-        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
-        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
-            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                                    ppSwapChain);
-        return E_NOINTERFACE;
-    }
-    // Streamline factory detour: forward to original after optional logging.
-    HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
-                                                                          pRestrictToOutput, ppSwapChain);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd (Streamline)", hr, &s_err_count);
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo(
-            "IDXGIFactory1::CreateSwapChainForHwnd (Streamline) succeeded, hooking proxy swapchain Present/Present1: "
-            "0x%p",
-            *ppSwapChain);
-        HookStreamlineProxySwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour(
-    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-    if (IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original == nullptr) {
-        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
-        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
-            return factory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-        return E_NOINTERFACE;
-    }
-    HRESULT hr = IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original(This, pDevice, pWindow, pDesc,
-                                                                                pRestrictToOutput, ppSwapChain);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline)", hr, &s_err_count);
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo(
-            "IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline) succeeded, hooking proxy swapchain "
-            "Present/Present1: 0x%p",
-            *ppSwapChain);
-        HookStreamlineProxySwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Streamline_Detour(
-    IDXGIFactory2* This, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput,
-    IDXGISwapChain1** ppSwapChain) {
-    CALL_GUARD_NO_TS();;
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
-    if (IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original == nullptr) {
-        return E_NOINTERFACE;
-    }
-    HRESULT hr = IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original(This, pDevice, pDesc,
-                                                                                 pRestrictToOutput, ppSwapChain);
-    static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition (Streamline)", hr, &s_err_count);
-    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
-        LogInfo(
-            "IDXGIFactory2::CreateSwapChainForComposition (Streamline) succeeded, hooking proxy swapchain "
-            "Present/Present1: 0x%p",
-            *ppSwapChain);
-        HookStreamlineProxySwapchain(*ppSwapChain);
-    }
-    return hr;
-}
-
-bool HookFactory(IUnknown* iunknown) {
-    if (iunknown == nullptr) {
-        return false;
-    }
-    if (g_dx9_swapchain_detected.load()) {
-        return false;
-    }
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
-        return false;
-    }
-    Microsoft::WRL::ComPtr<IDXGIFactory> ifactory;
-    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory.GetAddressOf()));
-    if (FAILED(hr) || ifactory == nullptr) {
-        LogInfo("HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChain only");
-        return false;
-    }
-
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("HookFactory: MinHook init failed: %d", init_status);
-        return false;
-    }
-
-    static bool hooked_dxgifactory = false;
-    if (hooked_dxgifactory) {
-        return true;
-    }
-
-    {
-        void** vtable = *reinterpret_cast<void***>(ifactory.Get());
-        if (CreateAndEnableHook(vtable[IDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Original),
-                                "IDXGIFactory::CreateSwapChain")) {
-            g_factory_create_swapchain_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("HookFactory: IDXGIFactory::CreateSwapChain hooked");
-            hooked_dxgifactory = true;
-        }
-    }
-
-    Microsoft::WRL::ComPtr<IDXGIFactory1> ifactory1;
-    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory1.GetAddressOf()));
-    if (FAILED(hr) || ifactory1 == nullptr) {
-        LogInfo(
-            "HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChainForHwnd and "
-            "CreateSwapChainForCoreWindow only");
-        return false;
-    }
-    {
-        void** vtable1 = *reinterpret_cast<void***>(ifactory1.Get());
-        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForHwnd],
-                                IDXGIFactory1_CreateSwapChainForHwnd_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
-                                "IDXGIFactory1::CreateSwapChainForHwnd")) {
-            g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
-            hooked_dxgifactory = true;
-        }
-        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForCoreWindow],
-                                IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
-                                "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
-            g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
-            hooked_dxgifactory = true;
-        }
-    }
-
-    Microsoft::WRL::ComPtr<IDXGIFactory2> ifactory2;
-    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory2.GetAddressOf()));
-    if (SUCCEEDED(hr) && ifactory2 != nullptr) {
-        void** vtable2 = *reinterpret_cast<void***>(ifactory2.Get());
-        if (CreateAndEnableHook(vtable2[IDXGIFactory2_CreateSwapChainForComposition],
-                                IDXGIFactory2_CreateSwapChainForComposition_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory2_CreateSwapChainForComposition_Original),
-                                "IDXGIFactory2::CreateSwapChainForComposition")) {
-            g_factory_create_swapchain_for_composition_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("HookFactory: IDXGIFactory2::CreateSwapChainForComposition hooked");
-            hooked_dxgifactory = true;
-        }
-    }
-
-    return hooked_dxgifactory;
-}
-
-bool HookStreamlineProxyFactory(IUnknown* iunknown) {
-    if (iunknown == nullptr) {
-        return false;
-    }
-    if (g_dx9_swapchain_detected.load()) {
-        return false;
-    }
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN)) {
-        return false;
-    }
-    Microsoft::WRL::ComPtr<IDXGIFactory> ifactory;
-    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory.GetAddressOf()));
-    if (FAILED(hr) || ifactory == nullptr) {
-        return false;
-    }
-
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("HookStreamlineProxyFactory: MinHook init failed: %d", init_status);
-        return false;
-    }
-
-    static bool streamline_proxy_factory_hooked = false;
-    if (streamline_proxy_factory_hooked) {
-        return true;
-    }
-
-    bool any_hooked = false;
-    {
-        void** vtable = *reinterpret_cast<void***>(ifactory.Get());
-        if (CreateAndEnableHook(vtable[IDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Streamline_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Streamline_Original),
-                                "IDXGIFactory::CreateSwapChain (Streamline)")) {
-            any_hooked = true;
-            LogInfo("HookStreamlineProxyFactory: IDXGIFactory::CreateSwapChain hooked");
-        }
-    }
-
-    Microsoft::WRL::ComPtr<IDXGIFactory1> ifactory1;
-    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory1.GetAddressOf()));
-    if (SUCCEEDED(hr) && ifactory1 != nullptr) {
-        void** vtable1 = *reinterpret_cast<void***>(ifactory1.Get());
-        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForHwnd],
-                                IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Detour,
-                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original),
-                                "IDXGIFactory1::CreateSwapChainForHwnd (Streamline)")) {
-            any_hooked = true;
-            LogInfo("HookStreamlineProxyFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
-        }
-        if (CreateAndEnableHook(
-                vtable1[IDXGIFactory1_CreateSwapChainForCoreWindow],
-                IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour,
-                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original),
-                "IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline)")) {
-            any_hooked = true;
-            LogInfo("HookStreamlineProxyFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
-        }
-    }
-
-    Microsoft::WRL::ComPtr<IDXGIFactory2> ifactory2;
-    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory2.GetAddressOf()));
-    if (SUCCEEDED(hr) && ifactory2 != nullptr) {
-        void** vtable2 = *reinterpret_cast<void***>(ifactory2.Get());
-        if (CreateAndEnableHook(
-                vtable2[IDXGIFactory2_CreateSwapChainForComposition],
-                IDXGIFactory2_CreateSwapChainForComposition_Streamline_Detour,
-                reinterpret_cast<LPVOID*>(&IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original),
-                "IDXGIFactory2::CreateSwapChainForComposition (Streamline)")) {
-            any_hooked = true;
-            LogInfo("HookStreamlineProxyFactory: IDXGIFactory2::CreateSwapChainForComposition hooked");
-        }
-    }
-
-    if (any_hooked) {
-        streamline_proxy_factory_hooked = true;
-        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
-            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
-    }
-    return streamline_proxy_factory_hooked;
-}
-
 // Additional DXGI detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain* This, UINT Buffer, REFIID riid,
                                                           void** ppSurface) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETBUFFER].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain::GetBuffer", hr, &s_err_count);
@@ -1266,7 +695,6 @@ std::atomic<IDXGIOutput*> g_last_set_fullscreen_target{nullptr};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain* This, BOOL Fullscreen,
                                                                    IDXGIOutput* pTarget) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
 
     if (Fullscreen == g_last_set_fullscreen_state.load() && pTarget == g_last_set_fullscreen_target.load()) {
         return S_OK;
@@ -1290,7 +718,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain* This, BOOL* pFullscreen,
                                                                    IDXGIOutput** ppTarget) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
     {
         static int s_err_count = 0;
@@ -1309,7 +736,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* This, UINT BufferCount, UINT Width,
                                                               UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZEBUFFERS].fetch_add(1);
 
     // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (Width != 0 && Height != 0) {
@@ -1327,7 +753,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* Th
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* This,
                                                              const DXGI_MODE_DESC* pNewTargetParameters) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZETARGET].fetch_add(1);
 
     // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (pNewTargetParameters != nullptr) {
@@ -1347,7 +772,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* Thi
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain* This, IDXGIOutput** ppOutput) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETCONTAININGOUTPUT].fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
     {
@@ -1361,7 +785,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain* This,
                                                                    DXGI_FRAME_STATISTICS* pStats) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFRAMESTATISTICS].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain::GetFrameStatistics", hr, &s_err_count);
@@ -1370,7 +793,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain* This, UINT* pLastPresentCount) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETLASTPRESENTCOUNT].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetLastPresentCount_Original(This, pLastPresentCount);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain::GetLastPresentCount", hr, &s_err_count);
@@ -1381,7 +803,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapCha
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain1* This,
                                                                   DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETFULLSCREENDESC].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::GetFullscreenDesc", hr, &s_err_count);
@@ -1390,7 +811,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1* This, HWND* pHwnd) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETHWND].fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetHwnd_Original(This, pHwnd);
     static int s_err_count = 0;
@@ -1400,7 +820,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1* This, H
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1* This, REFIID refiid, void** ppUnk) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETCOREWINDOW].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::GetCoreWindow", hr, &s_err_count);
@@ -1409,14 +828,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1* T
 
 BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1* This) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_ISTEMPORARYMONOSUPPORTED].fetch_add(1);
     return IDXGISwapChain_IsTemporaryMonoSupported_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1* This,
                                                                     IDXGIOutput** ppRestrictToOutput) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETRESTRICTTOOUTPUT].fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetRestrictToOutput_Original(This, ppRestrictToOutput);
     {
@@ -1429,7 +846,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapCha
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1* This, const DXGI_RGBA* pColor) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETBACKGROUNDCOLOR].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::SetBackgroundColor", hr, &s_err_count);
@@ -1438,7 +854,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1* This, DXGI_RGBA* pColor) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETBACKGROUNDCOLOR].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::GetBackgroundColor", hr, &s_err_count);
@@ -1447,7 +862,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION Rotation) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETROTATION].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetRotation_Original(This, Rotation);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::SetRotation", hr, &s_err_count);
@@ -1456,7 +870,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1* Thi
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION* pRotation) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETROTATION].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetRotation_Original(This, pRotation);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::GetRotation", hr, &s_err_count);
@@ -1466,7 +879,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1* Thi
 // IDXGISwapChain2 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2* This, UINT Width, UINT Height) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETSOURCESIZE].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::SetSourceSize", hr, &s_err_count);
@@ -1475,7 +887,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2* T
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2* This, UINT* pWidth, UINT* pHeight) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETSOURCESIZE].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::GetSourceSize", hr, &s_err_count);
@@ -1484,7 +895,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2* T
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT MaxLatency) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMAXIMUMFRAMELATENCY].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::SetMaximumFrameLatency", hr, &s_err_count);
@@ -1493,7 +903,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwap
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT* pMaxLatency) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::GetMaximumFrameLatency", hr, &s_err_count);
@@ -1502,14 +911,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwap
 
 HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2* This) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT].fetch_add(1);
     return IDXGISwapChain_GetFrameLatencyWaitableObject_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChain2* This,
                                                                    const DXGI_MATRIX_3X2_F* pMatrix) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMATRIXTRANSFORM].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::SetMatrixTransform", hr, &s_err_count);
@@ -1518,7 +925,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2* This, DXGI_MATRIX_3X2_F* pMatrix) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMATRIXTRANSFORM].fetch_add(1);
     HRESULT hr = IDXGISwapChain_GetMatrixTransform_Original(This, pMatrix);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain2::GetMatrixTransform", hr, &s_err_count);
@@ -1528,14 +934,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChai
 // IDXGISwapChain3 detour functions
 UINT STDMETHODCALLTYPE IDXGISwapChain_GetCurrentBackBufferIndex_Detour(IDXGISwapChain3* This) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX].fetch_add(1);
     return IDXGISwapChain_GetCurrentBackBufferIndex_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3* This,
                                                                DXGI_COLOR_SPACE_TYPE ColorSpace) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
     static int s_err_count = 0;
     if (FAILED(hr) && s_err_count < 10) {
@@ -1551,7 +955,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* 
                                                                const UINT* pCreationNodeMask,
                                                                IUnknown* const* ppPresentQueue) {
     CALL_GUARD_NO_TS();;
-    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_RESIZEBUFFERS1].fetch_add(1);
 
     // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (Width != 0 && Height != 0) {
@@ -1571,8 +974,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* This, DXGI_HDR_METADATA_TYPE Type,
                                                                UINT Size, void* pMetaData) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI SetHDRMetaData counter
-    g_dxgi_sc4_event_counters[DXGI_SC4_EVENT_SETHDRMETADATA].fetch_add(1);
 
     // Log the HDR metadata call (only on first few calls to avoid spam)
     static int sethdrmetadata_log_count = 0;
@@ -1596,8 +997,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* 
 // Hooked IDXGIOutput functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI Output SetGammaControl counter
-    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
 
     // Log the SetGammaControl call (only on first few calls to avoid spam)
     static int setgammacontrol_log_count = 0;
@@ -1620,8 +1019,6 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, 
 
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput* This, DXGI_GAMMA_CONTROL* pArray) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI Output GetGammaControl counter
-    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
 
     // Log the GetGammaControl call (only on first few calls to avoid spam)
     static int getgammacontrol_log_count = 0;
@@ -1644,8 +1041,6 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput* This, 
 
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput* This, DXGI_OUTPUT_DESC* pDesc) {
     CALL_GUARD_NO_TS();;
-    // Increment DXGI Output GetDesc counter
-    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
 
     // Log the GetDesc call (only on first few calls to avoid spam)
     static int getdesc_log_count = 0;
@@ -2054,78 +1449,6 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     LogInfo("Successfully hooked IDXGISWAPCHAIN4 for swapchain: %x%p", swapchain);
 
     return true;
-}
-
-// Hook only Present and Present1 on a Streamline proxy swap chain (sl_proxy_dxgi_swapchain, sl_proxy_dxgi_swapchain1)
-// for FPS limiter. Idempotent per vtable (first proxy of each type gets hooked).
-bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
-    if (swapchain == nullptr) {
-        return false;
-    }
-    if (g_dx9_swapchain_detected.load()) {
-        return false;
-    }
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN)) {
-        return false;
-    }
-
-    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1;
-    Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2;
-    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-    void** vtable = nullptr;
-    int vtable_version = 0;
-
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
-        vtable_version = 4;
-        vtable = *reinterpret_cast<void***>(swapchain4.Get());
-    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
-        vtable_version = 3;
-        vtable = *reinterpret_cast<void***>(swapchain3.Get());
-    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2)))) {
-        vtable_version = 2;
-        vtable = *reinterpret_cast<void***>(swapchain2.Get());
-    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
-        vtable_version = 1;
-        vtable = *reinterpret_cast<void***>(swapchain1.Get());
-    } else {
-        vtable = *reinterpret_cast<void***>(swapchain);
-    }
-
-    if (vtable == nullptr) {
-        return false;
-    }
-
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("HookStreamlineProxySwapchain: MinHook init failed: %d", init_status);
-        return false;
-    }
-
-    static bool streamline_proxy_present_hooked = false;
-    static bool streamline_proxy_present1_hooked = false;
-    bool any_hooked = false;
-
-    if (!streamline_proxy_present_hooked
-        && CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Streamline_Detour,
-                               reinterpret_cast<LPVOID*>(&IDXGISwapChain_Present_Streamline_Original),
-                               "IDXGISwapChain::Present (Streamline proxy)")) {
-        streamline_proxy_present_hooked = true;
-        any_hooked = true;
-        LogInfo("HookStreamlineProxySwapchain: Present hooked (sl_proxy_dxgi_swapchain)");
-    }
-
-    if (vtable_version >= 1 && !streamline_proxy_present1_hooked
-        && CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Streamline_Detour,
-                               reinterpret_cast<LPVOID*>(&IDXGISwapChain_Present1_Streamline_Original),
-                               "IDXGISwapChain1::Present1 (Streamline proxy)")) {
-        streamline_proxy_present1_hooked = true;
-        any_hooked = true;
-        LogInfo("HookStreamlineProxySwapchain: Present1 hooked (sl_proxy_dxgi_swapchain1)");
-    }
-
-    return any_hooked;
 }
 
 // GUID for Display Commander per-swapchain data (DCDxgiSwapchainData blob). Do not conflict with ReShade SKID.

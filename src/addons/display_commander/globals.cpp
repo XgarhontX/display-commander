@@ -13,8 +13,7 @@
 #include "settings/reshade_tab_settings.hpp"
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
-#include "utils.hpp"
-#include "utils/dc_load_path.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 
@@ -26,7 +25,6 @@
 #include <array>
 #include <atomic>
 #include <cctype>
-#include <cmath>
 #include <filesystem>
 
 // Libraries <Windows>
@@ -38,6 +36,9 @@
 
 // Libraries <NVAPI>
 #include "../../../external/nvapi/nvapi.h"
+
+// Libraries <NGX>
+#include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -570,23 +571,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     return factory;
 }
 
-// Swapchain event counters - reset on each swapchain creation
-// Separate event counter arrays for each category
-std::array<std::atomic<uint32_t>, NUM_RESHADE_EVENTS> g_reshade_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_CORE_EVENTS> g_dxgi_core_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_SC1_EVENTS> g_dxgi_sc1_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_SC2_EVENTS> g_dxgi_sc2_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_SC3_EVENTS> g_dxgi_sc3_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_FACTORY_EVENTS> g_dxgi_factory_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_SC4_EVENTS> g_dxgi_sc4_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DXGI_OUTPUT_EVENTS> g_dxgi_output_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_D3D11_TEXTURE_EVENTS> g_d3d11_texture_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_D3D_SAMPLER_EVENTS> g_d3d_sampler_event_counters = {};
-std::array<std::atomic<uint32_t>, NUM_SAMPLER_FILTER_MODES> g_sampler_filter_mode_counters = {};
-std::array<std::atomic<uint32_t>, NUM_SAMPLER_ADDRESS_MODES> g_sampler_address_mode_counters = {};
-std::array<std::atomic<uint32_t>, MAX_ANISOTROPY_LEVELS> g_sampler_anisotropy_level_counters = {};
+std::atomic<uint32_t> g_reshade_create_swapchain_capture_count{0};
 
 // NVAPI event counters - separate from swapchain events
 std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};  // Array for NVAPI events
@@ -888,7 +873,7 @@ DLSSGSummary GetDLSSGSummary() {
             has_sr_preset = g_ngx_parameters.get_as_int(sr_name, sr_preset);
         }
         if (!has_sr_preset) {
-            static const char* k_sr_keys[] = {"DLSS.Hint.R ender.Preset.Quality", "DLSS.Hint.Render.Preset.Balanced",
+            static const char* k_sr_keys[] = {"DLSS.Hint.Render.Preset.Quality", "DLSS.Hint.Render.Preset.Balanced",
                                               "DLSS.Hint.Render.Preset.Performance",
                                               "DLSS.Hint.Render.Preset.UltraPerformance",
                                               "DLSS.Hint.Render.Preset.UltraQuality", "DLSS.Hint.Render.Preset.DLAA"};

@@ -1,5 +1,4 @@
 #include "streamline_hooks.hpp"
-#include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
@@ -7,12 +6,8 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../dxgi/dxgi_present_hooks.hpp"
 #include "../hook_suppression_manager.hpp"
 
-#include <d3d12.h>
-#include <dxgi.h>
-#include <dxgi1_6.h>
 #include <MinHook.h>
 #include <cstdint>
 #include <cstring>
@@ -30,7 +25,6 @@
 using slInit_pfn = sl::Result (*)(const sl::Preferences& pref, uint64_t sdkVersion);
 using slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 using slGetNativeInterface_pfn = sl::Result (*)(void* proxyInterface, void** baseInterface);
-using slUpgradeInterface_pfn = sl::Result (*)(void** baseInterface);
 using slGetFeatureFunction_pfn = sl::Result (*)(sl::Feature feature, const char* functionName, void*& function);
 using slDLSSGetOptimalSettings_pfn = sl::Result (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
 using slDLSSSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
@@ -41,12 +35,10 @@ using slDLSSGGetState_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, s
 static slInit_pfn slInit_Original = nullptr;
 static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
 static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
-static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 
 // Forward declarations for table-driven hook install
 static sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion);
-static sl::Result slUpgradeInterface_Detour(void** baseInterface);
 static sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 static sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
 static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function);
@@ -54,7 +46,6 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
 /** Table-driven install for sl.interposer.dll exports. Order matches StreamlineLoaderHook enum. */
 enum class StreamlineLoaderHook : std::size_t {
     slInit = 0,
-    slUpgradeInterface,
     slIsFeatureSupported,
     slGetNativeInterface,
     slGetFeatureFunction,
@@ -69,9 +60,6 @@ static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::s
     {.name = "slInit",
      .detour = reinterpret_cast<LPVOID>(&slInit_Detour),
      .original = reinterpret_cast<LPVOID*>(&slInit_Original)},
-    {.name = "slUpgradeInterface",
-     .detour = reinterpret_cast<LPVOID>(&slUpgradeInterface_Detour),
-     .original = reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original)},
     {.name = "slIsFeatureSupported",
      .detour = reinterpret_cast<LPVOID>(&slIsFeatureSupported_Detour),
      .original = reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original)},
@@ -98,9 +86,6 @@ static std::atomic<bool> g_slSetData_hook_installed{false};
 
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
-
-// Config-driven prevent slUpgradeInterface flag
-static std::atomic<bool> g_prevent_slupgrade_interface{false};
 
 // Helpers to log DLSS options
 static const char* DLSSModeStr(sl::DLSSMode m) {
@@ -292,8 +277,6 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGState& state, const s
 sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
     (void)pref;
     CALL_GUARD_NO_TS();;
-    // Increment counter
-    g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
 
     // Store the SDK version
     g_last_sdk_version.store(sdkVersion);
@@ -311,8 +294,6 @@ sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
 
 sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
     CALL_GUARD_NO_TS();;
-    // Increment counter
-    g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
 
     static int log_count = 0;
     if (log_count < 30) {
@@ -331,8 +312,6 @@ sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInf
 
 sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     CALL_GUARD_NO_TS();;
-    // Increment counter
-    g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
 
     // Log the call
     LogInfo("slGetNativeInterface called");
@@ -350,7 +329,6 @@ sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterfac
 static sl::Result slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     static bool first_call = true;
     CALL_GUARD_NO_TS();;
-    g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
 
     bool optionsLogged = false;
     if (first_call) {
@@ -604,71 +582,6 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
     return result;
 }
 
-// slUpgradeInterface does NOT only work on factory. Per Streamline sl.api/sl.cpp it supports (in order):
-// - ID3D12Device (replaced with SL proxy), ID3D11Device (no proxy, just registered), IDXGIFactory (proxy),
-//   IDXGISwapChain (proxy). We only vtable-hook the DXGI proxy factory and proxy swapchain.
-// Reference: external/Streamline/source/core/sl.api/sl.cpp slUpgradeInterface()
-sl::Result slUpgradeInterface_Detour(void** baseInterface) {
-    CALL_GUARD_NO_TS();;
-    const bool disabled = true;
-    if (disabled) {
-        // NOTE: Breaks UE4SS and unreal mods
-        return slUpgradeInterface_Original(baseInterface);
-    }
-    // Increment counter
-    g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
-
-    // Check config-driven flag
-    bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();
-    LogInfo("prevent_slupgrade_interface: %d", static_cast<int>(prevent_slupgrade_interface));
-
-    if (slUpgradeInterface_Original == nullptr) {
-        return sl::Result::eErrorNotInitialized;
-    }
-    const sl::Result result = slUpgradeInterface_Original(baseInterface);
-    if (baseInterface == nullptr) return result;
-    auto* unknown = static_cast<IUnknown*>(*baseInterface);
-
-    //   Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
-    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
-    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
-    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-    Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-    if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
-        // Hook the Streamline proxy factory vtable so CreateSwapChain* go through our detours (log + HookSwapchain).
-        LogInfo("[slUpgradeInterface] IDXGIFactory proxy: hooking factory vtable");
-        display_commanderhooks::dxgi::HookStreamlineProxyFactory(dxgi_factory.Get());
-    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
-        bool hooked = display_commanderhooks::dxgi::HookStreamlineProxySwapchain(dxgi_swapchain.Get());
-        LogInfo("[slUpgradeInterface] IDXGISwapChain proxy: Present/Present1 hooked=%d", hooked ? 1 : 0);
-    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&d3d11_device))) && d3d11_device != nullptr) {
-        LogInfo("[slUpgradeInterface] ID3D11Device proxy: not hooked");
-    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&d3d12_device))) && d3d12_device != nullptr) {
-        LogInfo("[slUpgradeInterface] ID3D12Device proxy: not hooked");
-    } else {
-        LogError("[slUpgradeInterface] Unknown interface not hooked TODO");
-    }
-    return result;
-}
-
-// Initialize config-driven prevent_slupgrade_interface flag
-void InitializePreventSLUpgradeInterface() {
-    bool prevent_slupgrade_interface = false;
-
-    if (display_commander::config::get_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface",
-                                                    prevent_slupgrade_interface)) {
-        g_prevent_slupgrade_interface.store(prevent_slupgrade_interface);
-        LogInfo("Loaded PreventSLUpgradeInterface from config: %s",
-                prevent_slupgrade_interface ? "enabled" : "disabled");
-    } else {
-        // Default to false if not found in config
-        g_prevent_slupgrade_interface.store(false);
-        display_commander::config::set_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface",
-                                                    prevent_slupgrade_interface);
-        LogInfo("PreventSLUpgradeInterface not found in config, using default: disabled");
-    }
-}
-
 bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
     if (streamline_module == nullptr) {
         LogError("Streamline not detected - sl.interposer.dll not loaded");
@@ -689,9 +602,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
     }
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::STREAMLINE);
-
-    // Initialize prevent_slupgrade_interface from config
-    InitializePreventSLUpgradeInterface();
 
     LogInfo("Installing Streamline hooks...");
 

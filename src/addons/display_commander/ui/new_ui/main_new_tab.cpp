@@ -1834,119 +1834,6 @@ static void DrawMainTabOptionalPanelTextureFiltering(display_commander::ui::IImG
     if (texture_filtering_open) {
         imgui.Indent();
 
-        uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
-        uint32_t d3d12_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].load();
-        uint32_t total_count = d3d11_count + d3d12_count;
-
-        imgui.Text("CreateSampler Calls: %u", total_count);
-        if (d3d11_count > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
-        }
-        if (d3d12_count > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
-        }
-
-        if (total_count > 0) {
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
-
-            imgui.TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
-            imgui.Indent();
-
-            uint32_t point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].load();
-            uint32_t linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].load();
-            uint32_t aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].load();
-            uint32_t comp_point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].load();
-            uint32_t comp_linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].load();
-            uint32_t comp_aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].load();
-            uint32_t other_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].load();
-
-            if (point_count > 0) {
-                imgui.Text("  Point: %u", point_count);
-            }
-            if (linear_count > 0) {
-                imgui.Text("  Linear: %u", linear_count);
-            }
-            if (aniso_count > 0) {
-                imgui.Text("  Anisotropic: %u", aniso_count);
-            }
-            if (comp_point_count > 0) {
-                imgui.Text("  Comparison Point: %u", comp_point_count);
-            }
-            if (comp_linear_count > 0) {
-                imgui.Text("  Comparison Linear: %u", comp_linear_count);
-            }
-            if (comp_aniso_count > 0) {
-                imgui.Text("  Comparison Anisotropic: %u", comp_aniso_count);
-            }
-            if (other_count > 0) {
-                imgui.Text("  Other: %u", other_count);
-            }
-
-            imgui.Unindent();
-            imgui.Spacing();
-
-            imgui.TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
-            imgui.Indent();
-
-            uint32_t wrap_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].load();
-            uint32_t mirror_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].load();
-            uint32_t clamp_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].load();
-            uint32_t border_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].load();
-            uint32_t mirror_once_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].load();
-
-            if (wrap_count > 0) {
-                imgui.Text("  Wrap: %u", wrap_count);
-            }
-            if (mirror_count > 0) {
-                imgui.Text("  Mirror: %u", mirror_count);
-            }
-            if (clamp_count > 0) {
-                imgui.Text("  Clamp: %u", clamp_count);
-            }
-            if (border_count > 0) {
-                imgui.Text("  Border: %u", border_count);
-            }
-            if (mirror_once_count > 0) {
-                imgui.Text("  Mirror Once: %u", mirror_once_count);
-            }
-
-            imgui.Unindent();
-            imgui.Spacing();
-
-            uint32_t total_aniso_samplers = 0;
-            for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
-                total_aniso_samplers += g_sampler_anisotropy_level_counters[i].load();
-            }
-
-            if (total_aniso_samplers > 0) {
-                imgui.TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
-                imgui.Indent();
-
-                for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
-                    uint32_t count = g_sampler_anisotropy_level_counters[i].load();
-                    if (count > 0) {
-                        int level = i + 1;
-                        imgui.Text("  %dx: %u", level, count);
-                    }
-                }
-
-                imgui.Unindent();
-                imgui.Spacing();
-            }
-
-            imgui.Separator();
-        }
-
-        imgui.Spacing();
-
         if (SliderIntSetting(settings::g_mainTabSettings.max_anisotropy, "Anisotropic Level", "%d", imgui)) {
             LogInfo("Max anisotropy set to %d", settings::g_mainTabSettings.max_anisotropy.GetValue());
         }
@@ -4146,7 +4033,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     const bool is_dxgi_pt =
         (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
          || current_api_pt == reshade::api::device_api::d3d12);
-    if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
+    if (g_reshade_create_swapchain_capture_count.load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc_post.load();
         if (is_dxgi_pt) {
             PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);

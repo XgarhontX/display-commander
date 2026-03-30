@@ -424,8 +424,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     CALL_GUARD_NO_TS();;
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
+    g_reshade_create_swapchain_capture_count.fetch_add(1);
 
     if (hwnd == nullptr) return false;
 
@@ -967,9 +966,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         }
     }
 
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_INIT_SWAPCHAIN].fetch_add(1);
-
     // Capture game render resolution after swapchain creation/resize - matches Special K's render_x/render_y
     // Get the current back buffer to determine the actual render resolution
     try {
@@ -1105,9 +1101,6 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
                      current_thread_id);
         }
     }
-
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
         if (GetReflexSendMarkers()) {
@@ -1753,9 +1746,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         }
     }
 
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
-
     // Check for XInput screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
@@ -1838,8 +1828,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
     CALL_GUARD_NO_TS();;
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
 
     return false;  // Don't suppress pipeline binding
 }
@@ -1854,9 +1842,6 @@ void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
 
     {
         perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentFlags2);
-
-        // Increment event counter
-        g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     }
 
     HandleFpsLimiterPre(from_present_detour, frame_generation_aware);
