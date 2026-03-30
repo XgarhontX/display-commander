@@ -25,7 +25,6 @@
 #include "utils/logging.hpp"
 #include "utils/srwlock_registry.hpp"
 #include "utils/srwlock_wrapper.hpp"
-#include "utils/taskbar_helper.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
 #include "widgets/resolution_widget/resolution_widget.hpp"
