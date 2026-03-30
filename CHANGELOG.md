@@ -14,6 +14,9 @@ Feature protosal:
 
 ## Unreleased
 
+- [settings] [compatibility] **Optional DC ReShade search-path injection gate** - Display Commander now adds its `Reshade\Shaders` and `Reshade\Textures` search paths only when explicitly enabled via a marker file, so path injection is opt-in.
+  Details: `OverrideReShadeSettings_AddDisplayCommanderPaths` in `src/addons/display_commander/main_entry.cpp` now requires `.DC_GLOBAL_EFFECTS_PATHS` (next to the addon DLL or in `%LocalAppData%\Programs\Display_Commander`) before writing ReShade `GENERAL.EffectSearchPaths` / `GENERAL.TextureSearchPaths`.
+
 - [cleanup] [hooks] **DXGI color-space logs now print raw enum values** - Color-space diagnostics now log the numeric DXGI color-space value directly, reducing helper indirection in swapchain logging paths.
   Details: removed `GetDXGIColorSpaceString` and `utils/dxgi_color_space.hpp`; updated logging call sites in `src/addons/display_commander/swapchain_events.cpp` and `src/addons/display_commander/hooks/dxgi/dxgi_present_hooks.cpp`.
 
