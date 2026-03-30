@@ -10,7 +10,6 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
-#include "input_activity_stats.hpp"
 
 namespace {
 
@@ -98,9 +97,6 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
         LogInfo("Suppressing WGI factory request: %s", iid_str.c_str());
         return E_NOTIMPL;
     }
-
-    // Game is using WGI; show in Active inputs and forward to original.
-    InputActivityStats::GetInstance().MarkActive(InputApiId::WindowsGamingInput);
     return RoGetActivationFactory_Original(activatableClassId, iid, factory);
 }
 

@@ -22,46 +22,8 @@ namespace display_commander::display::dpi {
 using SetProcessDpiAwareness_pfn = HRESULT(WINAPI*)(PROCESS_DPI_AWARENESS);
 using SetThreadDpiAwarenessContext_pfn = DPI_AWARENESS_CONTEXT(WINAPI*)(DPI_AWARENESS_CONTEXT);
 
-// Check if Windows 10 or greater
-static bool IsWindows10OrGreater() {
-    OSVERSIONINFOEXW osvi = {};
-    osvi.dwOSVersionInfoSize = sizeof(osvi);
-    DWORDLONG const dwlConditionMask =
-        VerSetConditionMask(VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_GREATER_EQUAL),
-                                                VER_MINORVERSION, VER_GREATER_EQUAL),
-                            VER_SERVICEPACKMAJOR, VER_GREATER_EQUAL);
-
-    osvi.dwMajorVersion = 10;
-    osvi.dwMinorVersion = 0;
-    osvi.wServicePackMajor = 0;
-
-    return VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_SERVICEPACKMAJOR, dwlConditionMask)
-           != FALSE;
-}
-
-// Check if Windows 8.1 or greater
-static bool IsWindows8Point1OrGreater() {
-    OSVERSIONINFOEXW osvi = {};
-    osvi.dwOSVersionInfoSize = sizeof(osvi);
-    DWORDLONG const dwlConditionMask =
-        VerSetConditionMask(VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_GREATER_EQUAL),
-                                                VER_MINORVERSION, VER_GREATER_EQUAL),
-                            VER_SERVICEPACKMAJOR, VER_GREATER_EQUAL);
-
-    osvi.dwMajorVersion = 6;
-    osvi.dwMinorVersion = 3;
-    osvi.wServicePackMajor = 0;
-
-    return VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_SERVICEPACKMAJOR, dwlConditionMask)
-           != FALSE;
-}
-
 // Set thread DPI awareness context (Windows 10+)
 static void SetThreadDpiAwarenessContextLocal(DPI_AWARENESS_CONTEXT dpi_ctx) {
-    if (!IsWindows10OrGreater()) {
-        return;
-    }
-
     static HMODULE user32_dll = GetModuleHandleW(L"user32.dll");
     if (user32_dll == nullptr) {
         return;
@@ -173,28 +135,17 @@ void ForceDPIAwarenessUsingAppCompat(bool set) {
 }
 
 void SetMonitorDPIAwareness(bool bOnlyIfWin10) {
-    if (IsWindows10OrGreater()) {
-        SetThreadDpiAwarenessContextLocal(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-        return;
-    }
+    HMODULE shcore_dll = LoadLibraryW(L"shcore.dll");
+    if (shcore_dll != nullptr) {
+        auto SetProcessDpiAwarenessFn =
+            reinterpret_cast<SetProcessDpiAwareness_pfn>(GetProcAddress(shcore_dll, "SetProcessDpiAwareness"));
 
-    if (bOnlyIfWin10) {
-        return;
-    }
-
-    if (IsWindows8Point1OrGreater()) {
-        HMODULE shcore_dll = LoadLibraryW(L"shcore.dll");
-        if (shcore_dll != nullptr) {
-            auto SetProcessDpiAwarenessFn =
-                reinterpret_cast<SetProcessDpiAwareness_pfn>(GetProcAddress(shcore_dll, "SetProcessDpiAwareness"));
-
-            if (SetProcessDpiAwarenessFn != nullptr) {
-                SetProcessDpiAwarenessFn(PROCESS_PER_MONITOR_DPI_AWARE);
-                FreeLibrary(shcore_dll);
-                return;
-            }
+        if (SetProcessDpiAwarenessFn != nullptr) {
+            SetProcessDpiAwarenessFn(PROCESS_PER_MONITOR_DPI_AWARE);
             FreeLibrary(shcore_dll);
+            return;
         }
+        FreeLibrary(shcore_dll);
     }
 
     SetProcessDPIAware();
@@ -216,11 +167,9 @@ void DisableDPIScaling() {
         LogInfo("DPI awareness set via AppCompat. A game restart may be required for full effect.");
     }
 
-    if (IsWindows10OrGreater()) {
-        SetThreadDpiAwarenessContextLocal(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    }
+    SetThreadDpiAwarenessContextLocal(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    if (IsWindows8Point1OrGreater()) {
+    {
         HMODULE shcore_dll = LoadLibraryW(L"shcore.dll");
         if (shcore_dll != nullptr) {
             auto SetProcessDpiAwarenessFn =

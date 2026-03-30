@@ -34,7 +34,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
-void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawNewExperimentalFeatures(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDxgiRefreshRateSection(display_commander::ui::IImGuiWrapper& imgui);
@@ -81,19 +80,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     }
 
     imgui.Spacing();
-
-    imgui.Spacing();
-
-    if (enabled_experimental_features) {
-        // Disable MPO (fix black screen on multimonitor) Section
-        if (imgui.CollapsingHeader("Disable MPO (fix black screen issues on multimonitor setup)",
-                                   wrapper_flags::TreeNodeFlags_None)) {
-            DrawMpoSection(imgui);
-        }
-
-        imgui.Spacing();
-    }
-
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings(api, imgui);
 

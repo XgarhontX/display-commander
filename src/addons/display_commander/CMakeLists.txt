@@ -71,7 +71,6 @@ if(MSVC)
     /bigobj ${DC_MSVC_ARCH} /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE
     /wd4191 /wd4244 /wd4267 /wd4996 /wd4005
   )
-  set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set_target_properties(zzz_display_commander PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     PDB_NAME "zzz_display_commander"
@@ -97,9 +96,6 @@ if(EXISTS "${_dc_repo_root}/external/minhook")
   add_library(minhook STATIC ${MINHOOK_SOURCES})
   target_compile_definitions(minhook PRIVATE MH_STATIC=1)
   target_include_directories(minhook PRIVATE "${_dc_repo_root}/external/minhook/include")
-  if(MSVC)
-    set_property(TARGET minhook PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  endif()
   target_link_libraries(zzz_display_commander PRIVATE minhook)
   message(STATUS "MinHook library configured successfully")
 else()
@@ -115,23 +111,3 @@ endif()
 
 set_target_properties(zzz_display_commander PROPERTIES SUFFIX "${TARGET_SUFFIX}")
 
-
-# Embed game_default_overrides.toml in the DLL (RCDATA 304).
-set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")
-set(DC_GAME_OVERRIDES_RC "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.rc")
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.rc.in
-  ${DC_GAME_OVERRIDES_RC}
-  @ONLY
-)
-set(DC_GAME_OVERRIDES_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
-add_custom_target(copy_game_default_overrides_for_rc ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
-  COMMENT "Copy game_default_overrides.toml to build dir for resource embedding"
-  BYPRODUCTS ${DC_GAME_OVERRIDES_RC_BYPRODUCTS}
-)
-if(NOT EXISTS "${DC_GAME_DEFAULT_OVERRIDES_TOML}")
-  message(WARNING "game_default_overrides.toml not found at ${DC_GAME_DEFAULT_OVERRIDES_TOML} - resource 304 will be missing")
-endif()
-target_sources(zzz_display_commander PRIVATE ${DC_GAME_OVERRIDES_RC})
-add_dependencies(zzz_display_commander copy_game_default_overrides_for_rc)

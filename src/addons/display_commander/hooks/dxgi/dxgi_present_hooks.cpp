@@ -7,12 +7,10 @@
 #include "../../swapchain_events.hpp"
 #include "../../ui/new_ui/new_ui_tabs.hpp"
 #include "../../utils/detour_call_tracker.hpp"
-#include "../../utils/dxgi_color_space.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/timing.hpp"
-#include "dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../present_traffic_tracking.hpp"
 #include "dxgi_gpu_completion.hpp"
@@ -1307,16 +1305,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 
-    // Return proxy wrapper instead of hooking vtable
-    if (SUCCEEDED(hr) && ppTarget && *ppTarget) {
-        IDXGIOutput* originalOutput = *ppTarget;
-        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
-        if (wrappedOutput != nullptr) {
-            // Release the original output and replace with wrapper
-            originalOutput->Release();
-            *ppTarget = wrappedOutput;
-        }
-    }
 
     return hr;
 }
@@ -1368,17 +1356,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGISwapChain::GetContainingOutput", hr, &s_err_count);
-    }
-
-    // Return proxy wrapper instead of hooking vtable
-    if (SUCCEEDED(hr) && ppOutput && *ppOutput) {
-        IDXGIOutput* originalOutput = *ppOutput;
-        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
-        if (wrappedOutput != nullptr) {
-            // Release the original output and replace with wrapper
-            originalOutput->Release();
-            *ppOutput = wrappedOutput;
-        }
     }
 
     return hr;
@@ -1448,17 +1425,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapCha
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGISwapChain1::GetRestrictToOutput", hr, &s_err_count);
-    }
-
-    // Return proxy wrapper instead of hooking vtable
-    if (SUCCEEDED(hr) && ppRestrictToOutput && *ppRestrictToOutput) {
-        IDXGIOutput* originalOutput = *ppRestrictToOutput;
-        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
-        if (wrappedOutput != nullptr) {
-            // Release the original output and replace with wrapper
-            originalOutput->Release();
-            *ppRestrictToOutput = wrappedOutput;
-        }
     }
 
     return hr;
@@ -1576,8 +1542,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3* 
     HRESULT hr = IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
     static int s_err_count = 0;
     if (FAILED(hr) && s_err_count < 10) {
-        LogError("[DXGI error] IDXGISwapChain3::SetColorSpace1(ColorSpace=%s (%d)) returned 0x%08X",
-                 utils::GetDXGIColorSpaceString(ColorSpace), static_cast<int>(ColorSpace), static_cast<unsigned>(hr));
+        LogError("[DXGI error] IDXGISwapChain3::SetColorSpace1(ColorSpace=%d) returned 0x%08X",
+                 static_cast<int>(ColorSpace), static_cast<unsigned>(hr));
         s_err_count++;
     }
     return hr;

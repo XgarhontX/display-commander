@@ -18,11 +18,7 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::DXGI_SWAPCHAIN: return &settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks;
         case HookType::SL_PROXY_DXGI_SWAPCHAIN:
             return &settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks;
-        case HookType::D3D11_DEVICE: return &settings::g_hook_suppression_settings.suppress_d3d11_device_hooks;
-        case HookType::D3D12_DEVICE: return &settings::g_hook_suppression_settings.suppress_d3d12_device_hooks;
         case HookType::XINPUT:       return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
-        case HookType::DINPUT:       return &settings::g_hook_suppression_settings.suppress_dinput_hooks;
-        case HookType::DINPUT8:      return &settings::g_hook_suppression_settings.suppress_dinput8_hooks;
         case HookType::STREAMLINE:   return &settings::g_hook_suppression_settings.suppress_streamline_hooks;
         case HookType::NGX:          return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
         case HookType::WINDOWS_GAMING_INPUT:
@@ -37,8 +33,6 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::OPENGL:           return &settings::g_hook_suppression_settings.suppress_opengl_hooks;
         case HookType::NVAPI:            return &settings::g_hook_suppression_settings.suppress_nvapi_hooks;
         case HookType::PROCESS_EXIT:     return &settings::g_hook_suppression_settings.suppress_process_exit_hooks;
-        case HookType::WINDOW_PROC:      return &settings::g_hook_suppression_settings.suppress_window_proc_hooks;
-        case HookType::D3D9:             return &settings::g_hook_suppression_settings.suppress_d3d9_hooks;
         case HookType::VULKAN_LOADER:     return &settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks;
         default:                         return nullptr;
     }
@@ -64,20 +58,8 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                     current_value =
                         settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.GetValue();
                     break;
-                case HookType::D3D11_DEVICE:
-                    current_value = settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
-                    break;
-                case HookType::D3D12_DEVICE:
-                    current_value = settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.GetValue();
-                    break;
                 case HookType::XINPUT:
                     current_value = settings::g_hook_suppression_settings.suppress_xinput_hooks.GetValue();
-                    break;
-                case HookType::DINPUT:
-                    current_value = settings::g_hook_suppression_settings.suppress_dinput_hooks.GetValue();
-                    break;
-                case HookType::DINPUT8:
-                    current_value = settings::g_hook_suppression_settings.suppress_dinput8_hooks.GetValue();
                     break;
                 case HookType::STREAMLINE:
                     current_value = settings::g_hook_suppression_settings.suppress_streamline_hooks.GetValue();
@@ -119,12 +101,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                 case HookType::PROCESS_EXIT:
                     current_value = settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
                     break;
-                case HookType::WINDOW_PROC:
-                    current_value = settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
-                    break;
-                case HookType::D3D9:
-                    current_value = settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
-                    break;
                 case HookType::VULKAN_LOADER:
                     current_value = settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.GetValue();
                     break;
@@ -146,13 +122,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
         case HookType::SL_PROXY_DXGI_SWAPCHAIN:
             return settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.GetValue();
-        case HookType::D3D11_DEVICE:
-            return settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
-        case HookType::D3D12_DEVICE:
-            return settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.GetValue();
         case HookType::XINPUT:     return settings::g_hook_suppression_settings.suppress_xinput_hooks.GetValue();
-        case HookType::DINPUT:     return settings::g_hook_suppression_settings.suppress_dinput_hooks.GetValue();
-        case HookType::DINPUT8:    return settings::g_hook_suppression_settings.suppress_dinput8_hooks.GetValue();
         case HookType::STREAMLINE: return settings::g_hook_suppression_settings.suppress_streamline_hooks.GetValue();
         case HookType::NGX:        return settings::g_hook_suppression_settings.suppress_ngx_hooks.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
@@ -172,8 +142,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::NVAPI: return settings::g_hook_suppression_settings.suppress_nvapi_hooks.GetValue();
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
-        case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
-        case HookType::D3D9:        return settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
         case HookType::VULKAN_LOADER:
             return settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.GetValue();
         default:
@@ -196,25 +164,9 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
             settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
             break;
-        case HookType::D3D11_DEVICE:
-            settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.Save();
-            break;
-        case HookType::D3D12_DEVICE:
-            settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.Save();
-            break;
         case HookType::XINPUT:
             settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
-            break;
-        case HookType::DINPUT:
-            settings::g_hook_suppression_settings.suppress_dinput_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_dinput_hooks.Save();
-            break;
-        case HookType::DINPUT8:
-            settings::g_hook_suppression_settings.suppress_dinput8_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_dinput8_hooks.Save();
             break;
         case HookType::STREAMLINE:
             settings::g_hook_suppression_settings.suppress_streamline_hooks.SetValue(suppress);
@@ -268,14 +220,6 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
             settings::g_hook_suppression_settings.suppress_process_exit_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
             break;
-        case HookType::WINDOW_PROC:
-            settings::g_hook_suppression_settings.suppress_window_proc_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
-            break;
-        case HookType::D3D9:
-            settings::g_hook_suppression_settings.suppress_d3d9_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_d3d9_hooks.Save();
-            break;
         case HookType::VULKAN_LOADER:
             settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.Save();
@@ -312,44 +256,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
             }
             break;
-        case HookType::D3D11_DEVICE:
-            if (!settings::g_hook_suppression_settings.d3d11_device_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.d3d11_device_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.Save();
-            }
-            break;
-        case HookType::D3D12_DEVICE:
-            if (!settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.d3d12_device_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.Save();
-            }
-            break;
         case HookType::XINPUT:
             if (!settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.xinput_hooks_installed.SetValue(true);
 
                 // force setting to be written
                 settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
-            }
-            break;
-        case HookType::DINPUT:
-            if (!settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dinput_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_dinput_hooks.Save();
-            }
-            break;
-        case HookType::DINPUT8:
-            if (!settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dinput8_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_dinput8_hooks.Save();
             }
             break;
         case HookType::STREAMLINE:
@@ -456,22 +368,6 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
             }
             break;
-        case HookType::WINDOW_PROC:
-            if (!settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.window_proc_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
-            }
-            break;
-        case HookType::D3D9:
-            if (!settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.d3d9_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_d3d9_hooks.Save();
-            }
-            break;
         case HookType::VULKAN_LOADER:
             if (!settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.SetValue(true);
@@ -496,11 +392,7 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::DXGI_FACTORY:            return "DXGI Factory";
         case HookType::DXGI_SWAPCHAIN:          return "DXGI Swapchain";
         case HookType::SL_PROXY_DXGI_SWAPCHAIN: return "SL Proxy DXGI Swapchain";
-        case HookType::D3D11_DEVICE:            return "D3D11 Device";
-        case HookType::D3D12_DEVICE:            return "D3D12 Device";
         case HookType::XINPUT:                  return "XInput";
-        case HookType::DINPUT:                  return "DirectInput";
-        case HookType::DINPUT8:                 return "DirectInput 8";
         case HookType::STREAMLINE:              return "Streamline";
         case HookType::NGX:                     return "NGX";
         case HookType::WINDOWS_GAMING_INPUT:    return "Windows Gaming Input";
@@ -514,8 +406,6 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::OPENGL:                  return "OpenGL";
         case HookType::NVAPI:                   return "NVAPI";
         case HookType::PROCESS_EXIT:            return "Process Exit";
-        case HookType::WINDOW_PROC:             return "Window Procedure";
-        case HookType::D3D9:                    return "D3D9";
         case HookType::VULKAN_LOADER:           return "Vulkan Loader";
         default:
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
@@ -531,13 +421,7 @@ bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
         case HookType::SL_PROXY_DXGI_SWAPCHAIN:
             return settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue();
-        case HookType::D3D11_DEVICE:
-            return settings::g_hook_suppression_settings.d3d11_device_hooks_installed.GetValue();
-        case HookType::D3D12_DEVICE:
-            return settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue();
         case HookType::XINPUT:     return settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue();
-        case HookType::DINPUT:     return settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue();
-        case HookType::DINPUT8:    return settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue();
         case HookType::STREAMLINE: return settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue();
         case HookType::NGX:        return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
@@ -557,8 +441,6 @@ bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
         case HookType::NVAPI: return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
-        case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
-        case HookType::D3D9:        return settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue();
         case HookType::VULKAN_LOADER:
             return settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue();
         default:                    return false;

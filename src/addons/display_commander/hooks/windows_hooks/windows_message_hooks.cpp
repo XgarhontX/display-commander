@@ -13,7 +13,6 @@
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
 #include "../hook_suppression_manager.hpp"
-#include "../input/input_activity_stats.hpp"
 #include "api_hooks.hpp"          // For GetGameWindow and other functions
 #include "window_proc_hooks.hpp"  // For ProcessWindowMessage
 
@@ -1086,7 +1085,6 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
     CALL_GUARD_NO_TS();;
     // Track total calls
     g_hook_stats[HOOK_GetRawInputBuffer].increment_total();
-    UpdateHookLastCallTime(HOOK_GetRawInputBuffer);
 
     // Call original function first
     UINT result = GetRawInputBuffer_Original ? GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader)
@@ -1308,7 +1306,6 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
     CALL_GUARD_NO_TS();;
     // Track total calls
     g_hook_stats[HOOK_GetRawInputData].increment_total();
-    UpdateHookLastCallTime(HOOK_GetRawInputData);
 
     // Call original function first
     UINT result = GetRawInputData_Original
@@ -2277,19 +2274,6 @@ const HookCallStats& GetHookStats(int hook_index) {
     }
     static HookCallStats empty_stats;
     return empty_stats;
-}
-
-void UpdateHookLastCallTime(int hook_index) {
-    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
-        InputActivityStats::GetInstance().MarkActiveByHookIndex(hook_index);
-    }
-}
-
-void ResetAllHookStats() {
-    for (int i = 0; i < HOOK_COUNT; ++i) {
-        g_hook_stats[i].reset();
-    }
-    InputActivityStats::GetInstance().Reset();
 }
 
 int GetHookCount() { return HOOK_COUNT; }

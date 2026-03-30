@@ -1242,13 +1242,6 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
     reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
 
-    // Draw event handlers removed (power-saving module no longer provides them).
-
-    reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
-    reshade::register_event<reshade::addon_event::create_sampler>(OnCreateSampler);
-    // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
-    // These operations are handled differently in ReShade
-    // Register device destroy event for restore-on-exit
     reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
     reshade::register_event<reshade::addon_event::init_device>(OnInitDevice);
 

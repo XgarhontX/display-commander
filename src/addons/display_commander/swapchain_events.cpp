@@ -1,15 +1,12 @@
 #include "addon.hpp"
-#include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
 #include "display/display_initial_state.hpp"
 #include "display/hdr_control.hpp"
 #include "globals.hpp"
-#include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
-#include "hooks/nvidia/streamline_hooks.hpp"
 #include "hooks/system/timeslowdown_hooks.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
@@ -33,7 +30,6 @@
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
-#include "utils/dxgi_color_space.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/perf_measurement.hpp"
@@ -1536,16 +1532,15 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     if (FAILED(hr)) {
         return;
     }
-    LogInfo("SetSwapChainColorSpace: color_space=%s (%d)", utils::GetDXGIColorSpaceString(color_space),
-            static_cast<int>(color_space));
+    LogInfo("SetSwapChainColorSpace: color_space=%d", static_cast<int>(color_space));
     UINT color_space_support = 0;
     swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
     const int supported = (color_space_support != 0) ? 1 : 0;
 
     hr = swapchain3->SetColorSpace1(color_space);
     if (FAILED(hr)) {
-        LogError("SetSwapChainColorSpace: SetColorSpace1(ColorSpace=%s (%d)) failed 0x%08X",
-                 utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), static_cast<unsigned>(hr));
+        LogError("SetSwapChainColorSpace: SetColorSpace1(ColorSpace=%d) failed 0x%08X",
+                 static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
     g_show_auto_colorspace_fix_in_main_tab.store(true);
@@ -1615,8 +1610,7 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_
         return;
     }
 
-    LogInfo("AutoSetColorSpace: applying %s (%d)", utils::GetDXGIColorSpaceString(color_space),
-            static_cast<int>(color_space));
+    LogInfo("AutoSetColorSpace: applying %d", static_cast<int>(color_space));
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
 }
 // Update composition state after presents (required for valid stats)
@@ -1882,180 +1876,3 @@ void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
     }
 }
 
-// Sampler creation event handler to override mipmap bias and anisotropic filtering
-bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc) {
-    CALL_GUARD_NO_TS();;
-    if (device == nullptr) {
-        return false;
-    }
-
-    // Track API type for counter
-    reshade::api::device_api api = device->get_api();
-    if (api == reshade::api::device_api::d3d11) {
-        g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].fetch_add(1);
-    } else if (api == reshade::api::device_api::d3d12) {
-        g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].fetch_add(1);
-    }
-
-    // Track original filter mode (BEFORE overrides)
-    reshade::api::filter_mode original_filter = desc.filter;
-    switch (original_filter) {
-        case reshade::api::filter_mode::min_mag_mip_point:
-        case reshade::api::filter_mode::min_mag_point_mip_linear:
-        case reshade::api::filter_mode::min_point_mag_linear_mip_point:
-        case reshade::api::filter_mode::min_point_mag_mip_linear:
-        case reshade::api::filter_mode::min_linear_mag_mip_point:
-        case reshade::api::filter_mode::min_linear_mag_point_mip_linear:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].fetch_add(1);
-            break;
-        case reshade::api::filter_mode::min_mag_linear_mip_point:
-        case reshade::api::filter_mode::min_mag_mip_linear:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].fetch_add(1);
-            break;
-        case reshade::api::filter_mode::min_mag_anisotropic_mip_point:
-        case reshade::api::filter_mode::anisotropic:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].fetch_add(1);
-            break;
-        case reshade::api::filter_mode::compare_min_mag_mip_point:
-        case reshade::api::filter_mode::compare_min_mag_point_mip_linear:
-        case reshade::api::filter_mode::compare_min_point_mag_linear_mip_point:
-        case reshade::api::filter_mode::compare_min_point_mag_mip_linear:
-        case reshade::api::filter_mode::compare_min_linear_mag_mip_point:
-        case reshade::api::filter_mode::compare_min_linear_mag_point_mip_linear:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].fetch_add(1);
-            break;
-        case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
-        case reshade::api::filter_mode::compare_min_mag_mip_linear:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].fetch_add(1);
-            break;
-        case reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point:
-        case reshade::api::filter_mode::compare_anisotropic:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].fetch_add(1);
-            break;
-        default: g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].fetch_add(1); break;
-    }
-
-    // Track original address mode (BEFORE overrides) - use U coordinate as representative
-    reshade::api::texture_address_mode original_address_u = desc.address_u;
-    switch (original_address_u) {
-        case reshade::api::texture_address_mode::wrap:
-            g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].fetch_add(1);
-            break;
-        case reshade::api::texture_address_mode::mirror:
-            g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].fetch_add(1);
-            break;
-        case reshade::api::texture_address_mode::clamp:
-            g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].fetch_add(1);
-            break;
-        case reshade::api::texture_address_mode::border:
-            g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].fetch_add(1);
-            break;
-        case reshade::api::texture_address_mode::mirror_once:
-            g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].fetch_add(1);
-            break;
-        default: break;
-    }
-
-    // Track original anisotropy level (BEFORE overrides) - only for anisotropic filters
-    float original_max_anisotropy = desc.max_anisotropy;
-    if (original_filter == reshade::api::filter_mode::anisotropic
-        || original_filter == reshade::api::filter_mode::compare_anisotropic
-        || original_filter == reshade::api::filter_mode::min_mag_anisotropic_mip_point
-        || original_filter == reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point) {
-        // Clamp to valid range (1-16) and convert to index (level 1 = index 0, level 16 = index 15)
-        int anisotropy_level = static_cast<int>(std::round(original_max_anisotropy));
-        if (anisotropy_level < 1) anisotropy_level = 1;
-        if (anisotropy_level > 16) anisotropy_level = 16;
-        int index = anisotropy_level - 1;  // Convert to 0-based index
-        if (index >= 0 && index < MAX_ANISOTROPY_LEVELS) {
-            g_sampler_anisotropy_level_counters[index].fetch_add(1);
-        }
-    }
-
-    bool modified = false;
-
-    // Apply mipmap LOD bias override
-    if (settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue() != 0.0f) {
-        // Only apply if MinLOD != MaxLOD and comparison op is NEVER (non-shadow samplers)
-        if (desc.min_lod != desc.max_lod && desc.compare_op == reshade::api::compare_op::never) {
-            desc.mip_lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
-            modified = true;
-        }
-    }
-
-    // Upgrade linear/bilinear filters to anisotropic (experimental tab)
-    if (settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue()) {
-        // Determine target max_anisotropy: use main tab setting if set, otherwise default to 16
-        int target_anisotropy = settings::g_mainTabSettings.max_anisotropy.GetValue();
-        if (target_anisotropy <= 0) {
-            target_anisotropy = 16;  // Default to 16x if not set
-        }
-        float target_anisotropy_float = static_cast<float>(target_anisotropy);
-
-        switch (desc.filter) {
-            // Trilinear to full anisotropic
-            case reshade::api::filter_mode::min_mag_mip_linear:
-                if (settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::anisotropic;
-                    desc.max_anisotropy = target_anisotropy_float;
-                    modified = true;
-                }
-                break;
-
-            // Compare trilinear to compare anisotropic
-            case reshade::api::filter_mode::compare_min_mag_mip_linear:
-                if (settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
-                    desc.max_anisotropy = target_anisotropy_float;
-                    modified = true;
-                }
-                break;
-
-            // Bilinear to anisotropic with point mip
-            case reshade::api::filter_mode::min_mag_linear_mip_point:
-                if (settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::min_mag_anisotropic_mip_point;
-                    desc.max_anisotropy = target_anisotropy_float;
-                    modified = true;
-                }
-                break;
-
-            // Compare bilinear to compare anisotropic with point mip
-            case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
-                if (settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point;
-                    desc.max_anisotropy = target_anisotropy_float;
-                    modified = true;
-                }
-                break;
-
-            default: break;
-        }
-    }
-
-    // Apply max anisotropy override for existing anisotropic filters
-    if (settings::g_mainTabSettings.max_anisotropy.GetValue() > 0) {
-        switch (desc.filter) {
-            case reshade::api::filter_mode::anisotropic:
-            case reshade::api::filter_mode::compare_anisotropic:
-            case reshade::api::filter_mode::min_mag_anisotropic_mip_point:
-            case reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point:
-                desc.max_anisotropy = static_cast<float>(settings::g_mainTabSettings.max_anisotropy.GetValue());
-                modified = true;
-                break;
-            default: break;
-        }
-    }
-
-    return modified;
-}
-
-bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
-                          reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
-    CALL_GUARD_NO_TS();;
-    (void)device;
-    (void)resource;
-    (void)usage_type;
-    (void)desc;
-    return false;
-}

@@ -281,8 +281,6 @@ extern std::unique_ptr<XInputWidget> g_xinput_widget;
 // Global functions for integration
 void InitializeXInputWidget();
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
-/** Draw "Active input APIs (last 10s)" section for Controller tab (Special K-style). */
-void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw GetState(0) polling rates for Controller tab. */
 void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw full Controller tab (all sections in order). Call this from both UIs so widgets stay in sync. */

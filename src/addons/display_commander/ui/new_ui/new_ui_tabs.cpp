@@ -13,7 +13,6 @@
 #include "experimental_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
-#include "swapchain_hdr_metadata.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
@@ -249,7 +248,6 @@ void InitializeNewUI() {
     // Ensure settings for main and advanced tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitAdvancedTab();
-    ui::new_ui::InitSwapchainTab();
     ui::new_ui::InitHotkeysTab();
     ui::new_ui::InitAddonsTab();
 

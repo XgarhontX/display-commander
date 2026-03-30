@@ -28,11 +28,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_dxgi_factory_hooks;
     BoolSetting suppress_dxgi_swapchain_hooks;
     BoolSetting suppress_sl_proxy_dxgi_swapchain_hooks;
-    BoolSetting suppress_d3d11_device_hooks;
-    BoolSetting suppress_d3d12_device_hooks;
     BoolSetting suppress_xinput_hooks;
-    BoolSetting suppress_dinput_hooks;
-    BoolSetting suppress_dinput8_hooks;
     BoolSetting suppress_streamline_hooks;
     BoolSetting suppress_ngx_hooks;
     BoolSetting suppress_windows_gaming_input_hooks;
@@ -46,19 +42,13 @@ class HookSuppressionSettings {
     BoolSetting suppress_opengl_hooks;
     BoolSetting suppress_nvapi_hooks;
     BoolSetting suppress_process_exit_hooks;
-    BoolSetting suppress_window_proc_hooks;
-    BoolSetting suppress_d3d9_hooks;
     BoolSetting suppress_vulkan_loader_hooks;
 
     // Auto-detection settings (set to 1 when hooks are successfully installed)
     BoolSetting dxgi_factory_hooks_installed;
     BoolSetting dxgi_swapchain_hooks_installed;
     BoolSetting sl_proxy_dxgi_swapchain_hooks_installed;
-    BoolSetting d3d11_device_hooks_installed;
-    BoolSetting d3d12_device_hooks_installed;
     BoolSetting xinput_hooks_installed;
-    BoolSetting dinput_hooks_installed;
-    BoolSetting dinput8_hooks_installed;
     BoolSetting streamline_hooks_installed;
     BoolSetting ngx_hooks_installed;
     BoolSetting windows_gaming_input_hooks_installed;
@@ -72,8 +62,6 @@ class HookSuppressionSettings {
     BoolSetting opengl_hooks_installed;
     BoolSetting nvapi_hooks_installed;
     BoolSetting process_exit_hooks_installed;
-    BoolSetting window_proc_hooks_installed;
-    BoolSetting d3d9_hooks_installed;
     BoolSetting vulkan_loader_hooks_installed;
 
    private:

@@ -48,11 +48,6 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 void OnPresentUpdateAfter2(bool frame_generation_aware = false);
 void OnPresentFlags2(bool from_present_detour = true, bool frame_generation_aware = false);
 
-// Resource view / sampler creation (anisotropy on samplers)
-bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
-                          reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc);
-bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc);
-
 // ============================================================================
 // POWER SAVING EVENT HANDLERS
 // ============================================================================

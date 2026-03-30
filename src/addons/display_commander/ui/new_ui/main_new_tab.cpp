@@ -1622,7 +1622,6 @@ void InitMainNewTab() {
 enum class MainTabOptionalSectionKind {
     TextureFiltering,
     AudioControl,
-    CpuControl,
     WindowButtons,
     InputControl,
     DlssControl,
@@ -1631,7 +1630,7 @@ enum class MainTabOptionalSectionKind {
 
 static constexpr MainTabOptionalSectionKind kMainTabOptionalPanelsDrawOrder[] = {
     MainTabOptionalSectionKind::TextureFiltering, MainTabOptionalSectionKind::AudioControl,
-    MainTabOptionalSectionKind::CpuControl,         MainTabOptionalSectionKind::WindowButtons,
+     MainTabOptionalSectionKind::WindowButtons,
     MainTabOptionalSectionKind::InputControl,
     MainTabOptionalSectionKind::DlssControl,
     MainTabOptionalSectionKind::DxgiControl,
@@ -2306,82 +2305,6 @@ static void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWr
     }
 }
 
-static void DrawMainTabOptionalPanelCpuControl(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Spacing();
-    g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
-    ui::colors::PushHeaderColors(&imgui);
-    const bool cpu_control_open = imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None);
-    ui::colors::PopCollapsingHeaderColors(&imgui);
-    if (cpu_control_open) {
-        imgui.Indent();
-
-        SYSTEM_INFO sys_info = {};
-        GetSystemInfo(&sys_info);
-        DWORD max_cores = sys_info.dwNumberOfProcessors;
-
-        settings::UpdateCpuCoresMaximum();
-
-        int cpu_cores_value = settings::g_mainTabSettings.cpu_cores.GetValue();
-        int max_cores_int = static_cast<int>(max_cores);
-
-        if (cpu_cores_value > 0 && cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
-            cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
-            settings::g_mainTabSettings.cpu_cores.SetValue(cpu_cores_value);
-        }
-
-        int slider_min = 0;
-        int slider_max = max_cores_int;
-
-        std::string slider_label = "CPU Cores";
-        if (cpu_cores_value == 0) {
-            slider_label += " (Default - No Change)";
-        } else if (cpu_cores_value == max_cores_int) {
-            slider_label += " (All Cores)";
-        } else {
-            slider_label += " (" + std::to_string(cpu_cores_value) + " Core" + (cpu_cores_value > 1 ? "s" : "") + ")";
-        }
-
-        const char* format_str = (cpu_cores_value == 0) ? "Default" : "%d";
-
-        int slider_temp_value = cpu_cores_value;
-
-        if (imgui.SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
-            int new_cpu_cores_value = slider_temp_value;
-            if (new_cpu_cores_value > 0 && new_cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
-                new_cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
-            }
-
-            settings::g_mainTabSettings.cpu_cores.SetValue(new_cpu_cores_value);
-            LogInfo("CPU cores set to %d (0 = default/no change)", new_cpu_cores_value);
-            cpu_cores_value = new_cpu_cores_value;
-        }
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Controls CPU core affinity for the game process:\n\n"
-                "- 0 (Default): No change to process affinity\n"
-                "- %d-%d: Limit game to use specified number of CPU cores\n\n"
-                "Note: Changes take effect immediately. Game restart may be required for full effect.",
-                MIN_CPU_CORES_SELECTABLE, max_cores_int);
-        }
-
-        if (cpu_cores_value > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
-        }
-
-        imgui.Spacing();
-        if (cpu_cores_value == 0) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
-        } else {
-            imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
-                              cpu_cores_value > 1 ? "s" : "");
-        }
-
-        imgui.Unindent();
-    }
-}
-
 static void DrawMainTabOptionalPanelWindowButtons(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     DrawWindowControlButtons(imgui);
@@ -2855,11 +2778,6 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
                     DrawMainTabOptionalPanelAudioControl(imgui);
                 }
                 break;
-            case MainTabOptionalSectionKind::CpuControl:
-                if (settings::g_mainTabSettings.show_main_tab_cpu_control.GetValue()) {
-                    DrawMainTabOptionalPanelCpuControl(imgui);
-                }
-                break;
             case MainTabOptionalSectionKind::WindowButtons:
                 if (settings::g_mainTabSettings.show_main_tab_window_action_buttons.GetValue()) {
                     DrawMainTabOptionalPanelWindowButtons(imgui);
@@ -2902,7 +2820,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.TextColored(ImVec4(0.4f, 0.6f, 0.9f, 1.0f),
                           ICON_FK_FILE " Game default overrides are in use for this game.");
         if (imgui.IsItemHovered()) {
-            std::string tooltip = "Active overrides (from embedded game_default_overrides.toml):\n";
+            std::string tooltip = "Active overrides (per-exe defaults):\n";
             for (const auto& e : display_commander::config::GetActiveOverrideEntries()) {
                 std::string value_display = (e.value == "1") ? "On" : (e.value == "0") ? "Off" : e.value;
                 tooltip += "  - " + e.display_name + " = " + value_display + "\n";
@@ -4152,7 +4070,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     }
 
     // Limit Real Frames indicator (only visible if OnPresentSync mode is selected; shows effective value)
-    if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+    if (g_present_update_after2_called.load(std::memory_order_acquire)) {
         bool limit_real = GetEffectiveLimitRealFrames();
         imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
     }
@@ -4168,7 +4086,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
         uint64_t now_ns = utils::get_now_ns();
 
         // Show Native Reflex status only when streamline is used
-        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+        if (g_present_update_after2_called.load(std::memory_order_acquire)) {
             if (IsNativeReflexActive(now_ns)) {
                 imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                   ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
@@ -4309,7 +4227,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
 
     // Limit Real Frames (experimental; checkbox shows effective value, write updates config)
     if (enabled_experimental_features) {
-        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+        if (g_present_update_after2_called.load(std::memory_order_acquire)) {
             imgui.Spacing();
             bool limit_real = GetEffectiveLimitRealFrames();
             if (imgui.Checkbox("Limit Real Frames", &limit_real)) {

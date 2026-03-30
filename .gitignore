@@ -108,8 +108,6 @@ private_docs
 
 # res
 !src/addons/display_commander/ui/forkawesome.h
-!src/addons/display_commander/res/game_default_overrides.rc.in
-!src/addons/display_commander/res/game_default_overrides.toml
 # .files
 !.clang-format
 !.clang-tidy

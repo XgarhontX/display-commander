@@ -20,7 +20,6 @@
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
-#include "ui/new_ui/swapchain_hdr_metadata.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
@@ -851,12 +850,6 @@ void ContinuousMonitoringThread() {
                 CALL_GUARD_NO_TS();;
                 g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                 HandleReflexAutoConfigure();
-            }
-
-            if (kMonitorAutoApplyTrigger) {
-                CALL_GUARD_NO_TS();;
-                g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
-                ui::new_ui::AutoApplyTrigger();
             }
 
             // Auto-apply resolution on game start

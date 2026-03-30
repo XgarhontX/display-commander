@@ -9,11 +9,7 @@ enum class HookType {
     DXGI_FACTORY,
     DXGI_SWAPCHAIN,
     SL_PROXY_DXGI_SWAPCHAIN,
-    D3D11_DEVICE,
-    D3D12_DEVICE,
     XINPUT,
-    DINPUT,   // dinput.dll (DirectInputCreateA/W)
-    DINPUT8,  // dinput8.dll (DirectInput8Create)
     STREAMLINE,
     NGX,
     WINDOWS_GAMING_INPUT,
@@ -27,8 +23,6 @@ enum class HookType {
     OPENGL,
     NVAPI,
     PROCESS_EXIT,
-    WINDOW_PROC,
-    D3D9,
     VULKAN_LOADER  // vulkan-1.dll vkGetInstanceProcAddr / vkGetDeviceProcAddr (VK_NV_low_latency2, extensions)
 };
 
@@ -53,7 +47,7 @@ class HookSuppressionManager {
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)
-    static constexpr int kHookTypeCount = 24;
+    static constexpr int kHookTypeCount = 18;
 
     // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
     static HookType GetHookTypeByIndex(int index);

@@ -14,6 +14,15 @@ Feature protosal:
 
 ## Unreleased
 
+- [cleanup] [hooks] **DXGI color-space logs now print raw enum values** - Color-space diagnostics now log the numeric DXGI color-space value directly, reducing helper indirection in swapchain logging paths.
+  Details: removed `GetDXGIColorSpaceString` and `utils/dxgi_color_space.hpp`; updated logging call sites in `src/addons/display_commander/swapchain_events.cpp` and `src/addons/display_commander/hooks/dxgi/dxgi_present_hooks.cpp`.
+
+- [removal] [hooks] **Sampler creation hook removed** - Display Commander no longer intercepts ReShade sampler creation, so it no longer rewrites sampler filter/anisotropy or mip LOD bias at sampler-create time.
+  Details: removed `OnCreateSampler` declaration/implementation from `src/addons/display_commander/swapchain_events.hpp` and `src/addons/display_commander/swapchain_events.cpp`.
+- [removal] [hooks] **Resource-view creation hook removed** - Display Commander no longer intercepts ReShade resource-view creation callbacks.
+  Details: removed `OnCreateResourceView` implementation from `src/addons/display_commander/swapchain_events.cpp` and removed its event wiring from `src/addons/display_commander/main_entry.cpp`.
+- [cleanup] [hooks] **DXGI swapchain wrapper usage removed** - Display Commander no longer replaces DXGI-created swapchains with `DXGISwapChain4Wrapper`; factory paths now keep native swapchain objects.
+  Details: removed wrapper replacement steps from `src/addons/display_commander/hooks/dxgi/dxgi_factory_wrapper.cpp` swapchain creation methods and switched Main tab runtime gating to `g_present_update_after2_called` in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
 - [removal] [hooks] **DDraw present hook support removed** - Display Commander no longer installs DirectDraw `ddraw.dll` present/Flip hooks (and the associated FPS-limiter callsite) when `ddraw.dll` loads.
   Details: stubbed `src/addons/display_commander/hooks/ddraw/ddraw_present_hooks.cpp` and removed the runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
 - [removal] [nvapi] **NVIDIA profile search/edits removed** - Display Commander no longer queries or edits NVIDIA driver profiles via the NVIDIA profile-search backend.
@@ -22,6 +31,8 @@ Feature protosal:
   Details: simplified `src/addons/display_commander/nvapi/nvpi_reference.cpp` (fallback-only implementation).
 - [removal] [hooks] **DirectInput (dinput8/dinput) hooks removed** - Display Commander no longer installs DirectInput hooks for `dinput8.dll` / `dinput.dll`.
   Details: replaced `src/addons/display_commander/hooks/input/dinput_hooks.cpp` with link-safe stubs and removed the runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
+- [cleanup] [hooks] **Dead hook suppression entries removed** - Display Commander no longer carries suppression-manager logic for hook types that are no longer installed.
+  Details: removed `HookSuppressionManager` branches for `HookType::D3D11_DEVICE`, `HookType::D3D12_DEVICE`, `HookType::DINPUT`, `HookType::DINPUT8`, `HookType::D3D9`, and `HookType::WINDOW_PROC` from `src/addons/display_commander/hooks/hook_suppression_manager.cpp`.
 - [removal] [hooks] **GameInput hooks removed** - Display Commander no longer installs GameInput hooks (`GameInputCreate`) from `GameInput.dll`.
   Details: replaced `src/addons/display_commander/hooks/input/game_input_hooks.cpp` with stubs and removed runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
 
@@ -52,6 +63,8 @@ Feature protosal:
   Details: removed `DrawUpdatesDisplayCommanderHeader` and `DrawUpdatesReshadeHeader` usage/implementations in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
 - [cleanup] [settings] **Game default overrides: TOML parsing removed** - The embedded per-exe “game default overrides” are now hardcoded in code instead of being parsed from `game_default_overrides.toml`, keeping behavior identical while removing the parsing dependency.
   Details: updated `src/addons/display_commander/config/default_overrides.cpp`; UI still reports the same active overrides and “Apply to config” persists them unchanged.
+- [removal] [cleanup] **Per-game default overrides TOML resource removed** - Display Commander no longer embeds `game_default_overrides.toml` into the addon DLL; per-exe defaults are applied purely via code-based exe detection.
+  Details: removed RCDATA 304 embedding from `src/addons/display_commander/CMakeLists.txt`, deleted `src/addons/display_commander/res/game_default_overrides.toml` and `src/addons/display_commander/res/game_default_overrides.rc.in`.
 - [removal] [cleanup] [settings] **TOML config backend removed (toml++ parsing eliminated)** - Display Commander no longer relies on `toml++` for its config parsing. `DisplayCommander.ini` is now the primary config storage again, and an existing `DisplayCommander.toml` is migrated once on first load.
   Details: updated `src/addons/display_commander/config/display_commander_config.cpp`, removed `toml++` from hotkeys/chords one-time migrations (`config/hotkeys_file.cpp`, `config/chords_file.cpp`), and removed `external/tomlplusplus/include` from `src/addons/display_commander/CMakeLists.txt`.
 - [cleanup] [compatibility] **ReShade DLL load path simplified (local then global)** - ReShade is now loaded with a strict two-step fallback: prefer `Reshade64.dll` / `Reshade32.dll` next to the game exe, and only if missing fall back to the global `Display_Commander\Reshade` DLL.
@@ -1158,7 +1171,7 @@ Reverted to v0.12.535
 - **App Data folders: ensure they exist before use** - `GetDisplayCommanderAppDataFolder`, `GetDisplayCommanderReshadeRootFolder`, `GetDefaultDlssOverrideFolder`, and `GetEffectiveDefaultDlssOverrideFolder` now create their directories if missing, then return the path. Callers no longer need to create the base folders; on creation failure an empty path is returned. Details: utils/general_utils.cpp.
 
 ## v0.12.388
-- **Game default overrides: ContinueRendering enabled for supported games** - Per-game defaults now set "Continue rendering when unfocused" (ContinueRendering = 1) for RE2, RE3, RE7, RE8, Sekiro, Elden Ring, Armored Core 6, Hitman 3, and Devil May Cry 5 when the user has not yet saved a config. Details: res/game_default_overrides.toml.
+- **Game default overrides: ContinueRendering enabled for supported games** - Per-game defaults now set "Continue rendering when unfocused" (ContinueRendering = 1) for RE2, RE3, RE7, RE8, Sekiro, Elden Ring, Armored Core 6, Hitman 3, and Devil May Cry 5 when the user has not yet saved a config. Details: built-in per-exe defaults in `src/addons/display_commander/config/default_overrides.cpp`.
 
 ## v0.12.387
 - **Fixed continue rendering in background crashing in Sekiro** - Switched fake activation and related window messages from PostMessage back to SendMessage so the game processes them synchronously. This fixes crashes when "Continue rendering when unfocused" is enabled in Sekiro (and may help other games). Details: DetourWindowMessageNonBlocking (SendMessage again; deadlock avoided by sending from another thread or by throttle), Window Info tab Quick Send buttons, and any other paths that had been changed to PostMessage for continue-rendering.
@@ -1237,7 +1250,7 @@ Reverted to v0.12.535
 - **Display Settings: show host graphics APIs before DXGI section** - In the Display tab, the "graphics/API libraries loaded by the host" section now appears first, followed by the DXGI display/swap chain settings and then VSync/tearing. Makes it clearer which APIs the game loaded before showing swap chain details. Details: DrawDisplaySettings order in ui/new_ui/main_new_tab.cpp.
 
 ## v0.12.364
-- **Game default overrides: window_mode = 1 for more games** - Per-game defaults now set "Prevent exclusive fullscreen / no resize" (window_mode = 1) for Re2.exe, Re3.exe, Re7.exe, Re8.exe, Sekiro.exe, eldenring.exe, armoredcore6.exe, hitman3.exe, and devilmaycry5.exe when the user has not yet saved a config. New players of these games get the recommended window mode by default. Details: res/game_default_overrides.toml.
+- **Game default overrides: window_mode = 1 for more games** - Per-game defaults now set "Prevent exclusive fullscreen / no resize" (window_mode = 1) for Re2.exe, Re3.exe, Re7.exe, Re8.exe, Sekiro.exe, eldenring.exe, armoredcore6.exe, hitman3.exe, and devilmaycry5.exe when the user has not yet saved a config. New players of these games get the recommended window mode by default. Details: built-in per-exe defaults in `src/addons/display_commander/config/default_overrides.cpp`.
 
 ## v0.12.363
 - **ReShade path: check only DLL for current bitness** - A folder is now treated as a valid ReShade location if it contains the DLL that will actually be loaded: 64-bit builds require only Reshade64.dll, 32-bit only Reshade32.dll. Previously both DLLs were required, which could hide valid locations when only one architecture was installed. Details: `DirectoryHasReshadeDll` in utils/reshade_load_path.cpp.
@@ -1549,7 +1562,7 @@ Reverted to v0.12.535
 - **PresentMon on by default** - PresentMon (ETW-based present and flip mode tracking) is now enabled by default when you open the addon, so flip mode and present stats are available without clicking to enable. You can still turn it off in the Main tab if needed.
 
 ## v0.12.301 (2026-03-05)
-- **Game default overrides: fixed loading** - Per-game defaults from embedded `game_default_overrides.toml` (e.g. `window_mode = 1` for sekiro.exe) were not applied because TOML parses `[hitman3.exe.DisplayCommander]` as nested tables. The loader now recursively collects leaf tables and builds exe/section keys correctly, so overrides load and apply for matching games. Details: `config/default_overrides.cpp` — `CollectLeafTables`; diagnostic logging (exe checked, resource load result, bounded format for exe name).
+- **Game default overrides: fixed loading** - Per-game defaults were not applied in the TOML-based path because nested tables were parsed incorrectly; the loader now recursively collects leaf tables and builds exe/section keys correctly, so overrides load and apply for matching games. Details: `config/default_overrides.cpp` — `CollectLeafTables`; diagnostic logging (exe checked, resource load result, bounded format for exe name).
 - **Game default overrides: window_mode and combo settings** - Combo/enum settings (e.g. Window Mode) now use game default overrides when the key is missing in config: load uses `get_config_value_or_default`, and **Reset to default** uses the effective default (override or constructor default) so reset no longer reverts to 0. Details: `ComboSettingEnumRef::Load()` and `GetDefaultValue()` in `settings_wrapper.cpp`; `window_mode` display name in `default_overrides.cpp`.
 
 ## v0.12.300 (2026-03-05)
@@ -1912,7 +1925,7 @@ Reverted to v0.12.535
 
 ## v0.12.211 (2026-03-02)
 
-- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from an embedded `game_default_overrides.toml` (e.g. `hitman3.exe` → ContinueRendering = 1). Overrides apply only when the key is missing (never overwrite existing config). Main tab shows an info banner when overrides are in use, with a tooltip listing active overrides and an "Apply to config" button to persist them to DisplayCommander.toml. Logs once at load whether an override was found for the current exe.
+- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from the built-in per-exe defaults (e.g. `hitman3.exe` → ContinueRendering = 1). Overrides apply only when the key is missing (never overwrite existing config). Main tab shows an info banner when overrides are in use, with a tooltip listing active overrides and an "Apply to config" button to persist them to DisplayCommander.toml. Logs once at load whether an override was found for the current exe.
 
 ---
 

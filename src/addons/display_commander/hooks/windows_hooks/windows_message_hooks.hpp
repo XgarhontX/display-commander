@@ -280,7 +280,6 @@ extern std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
 // Hook statistics access functions
 const HookCallStats& GetHookStats(int hook_index);
 /** Update last-call timestamp for a hook (for "active input API" display). */
-void UpdateHookLastCallTime(int hook_index);
 void ResetAllHookStats();
 int GetHookCount();
 const char* GetHookName(int hook_index);
