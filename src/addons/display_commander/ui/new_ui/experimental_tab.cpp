@@ -2,7 +2,6 @@
 #include "../../globals.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/system/timeslowdown_hooks.hpp"
-#include "../../nvapi/nvpi_reference.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"
 #include "../../settings/experimental_tab_settings.hpp"

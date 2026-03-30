@@ -13,7 +13,6 @@
 #include "../../ui/imgui_wrapper_base.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/mpo_registry.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
 
@@ -1059,59 +1058,6 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
                 "If the game is not using D3D9, this setting has no effect.");
         }
         imgui.Unindent();
-    }
-
-    imgui.Unindent();
-}
-
-void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    display_commander::utils::MpoRegistryStatus status = {};
-    display_commander::utils::MpoRegistryGetStatus(&status);
-
-    imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                      "MPO registry options. Check to enable each. Restart required. Requires administrator.");
-    imgui.Spacing();
-
-    // Status of the other two (Windows options)
-    imgui.TextColored(::ui::colors::TEXT_LABEL, "Status:");
-    imgui.SameLine();
-    imgui.Text("OverlayTestMode %s, DisableMPO %s, DisableOverlays %s", status.overlay_test_mode_5 ? "= 5" : "not set",
-               status.disable_mpo ? "= 1" : "not set", status.disable_overlays ? "= 1" : "not set");
-    imgui.Spacing();
-
-    bool overlay_test_mode = status.overlay_test_mode_5;
-    if (imgui.Checkbox("OverlayTestMode = 5 (Dwm)", &overlay_test_mode)) {
-        if (display_commander::utils::MpoRegistrySetOverlayTestMode(overlay_test_mode)) {
-            LogInfo("MPO: OverlayTestMode set via Advanced tab.");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "HKLM\\SOFTWARE\\Microsoft\\Windows\\Dwm -> OverlayTestMode. Classic Windows option to disable MPO.");
-    }
-
-    bool disable_mpo = status.disable_mpo;
-    if (imgui.Checkbox("DisableMPO = 1 (GraphicsDrivers)", &disable_mpo)) {
-        if (display_commander::utils::MpoRegistrySetDisableMPO(disable_mpo)) {
-            LogInfo("MPO: DisableMPO set via Advanced tab.");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("HKLM\\...\\GraphicsDrivers -> DisableMPO. Classic Windows option to disable MPO.");
-    }
-
-    bool disable_overlays = status.disable_overlays;
-    if (imgui.Checkbox("DisableOverlays = 1 (Disable MPO Windows 11 25H2 solution)", &disable_overlays)) {
-        if (display_commander::utils::MpoRegistrySetDisableOverlays(disable_overlays)) {
-            LogInfo("MPO: DisableOverlays set via Advanced tab.");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "HKLM\\...\\GraphicsDrivers -> DisableOverlays. Disables all overlays (Discord, GPU overlays); may affect "
-            "VRR.");
     }
 
     imgui.Unindent();
