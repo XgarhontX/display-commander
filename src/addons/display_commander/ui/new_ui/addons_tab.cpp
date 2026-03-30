@@ -9,6 +9,7 @@
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/string_utils.hpp"
 #include "../imgui_wrapper_base.hpp"
+#include "../../globals.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
@@ -956,102 +957,104 @@ void DrawAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Separator();
         imgui.Spacing();
 
-        EnsureAddonDownloadUrlsLoaded();
+        if (enabled_experimental_features) {
+            EnsureAddonDownloadUrlsLoaded();
 
-        imgui.TextColored(ui::colors::TEXT_DEFAULT, "Addon URL Downloads");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Add addon URLs and download them directly into the global Addons folder.");
-        }
-
-        if (imgui.Button("+ Add URL")) {
-            g_addon_download_urls.emplace_back();
-            SetAddonDownloadUrls(g_addon_download_urls);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Add a new URL row");
-        }
-        imgui.SameLine();
-        if (imgui.Button("Check All URLs")) {
-            size_t up_to_date_count = 0;
-            size_t update_available_count = 0;
-            size_t other_count = 0;
-            for (const auto& url : g_addon_download_urls) {
-                std::string status_message;
-                if (!CheckAddonUrlForUpdate(url, status_message)) {
-                    ++other_count;
-                    continue;
-                }
-                if (status_message.find("Update available") != std::string::npos) {
-                    ++update_available_count;
-                } else if (status_message.find("Up to date") != std::string::npos) {
-                    ++up_to_date_count;
-                } else {
-                    ++other_count;
-                }
+            imgui.TextColored(ui::colors::TEXT_DEFAULT, "Addon URL Downloads");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Add addon URLs and download them directly into the global Addons folder.");
             }
-            g_addon_download_status = "Check all done. Updates: " + std::to_string(update_available_count)
-                                      + ", up-to-date: " + std::to_string(up_to_date_count)
-                                      + ", other: " + std::to_string(other_count) + ".";
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Check all URLs using remote ETag metadata.");
-        }
 
-        if (!g_addon_download_urls.empty()) {
-            for (size_t i = 0; i < g_addon_download_urls.size(); ++i) {
-                std::string label = "URL##AddonDownloadUrl" + std::to_string(i);
-                std::vector<char> url_buffer(g_addon_download_urls[i].begin(), g_addon_download_urls[i].end());
-                url_buffer.push_back('\0');
-                if (url_buffer.size() < 2048) {
-                    url_buffer.resize(2048, '\0');
-                }
-
-                if (imgui.InputText(label.c_str(), url_buffer.data(), url_buffer.size())) {
-                    g_addon_download_urls[i] = url_buffer.data();
-                    SetAddonDownloadUrls(g_addon_download_urls);
-                }
-
-                imgui.SameLine();
-                std::string download_button = "Download##AddonDownload" + std::to_string(i);
-                if (imgui.Button(download_button.c_str())) {
+            if (imgui.Button("+ Add URL")) {
+                g_addon_download_urls.emplace_back();
+                SetAddonDownloadUrls(g_addon_download_urls);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Add a new URL row");
+            }
+            imgui.SameLine();
+            if (imgui.Button("Check All URLs")) {
+                size_t up_to_date_count = 0;
+                size_t update_available_count = 0;
+                size_t other_count = 0;
+                for (const auto& url : g_addon_download_urls) {
                     std::string status_message;
-                    const bool success = DownloadAndInstallAddon(g_addon_download_urls[i], status_message);
-                    g_addon_download_status = status_message;
-                    if (success) {
-                        RefreshAddonList();
+                    if (!CheckAddonUrlForUpdate(url, status_message)) {
+                        ++other_count;
+                        continue;
+                    }
+                    if (status_message.find("Update available") != std::string::npos) {
+                        ++update_available_count;
+                    } else if (status_message.find("Up to date") != std::string::npos) {
+                        ++up_to_date_count;
+                    } else {
+                        ++other_count;
                     }
                 }
-
-                imgui.SameLine();
-                std::string check_button = "Check##AddonCheck" + std::to_string(i);
-                if (imgui.Button(check_button.c_str())) {
-                    std::string status_message;
-                    CheckAddonUrlForUpdate(g_addon_download_urls[i], status_message);
-                    g_addon_download_status = status_message;
-                }
-
-                imgui.SameLine();
-                std::string remove_button = "-##AddonDownloadRemove" + std::to_string(i);
-                if (imgui.Button(remove_button.c_str())) {
-                    g_addon_download_urls.erase(g_addon_download_urls.begin() + static_cast<std::ptrdiff_t>(i));
-                    SetAddonDownloadUrls(g_addon_download_urls);
-                    break;
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Remove this URL row");
-                }
+                g_addon_download_status = "Check all done. Updates: " + std::to_string(update_available_count)
+                                        + ", up-to-date: " + std::to_string(up_to_date_count)
+                                        + ", other: " + std::to_string(other_count) + ".";
             }
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "No addon URLs added yet.");
-        }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Check all URLs using remote ETag metadata.");
+            }
 
-        if (!g_addon_download_status.empty()) {
-            imgui.TextWrapped("%s", g_addon_download_status.c_str());
-        }
+            if (!g_addon_download_urls.empty()) {
+                for (size_t i = 0; i < g_addon_download_urls.size(); ++i) {
+                    std::string label = "URL##AddonDownloadUrl" + std::to_string(i);
+                    std::vector<char> url_buffer(g_addon_download_urls[i].begin(), g_addon_download_urls[i].end());
+                    url_buffer.push_back('\0');
+                    if (url_buffer.size() < 2048) {
+                        url_buffer.resize(2048, '\0');
+                    }
 
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
+                    if (imgui.InputText(label.c_str(), url_buffer.data(), url_buffer.size())) {
+                        g_addon_download_urls[i] = url_buffer.data();
+                        SetAddonDownloadUrls(g_addon_download_urls);
+                    }
+
+                    imgui.SameLine();
+                    std::string download_button = "Download##AddonDownload" + std::to_string(i);
+                    if (imgui.Button(download_button.c_str())) {
+                        std::string status_message;
+                        const bool success = DownloadAndInstallAddon(g_addon_download_urls[i], status_message);
+                        g_addon_download_status = status_message;
+                        if (success) {
+                            RefreshAddonList();
+                        }
+                    }
+
+                    imgui.SameLine();
+                    std::string check_button = "Check##AddonCheck" + std::to_string(i);
+                    if (imgui.Button(check_button.c_str())) {
+                        std::string status_message;
+                        CheckAddonUrlForUpdate(g_addon_download_urls[i], status_message);
+                        g_addon_download_status = status_message;
+                    }
+
+                    imgui.SameLine();
+                    std::string remove_button = "-##AddonDownloadRemove" + std::to_string(i);
+                    if (imgui.Button(remove_button.c_str())) {
+                        g_addon_download_urls.erase(g_addon_download_urls.begin() + static_cast<std::ptrdiff_t>(i));
+                        SetAddonDownloadUrls(g_addon_download_urls);
+                        break;
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltipEx("Remove this URL row");
+                    }
+                }
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "No addon URLs added yet.");
+            }
+
+            if (!g_addon_download_status.empty()) {
+                imgui.TextWrapped("%s", g_addon_download_status.c_str());
+            }
+
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
+        }
 
         // Display addon list
         if (g_addon_list.empty()) {
