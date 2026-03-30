@@ -1,19 +1,14 @@
 #include "reshade_load_path.hpp"
 #include "../config/display_commander_config.hpp"
-#include "../globals.hpp"
 #include "general_utils.hpp"
 #include "logging.hpp"
-#include "version_check.hpp"
 
 #include <Windows.h>
 
 #include <ShlObj.h>
 
-#include <algorithm>
-#include <atomic>
 #include <filesystem>
 #include <string>
-#include <vector>
 
 namespace display_commander::utils {
 
@@ -21,19 +16,6 @@ namespace {
 constexpr const char* RESHADE_SECTION = "DisplayCommander.ReShade";
 constexpr const char* KEY_LOAD_SOURCE = "ReshadeLoadSource";  // legacy, for migration only
 constexpr const char* KEY_SELECTED_VERSION = "ReshadeSelectedVersion";
-constexpr const char* DEFAULT_VERSION = "6.7.3";
-
-// Offline version list (no network fetch).
-static const char* const RESHADE_VERSIONS_FALLBACK[] = {"6.6.2", "6.7.3"};
-static const size_t RESHADE_VERSIONS_FALLBACK_COUNT =
-    sizeof(RESHADE_VERSIONS_FALLBACK) / sizeof(RESHADE_VERSIONS_FALLBACK[0]);
-
-// Offline version list (no network fetch). (Used for UI dropdowns only.)
-
-// Combined list: hardcoded versions only, sorted descending. Built once per app start.
-static std::vector<std::string> s_reshade_versions_combined;
-static std::vector<const char*> s_reshade_version_ptrs;
-static std::atomic<bool> s_version_list_built{false};
 
 // True if dir contains the ReShade DLL for current process bitness (Reshade64.dll / Reshade32.dll).
 static bool DirectoryHasReshadeDll(const std::filesystem::path& dir) {
@@ -48,20 +30,6 @@ static bool DirectoryHasReshadeDll(const std::filesystem::path& dir) {
 #endif
 }
 
-static void EnsureReShadeVersionListFetched() {
-    if (s_version_list_built.exchange(true)) {
-        return;
-    }
-    namespace vc = display_commander::utils::version_check;
-    s_reshade_versions_combined.assign(RESHADE_VERSIONS_FALLBACK,
-                                       RESHADE_VERSIONS_FALLBACK + RESHADE_VERSIONS_FALLBACK_COUNT);
-    std::sort(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(),
-              [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
-    s_reshade_version_ptrs.resize(s_reshade_versions_combined.size());
-    for (size_t i = 0; i < s_reshade_versions_combined.size(); ++i) {
-        s_reshade_version_ptrs[i] = s_reshade_versions_combined[i].c_str();
-    }
-}
 }  // namespace
 
 // Effective selected version: read KEY_SELECTED_VERSION; if empty, migrate from legacy KEY_LOAD_SOURCE.
@@ -80,8 +48,7 @@ static std::string GetReshadeSelectedVersionEffective() {
     if (load_source == 0 || load_source == 1) return "global";  // was "" (base folder)
     if (load_source == 2) {
         config.GetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, selected);
-        if (selected.empty()) selected = DEFAULT_VERSION;
-        return selected;
+        return selected.empty() ? "global" : selected;
     }
     return "global";
 }
@@ -116,12 +83,6 @@ std::string GetReshadeSelectedVersionFromConfig() { return GetReshadeSelectedVer
 void SetReshadeSelectedVersionInConfig(const std::string& version) {
     using namespace display_commander::config;
     DisplayCommanderConfigManager::GetInstance().SetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, version);
-}
-
-const char* const* GetReshadeVersionList(size_t* out_count) {
-    EnsureReShadeVersionListFetched();
-    *out_count = s_reshade_version_ptrs.size();
-    return s_reshade_version_ptrs.data();
 }
 
 std::filesystem::path GetGlobalReshadeDirectory() {

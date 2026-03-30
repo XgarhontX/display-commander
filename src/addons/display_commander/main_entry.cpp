@@ -21,8 +21,6 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_init.hpp"
-#include "nvapi/nvidia_profile_search.hpp"
-#include "nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -31,21 +29,18 @@
 #include "settings/main_tab_settings.hpp"
 #include "settings/reshade_tab_settings.hpp"
 #include "swapchain_events.hpp"
-#include "swapchain_events_power_saving.hpp"
 #include "ui/imgui_wrapper_reshade.hpp"
 #include "ui/monitor_settings/monitor_settings.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
-#include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/reshade_load_path.hpp"
-#include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
@@ -60,7 +55,6 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <sysinfoapi.h>
-#include <tlhelp32.h>
 #include <winver.h>
 #include <wrl/client.h>
 
@@ -724,9 +718,6 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
     LogInfo("ReShade settings override completed successfully");
 }
 
-// ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
-std::atomic<bool> g_wait_and_inject_stop(false);
-
 // No-ReShade mode: ReShade is not loaded; hooks/UI init run without ReShade overlay.
 std::atomic<bool> g_no_reshade_mode(false);
 
@@ -1255,18 +1246,7 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
     reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
 
-    // Register draw event handlers for render timing
-    reshade::register_event<reshade::addon_event::draw>(OnDraw);
-    reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
-    reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
-
-    // Register power saving event handlers for additional GPU operations
-    reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
-    reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
-    reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
-    reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
-    reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-    // reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+    // Draw event handlers removed (power-saving module no longer provides them).
 
     reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
     reshade::register_event<reshade::addon_event::create_sampler>(OnCreateSampler);
@@ -1294,11 +1274,6 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
 }
-
-// Named event name for injection tracking (shared across processes)
-// Defined here so it's available in DllMain
-constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander_InjectionActive";
-constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
 namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess };
@@ -2078,16 +2053,10 @@ void ResolveAndLogDllMainFunctionStack() {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            // Set ReShade base path and DC config directory (DLL dir if .DC_CONFIG_IN_DLL present, else exe dir), before any LoadLibrary of ReShade.
-            LogBoot("[DLLMain] Stage 1");
             ChooseAndSetDcConfigPath(h_module);
-            LogBoot("[DLLMain] Stage 2");
             CaptureDllLoadCallerPath(h_module);
-            LogBoot("[DLLMain] Stage 3");
             EnsureDisplayCommanderLogWithModulePath(h_module);
-            LogBoot("[DLLMain] Stage 4");
             static const char* reason = "";
-            LogBoot("[DLLMain] Stage 5");
             auto set_process_attached_on_exit = [h_module]() {
                 ResolveAndLogDllMainFunctionStack();
                 // log current
@@ -2109,7 +2078,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             } guard(set_process_attached_on_exit);
 
-            LogBoot("[DLLMain] Stage 6");
             auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
                 (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
@@ -2117,19 +2085,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
             if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
-                LogBoot("[DLLMain] Stage 7");
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: RenameUnusedDcProxyDlls");
                 RenameUnusedDcProxyDlls(h_module);
             }
-            LogBoot("[DLLMain] Stage 8");
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
-                LogBoot("[DLLMain] Stage 9");
                 reason = "RefuseLoad";
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::EarlySuccess) {
-                LogBoot("[DLLMain] Stage 10");
                 reason = "EarlySuccess";
                 return TRUE;
             }
@@ -2139,9 +2103,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             std::wstring entry_point;
             ProcessAttach_DetectEntryPoint(h_module, entry_point);
 
-            if (IsReShadeRegisteredAsVulkanLayerForCurrentExe()) {
-                LogInfo("[main_entry] ReShade registered as Vulkan layer for this exe.");
-            }
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
                 ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module);
             }
@@ -2288,648 +2249,3 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 // CONTINUOUS RENDERING THREAD REMOVED - Focus spoofing is now handled by Win32 hooks
 // This provides a much cleaner and more effective solution
-
-// Auto-injection state
-namespace {
-HHOOK g_cbt_hook = nullptr;
-std::atomic<LONGLONG> g_injection_start_time(0);
-std::atomic<bool> g_injection_active(false);
-constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL;  // 30 seconds in nanoseconds
-
-// Named event to signal injection is active (shared across processes)
-HANDLE g_injection_active_event = nullptr;
-HANDLE g_injection_stop_event = nullptr;
-
-}  // namespace
-
-// CBT Hook procedure - called when windows are created
-// This is just for NOTIFICATION - the actual DLL injection happens automatically
-// when SetWindowsHookEx is called with dwThreadId=0 (system-wide hook).
-// Windows automatically loads the DLL into target processes when hook events occur.
-// This callback runs in the TARGET process after the DLL is already loaded.
-LRESULT CALLBACK CBTProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    // if nCode is less than 0, return the next hook
-    if (nCode < 0) {
-        return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
-    }
-    OutputDebugStringA(std::format("CBTProc PID: {}", GetCurrentProcessId()).c_str());
-
-    return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
-}
-
-// Function to stop injection manually
-void StopInjectionInternal() {
-    // Signal stop event to notify any running Start process
-    HANDLE stop_event = OpenEventW(EVENT_MODIFY_STATE, FALSE, INJECTION_STOP_EVENT_NAME);
-    if (stop_event != nullptr) {
-        SetEvent(stop_event);
-        CloseHandle(stop_event);
-    }
-
-    if (g_cbt_hook != nullptr) {
-        UnhookWindowsHookEx(g_cbt_hook);
-        g_cbt_hook = nullptr;
-        g_injection_active.store(false, std::memory_order_release);
-        g_injection_start_time.store(0, std::memory_order_release);
-
-        // Signal that injection is no longer active
-        if (g_injection_active_event != nullptr) {
-            ResetEvent(g_injection_active_event);
-            CloseHandle(g_injection_active_event);
-            g_injection_active_event = nullptr;
-        }
-
-        // Close stop event if we own it
-        if (g_injection_stop_event != nullptr) {
-            CloseHandle(g_injection_stop_event);
-            g_injection_stop_event = nullptr;
-        }
-
-        OutputDebugStringA("Auto-injection stopped: CBT hook removed");
-    }
-}
-
-// Cleanup thread to remove hook after 30 seconds
-void StartInjectionCleanupThread() {
-    std::thread([]() {
-        Sleep(30000);  // 30 seconds
-        StopInjectionInternal();
-    }).detach();
-}
-
-// Internal function to start injection with optional duration limit
-void StartInjectionInternal(bool forever) {
-    OutputDebugStringA(
-        std::format("StartInjectionInternal PID: {}, forever: {}", GetCurrentProcessId(), forever).c_str());
-
-    // Initialize config system for logging
-    auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
-        (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
-    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-
-    // Check if hook is already active
-    if (g_injection_active.load(std::memory_order_acquire)) {
-        OutputDebugStringA("Auto-injection already active, restarting timer");
-        // Restart the timer
-        g_injection_start_time.store(utils::get_now_ns(), std::memory_order_release);
-        return;
-    }
-
-    // Install global CBT hook (thread ID 0 = system-wide)
-    // This automatically injects the DLL into all processes when CBT events occur
-    // The hook installation itself IS the injection mechanism - Windows loads the DLL automatically
-    g_cbt_hook = SetWindowsHookEx(WH_CBT, CBTProc, g_hmodule, 0);
-
-    if (g_cbt_hook == nullptr) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("Failed to install CBT hook for auto-injection - Error: {} (0x{:X})", error, error).c_str());
-        return;
-    }
-
-    // Mark injection as active and record start time
-    g_injection_active.store(true, std::memory_order_release);
-    g_injection_start_time.store(utils::get_now_ns(), std::memory_order_release);
-
-    // Create named event to signal injection is active (shared across processes)
-    g_injection_active_event = CreateEventW(nullptr, TRUE, TRUE, INJECTION_ACTIVE_EVENT_NAME);
-    if (g_injection_active_event == nullptr) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("Failed to create injection active event - Error: {} (0x{:X})", error, error).c_str());
-    }
-
-    if (forever) {
-        // Create stop event for signaling from other processes
-        g_injection_stop_event = CreateEventW(nullptr, TRUE, FALSE, INJECTION_STOP_EVENT_NAME);
-        if (g_injection_stop_event == nullptr) {
-            DWORD error = GetLastError();
-            OutputDebugStringA(
-                std::format("Failed to create injection stop event - Error: {} (0x{:X})", error, error).c_str());
-        }
-
-        OutputDebugStringA(
-            "Auto-injection started: CBT hook installed, will inject into all new processes indefinitely");
-        // Keep process alive to maintain the hook
-        // The hook will remain active as long as this process is running
-        // Check for stop signal periodically
-        while (g_injection_active.load(std::memory_order_acquire)) {
-            // Check if stop event was signaled (from another process calling Stop)
-            if (g_injection_stop_event != nullptr) {
-                DWORD wait_result = WaitForSingleObject(g_injection_stop_event, 1000);
-                if (wait_result == WAIT_OBJECT_0) {
-                    OutputDebugStringA("Stop signal received, stopping injection");
-                    StopInjectionInternal();
-                    break;
-                }
-            } else {
-                Sleep(1000);  // Sleep in 1-second intervals if stop event creation failed
-            }
-        }
-    } else {
-        OutputDebugStringA(
-            "Auto-injection started: CBT hook installed, will inject into all new processes for 30 seconds");
-        // Start cleanup thread
-        StartInjectionCleanupThread();
-        Sleep(30000);  // 30 seconds
-    }
-}
-
-// Helper structure for LoadLibrary injection
-struct loading_data {
-    WCHAR load_path[MAX_PATH] = L"";
-    decltype(&GetLastError) GetLastError = nullptr;
-    decltype(&LoadLibraryW) LoadLibraryW = nullptr;
-    const WCHAR env_var_name[30] = L"RESHADE_DISABLE_LOADING_CHECK";
-    const WCHAR env_var_value[2] = L"1";
-    decltype(&SetEnvironmentVariableW) SetEnvironmentVariableW = nullptr;
-};
-
-// Loading thread function that runs in the target process
-// Sets environment variable and then loads the DLL
-static DWORD WINAPI LoadingThreadFunc(loading_data* arg) {
-    arg->SetEnvironmentVariableW(arg->env_var_name, arg->env_var_value);
-    if (arg->LoadLibraryW(arg->load_path) == NULL) {
-        return arg->GetLastError();
-    }
-    return ERROR_SUCCESS;
-}
-
-// Helper function to get ReShade DLL path based on architecture
-std::wstring GetReShadeDllPath(bool is_wow64) {
-    wchar_t documents_path[MAX_PATH];
-    wchar_t localappdata_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-        return L"";
-    }
-
-    std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
-
-    std::filesystem::path reshade_path;
-#ifdef _WIN64
-    reshade_path = is_wow64 ? (dc_reshade_dir / L"Reshade32.dll") : (dc_reshade_dir / L"Reshade64.dll");
-#else
-    reshade_path = dc_reshade_dir / L"Reshade32.dll";
-#endif
-
-    if (std::filesystem::exists(reshade_path)) {
-        std::error_code ec;
-        std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
-        if (ec) {
-            absolute_path = std::filesystem::absolute(reshade_path, ec);
-            if (ec) {
-                absolute_path = reshade_path;
-            }
-        }
-        return absolute_path.wstring();
-    }
-
-    return L"";
-}
-
-namespace {
-// Open process and verify architecture. Returns true and sets *out_process on success. Caller must CloseHandle.
-bool InjectIntoProcess_OpenTarget(DWORD pid, HANDLE* out_process) {
-    HANDLE remote_process = OpenProcess(
-        PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
-        FALSE, pid);
-    if (remote_process == nullptr) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("Failed to open target process (PID {}): Error {} (0x{:X})", pid, error, error).c_str());
-        return false;
-    }
-    BOOL remote_is_wow64 = FALSE;
-    IsWow64Process(remote_process, &remote_is_wow64);
-#ifdef _WIN64
-    if (remote_is_wow64 != FALSE) {
-        CloseHandle(remote_process);
-        OutputDebugStringA(
-            std::format("Process architecture mismatch: 32-bit process, but injector is 64-bit (PID {})", pid).c_str());
-        return false;
-    }
-#else
-    if (remote_is_wow64 == FALSE) {
-        CloseHandle(remote_process);
-        OutputDebugStringA(
-            std::format("Process architecture mismatch: 64-bit process, but injector is 32-bit (PID {})", pid).c_str());
-        return false;
-    }
-#endif
-    *out_process = remote_process;
-    return true;
-}
-
-// Alloc, write loading_data, CreateRemoteThread(LoadLibraryW), wait, cleanup. Does not close process handle.
-bool InjectIntoProcess_DoRemoteLoadLibrary(HANDLE remote_process, DWORD pid, const std::wstring& dll_path) {
-    loading_data arg;
-    wcscpy_s(arg.load_path, dll_path.c_str());
-    arg.GetLastError = GetLastError;
-    arg.LoadLibraryW = LoadLibraryW;
-    arg.SetEnvironmentVariableW = SetEnvironmentVariableW;
-
-    LPVOID load_param =
-        VirtualAllocEx(remote_process, nullptr, sizeof(arg), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    if (load_param == nullptr) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("Failed to allocate memory in target process (PID {}): Error {} (0x{:X})", pid, error, error)
-                .c_str());
-        return false;
-    }
-    if (!WriteProcessMemory(remote_process, load_param, &arg, sizeof(arg), nullptr)) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("Failed to write loading data to target process (PID {}): Error {} (0x{:X})", pid, error, error)
-                .c_str());
-        VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-        return false;
-    }
-    HANDLE load_thread = CreateRemoteThread(
-        remote_process, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(arg.LoadLibraryW), load_param, 0, nullptr);
-    if (load_thread == nullptr) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(std::format("Failed to create remote thread in target process (PID {}): Error {} (0x{:X})",
-                                       pid, error, error)
-                               .c_str());
-        VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-        return false;
-    }
-    WaitForSingleObject(load_thread, INFINITE);
-    DWORD exit_code = 0;
-    bool success = (GetExitCodeThread(load_thread, &exit_code) != 0 && exit_code != 0);
-    if (success) {
-        OutputDebugStringA(std::format("Successfully injected ReShade into process (PID {})", pid).c_str());
-    } else {
-        OutputDebugStringA(
-            std::format("Failed to inject Display Commander into process (PID {}): LoadLibrary returned NULL", pid)
-                .c_str());
-    }
-    CloseHandle(load_thread);
-    VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-    return success;
-}
-}  // namespace
-
-// Helper function to inject ReShade DLL into a process using LoadLibrary
-bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
-    HANDLE remote_process = nullptr;
-    if (!InjectIntoProcess_OpenTarget(pid, &remote_process)) {
-        return false;
-    }
-    bool success = InjectIntoProcess_DoRemoteLoadLibrary(remote_process, pid, dll_path);
-    CloseHandle(remote_process);
-    return success;
-}
-
-namespace {
-void WaitForProcessAndInject_MarkExistingProcesses(const std::wstring& exe_name,
-                                                   std::array<bool, 65536>& process_seen) {
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE) return;
-    PROCESSENTRY32W process_entry = {};
-    process_entry.dwSize = sizeof(PROCESSENTRY32W);
-    int existing_count = 0;
-    if (Process32FirstW(snapshot, &process_entry)) {
-        do {
-            if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
-                DWORD pid = process_entry.th32ProcessID;
-                if (pid < process_seen.size()) {
-                    process_seen[pid] = true;
-                    existing_count++;
-                }
-            }
-        } while (Process32NextW(snapshot, &process_entry));
-    }
-    CloseHandle(snapshot);
-    if (existing_count > 0) {
-        OutputDebugStringA(std::format("Found {} existing process(es) with name '{}', will wait for new ones",
-                                       existing_count, std::string(exe_name.begin(), exe_name.end()))
-                               .c_str());
-        std::cout << "Found " << existing_count << " existing process(es) with name '"
-                  << std::string(exe_name.begin(), exe_name.end()) << "', will wait for new ones" << '\n';
-    }
-}
-
-void WaitForProcessAndInject_ProcessSnapshot(const std::wstring& exe_name, std::array<bool, 65536>& process_seen) {
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE) return;
-    PROCESSENTRY32W process_entry = {};
-    process_entry.dwSize = sizeof(PROCESSENTRY32W);
-    if (Process32FirstW(snapshot, &process_entry)) {
-        do {
-            DWORD pid = process_entry.th32ProcessID;
-            if (pid >= process_seen.size()) continue;
-            if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) != 0) {
-                process_seen[pid] = true;
-                continue;
-            }
-            if (process_seen[pid]) continue;
-            process_seen[pid] = true;
-
-            OutputDebugStringA(
-                std::format("Found new process: {} (PID {})", std::string(exe_name.begin(), exe_name.end()), pid)
-                    .c_str());
-            std::cout << "Found new process: " << std::string(exe_name.begin(), exe_name.end()) << " (PID " << pid
-                      << ")" << '\n';
-
-            BOOL is_wow64 = FALSE;
-            HANDLE h_process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
-            if (h_process != nullptr) {
-                IsWow64Process(h_process, &is_wow64);
-                CloseHandle(h_process);
-            }
-            std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
-            if (dll_path.empty()) {
-                OutputDebugStringA(
-                    std::format("Failed to find ReShade DLL path for process (PID {}), continuing to wait", pid)
-                        .c_str());
-                std::cout << "Failed to find ReShade DLL path for process (PID " << pid << "), continuing to wait"
-                          << '\n';
-                continue;
-            }
-            if (InjectIntoProcess(pid, dll_path)) {
-                OutputDebugStringA(std::format("Successfully injected into process (PID {})", pid).c_str());
-                std::cout << "Successfully injected into process (PID " << pid << ")" << '\n';
-            } else {
-                OutputDebugStringA(
-                    std::format("Failed to inject into process (PID {}), continuing to wait", pid).c_str());
-                std::cout << "Failed to inject into process (PID " << pid << "), continuing to wait" << '\n';
-            }
-        } while (Process32NextW(snapshot, &process_entry));
-    }
-    CloseHandle(snapshot);
-}
-}  // namespace
-
-// Wait for a process with given exe name to start, then inject ReShade DLL
-// Waits forever and injects into every new process that starts with the given exe name
-void WaitForProcessAndInject(const std::wstring& exe_name) {
-    g_wait_and_inject_stop.store(false);
-    OutputDebugStringA(std::format("Waiting for process: {} (will inject into all new instances)",
-                                   std::string(exe_name.begin(), exe_name.end()))
-                           .c_str());
-
-    std::array<bool, 65536> process_seen = {};
-    WaitForProcessAndInject_MarkExistingProcesses(exe_name, process_seen);
-
-    while (!g_wait_and_inject_stop.load()) {
-        WaitForProcessAndInject_ProcessSnapshot(exe_name, process_seen);
-        Sleep(10);
-    }
-    OutputDebugStringA("WaitForProcessAndInject: Stopped");
-    std::cout << "WaitForProcessAndInject: Stopped" << '\n';
-}
-
-// RunDLL entry point for rundll32.exe compatibility
-// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain
-// This installs a system-wide CBT hook - Windows automatically loads the DLL into
-// all processes when CBT events occur (window creation, etc.). The hook installation
-// itself is the injection mechanism. CBTProc is just for notification.
-extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
-                                                              int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(lpszCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    StartInjectionInternal(false);  // 30 seconds
-}
-
-// RunDLL entry point for 30-second injection
-// Allows calling: rundll32.exe zzz_display_commander.addon64,Service30
-extern "C" __declspec(dllexport) void CALLBACK Service30(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(lpszCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    StartInjectionInternal(false);  // 30 seconds
-}
-
-// RunDLL entry point for indefinite injection service
-// Allows calling: rundll32.exe zzz_display_commander.addon64,Start
-extern "C" __declspec(dllexport) void CALLBACK Start(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(lpszCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    // Ensure only one DC service per architecture (32-bit / 64-bit) in the current session.
-    // If another service is already running for this architecture, do not start a new one.
-    if (!display_commander::dc_service::InitializeServiceForCurrentProcess()) {
-        OutputDebugStringA("Start: DC service already running for this architecture or initialization failed");
-        return;
-    }
-
-    StartInjectionInternal(true);  // Forever
-}
-
-// RunDLL entry point to stop injection service
-// Allows calling: rundll32.exe zzz_display_commander.addon64,Stop
-extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(lpszCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    // Stop WaitAndInject if it's running
-    g_wait_and_inject_stop.store(true);
-    OutputDebugStringA("Stop: Signaled WaitAndInject to stop");
-
-    StopInjectionInternal();
-}
-
-extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
-                                                                     int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    if (lpszCmdLine == nullptr) {
-        std::printf("Arguments: <HexID> <HexValue|~> <fullExePath> [resultFilePath]\n");
-        return;
-    }
-    unsigned int settingId = 0, settingVal = 0;
-    int vals = sscanf_s(lpszCmdLine, "%x %x ", &settingId, &settingVal);
-    bool clearSetting = false;
-    if (vals != 2) {
-        vals = sscanf_s(lpszCmdLine, "%x ~ ", &settingId);
-        if (vals != 1) {
-            std::printf("Arguments: <HexID> <HexValue|~> <fullExePath> [resultFilePath]\n");
-            return;
-        }
-        clearSetting = true;
-    }
-    // Remainder after "<HexID> <HexValue|~> ": exe name and optional result file path (last token if it looks like a
-    // path)
-    const char* p = lpszCmdLine;
-    for (int spaceCount = 0; *p && spaceCount < 2; ++p) {
-        if (*p == ' ') {
-            ++spaceCount;
-            if (spaceCount < 2) {
-                while (*p == ' ') ++p;
-            }
-        }
-    }
-    while (*p == ' ') ++p;
-    std::string remainder(p);
-    std::string exeNameAnsi;
-    std::string resultFilePathAnsi;
-    {
-        const std::string::size_type lastSpace = remainder.rfind(' ');
-        if (lastSpace != std::string::npos && lastSpace + 1 < remainder.size()) {
-            std::string lastToken = remainder.substr(lastSpace + 1);
-            // Trim quotes from token
-            if (lastToken.size() >= 2 && lastToken.front() == '"' && lastToken.back() == '"') {
-                lastToken = lastToken.substr(1, lastToken.size() - 2);
-            }
-            if (lastToken.find('\\') != std::string::npos || lastToken.find(':') != std::string::npos) {
-                resultFilePathAnsi = lastToken;
-                exeNameAnsi = remainder.substr(0, lastSpace);
-                while (!exeNameAnsi.empty() && exeNameAnsi.back() == ' ') {
-                    exeNameAnsi.pop_back();
-                }
-            }
-        }
-        if (exeNameAnsi.empty()) {
-            exeNameAnsi = remainder;
-        }
-    }
-    // Trim surrounding quotes (e.g. "C:\Program Files\game.exe") so path is passed correctly
-    if (exeNameAnsi.size() >= 2 && exeNameAnsi.front() == '"' && exeNameAnsi.back() == '"') {
-        exeNameAnsi = exeNameAnsi.substr(1, exeNameAnsi.size() - 2);
-    }
-    if (exeNameAnsi.empty()) {
-        std::printf("Missing executable path.\n");
-        return;
-    }
-    int sizeNeeded = MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, nullptr, 0);
-    if (sizeNeeded <= 0) {
-        std::printf("Failed to convert executable name to wide string.\n");
-        return;
-    }
-    std::vector<wchar_t> exeNameWide(sizeNeeded);
-    MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, exeNameWide.data(), sizeNeeded);
-    std::wstring exeName(exeNameWide.data());
-
-    if (!::nvapi::EnsureNvApiInitialized()) {
-        const std::string msg = "NVAPI failed to initialize (NVIDIA GPU required).";
-        std::printf("%s\n", msg.c_str());
-        if (!resultFilePathAnsi.empty()) {
-            FILE* f = nullptr;
-            if (fopen_s(&f, resultFilePathAnsi.c_str(), "w") == 0 && f != nullptr) {
-                std::fprintf(f, "ERROR: %s\n", msg.c_str());
-                std::fclose(f);
-            }
-        }
-        return;
-    }
-    auto [ok, err] = display_commander::nvapi::SetOrDeleteProfileSettingForExe(
-        exeName, static_cast<std::uint32_t>(settingId), clearSetting, static_cast<std::uint32_t>(settingVal));
-    if (!resultFilePathAnsi.empty()) {
-        FILE* f = nullptr;
-        if (fopen_s(&f, resultFilePathAnsi.c_str(), "w") == 0 && f != nullptr) {
-            if (ok) {
-                std::fprintf(f, "OK\n");
-            } else {
-                std::fprintf(f, "ERROR: %s\n", err.c_str());
-            }
-            std::fclose(f);
-        }
-    }
-    if (ok) {
-        std::printf("Setting %s.\n", clearSetting ? "reset to default" : "applied");
-    } else {
-        std::printf("Failed: %s\n", err.c_str());
-    }
-}
-
-namespace display_commander {
-
-bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const std::wstring& exeName,
-                             HANDLE* outProcess, std::string* outError, const std::wstring* resultFilePath) {
-    HMODULE hMod = nullptr;
-    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                            reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {
-        if (outError != nullptr) {
-            *outError = "Apply as administrator failed: could not get module handle.";
-        }
-        return false;
-    }
-    wchar_t dllPath[MAX_PATH] = {};
-    if (GetModuleFileNameW(hMod, dllPath, MAX_PATH) == 0) {
-        if (outError != nullptr) {
-            *outError = "Apply as administrator failed: could not get DLL path.";
-        }
-        return false;
-    }
-    // Parameters: " \"path\", RunDLL_NvAPI_SetDWORD 0x<id> 0x<val> exeName"
-    // Quote exeName if it contains spaces
-    std::wstring params = L" \"" + std::wstring(dllPath) + L"\", RunDLL_NvAPI_SetDWORD 0x";
-    wchar_t idBuf[16], valBuf[16];
-    (void)swprintf_s(idBuf, L"%X", settingId);
-    (void)swprintf_s(valBuf, L"%X", value);
-    params += idBuf;
-    params += L" 0x";
-    params += valBuf;
-    params += L" ";
-    if (exeName.find(L' ') != std::wstring::npos) {
-        params += L"\"" + exeName + L"\"";
-    } else {
-        params += exeName;
-    }
-    if (resultFilePath != nullptr && !resultFilePath->empty()) {
-        params += L" ";
-        if (resultFilePath->find(L' ') != std::wstring::npos) {
-            params += L"\"" + *resultFilePath + L"\"";
-        } else {
-            params += *resultFilePath;
-        }
-    }
-    SHELLEXECUTEINFOW sei = {};
-    sei.cbSize = sizeof(sei);
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-    sei.lpVerb = L"runas";
-    sei.lpFile = L"rundll32.exe";
-    sei.lpParameters = params.c_str();
-    sei.nShow = SW_SHOWNORMAL;
-    if (ShellExecuteExW(&sei) == FALSE) {
-        if (outError != nullptr) {
-            DWORD err = GetLastError();
-            wchar_t errMsg[256] = {};
-            DWORD len = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, err,
-                                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMsg,
-                                       static_cast<DWORD>(sizeof(errMsg) / sizeof(errMsg[0])), nullptr);
-            while (len > 0 && (errMsg[len - 1] == L'\n' || errMsg[len - 1] == L'\r')) {
-                errMsg[--len] = L'\0';
-            }
-            char errMsgNarrow[256] = {};
-            if (len > 0) {
-                WideCharToMultiByte(CP_UTF8, 0, errMsg, -1, errMsgNarrow, sizeof(errMsgNarrow), nullptr, nullptr);
-            }
-            *outError = "Apply as administrator failed: could not start elevated process. ";
-            if (errMsgNarrow[0] != '\0') {
-                *outError += errMsgNarrow;
-            } else {
-                *outError += "(error ";
-                *outError += std::to_string(static_cast<unsigned long>(err));
-                *outError += ")";
-            }
-            if (err == 1225) {  // ERROR_CANCELLED
-                *outError += " (UAC was cancelled—click again and accept the prompt.)";
-            }
-        }
-        return false;
-    }
-    if (outProcess != nullptr) {
-        *outProcess = sei.hProcess;
-    } else if (sei.hProcess != nullptr) {
-        CloseHandle(sei.hProcess);
-    }
-    return true;
-}
-
-}  // namespace display_commander

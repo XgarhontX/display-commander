@@ -126,7 +126,7 @@ DlssDriverPresetStatus GetDlssDriverPresetStatus();
 std::pair<bool, std::string> ClearDriverDlssPresetOverride();
 
 // Sets or deletes a DWORD setting for a profile that contains the given executable.
-// Used by RunDLL_NvAPI_SetDWORD (rundll32). exePath is the full path to the executable (e.g. "C:\Games\game.exe").
+// exePath is the full path to the executable (e.g. "C:\Games\game.exe").
 // Logic assumes full exe path; NvAPI_DRS_FindApplicationByName is used with that path to find the profile.
 // If deleteSetting is true, the setting is removed (reset to driver default); valueIfSet is ignored.
 // If deleteSetting is false, the setting is set to valueIfSet. Requires NVAPI initialized.

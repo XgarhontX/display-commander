@@ -14,6 +14,12 @@ Feature protosal:
 
 ## Unreleased
 
+- [removal] [cleanup] [hooks] **Swapchain power-saving GPU event handlers removed** - Removed the background power-saving ReShade event handlers module (`swapchain_events_power_saving`) so DC no longer suppresses dispatch/copy/update/draw-related GPU operations via this feature path.
+  Details: removed the module integration from `src/addons/display_commander/main_entry.cpp` and `src/addons/display_commander/swapchain_events.cpp`, and deleted `src/addons/display_commander/swapchain_events_power_saving.cpp`.
+- [removal] [cleanup] **RunDLL NvAPI SetDWORD entry points removed** - Display Commander no longer exposes `RunDLL_NvAPI_SetDWORD` and the helper `RunNvApiSetDwordAsAdmin`, removing the rundll32/UAC elevation workflow for per-exe NVAPI profile setting edits.
+  Details: removed the export/helper implementation from `src/addons/display_commander/main_entry.cpp` and deleted `src/addons/display_commander/nvapi/run_nvapi_setdword_as_admin.hpp`.
+- [removal] [cleanup] [hooks] **RunDLL injection entry points removed** - Display Commander no longer exposes or runs the rundll32-based process injection commands (`Start`, `Stop`, `Service30`, `StartAndInject`, `WaitAndInject`), removing legacy remote-injection and global CBT-hook paths.
+  Details: removed injection implementation from `src/addons/display_commander/main_entry.cpp`, deleted `src/addons/display_commander/utils/rundll_injection.cpp` and `src/addons/display_commander/utils/rundll_injection_helpers.hpp`, and removed related exports from `src/addons/display_commander/proxy_dll/exports.def`.
 - [removal] [cleanup] [hooks] [ui] **Hook statistics counters removed from XInput/DirectInput/Windowing paths** - Display Commander no longer collects and displays per-hook total/unsuppressed counters for these hooks, reducing internal bookkeeping while keeping hook behavior unchanged.
   Details: removed hook-stat counter updates from `hooks/input/xinput_hooks.cpp`, `hooks/input/dinput_hooks.cpp`, `hooks/windows_hooks/api_hooks.cpp`, and `hooks/system/display_settings_hooks.cpp`; removed the XInput hook statistics block from `widgets/xinput_widget/xinput_widget.cpp`.
 - [removal] [cleanup] [ui] **SDR content brightness (Windows) implementation removed** - Removed the internal Windows SDR white-level adjustment implementation (dwmapi ordinal hook). This removes the feature wiring while keeping the rest of the display UI intact.
@@ -29,6 +35,8 @@ Feature protosal:
   Details: updated `src/addons/display_commander/config/display_commander_config.cpp`, removed `toml++` from hotkeys/chords one-time migrations (`config/hotkeys_file.cpp`, `config/chords_file.cpp`), and removed `external/tomlplusplus/include` from `src/addons/display_commander/CMakeLists.txt`.
 - [cleanup] [compatibility] **ReShade DLL load path simplified (local then global)** - ReShade is now loaded with a strict two-step fallback: prefer `Reshade64.dll` / `Reshade32.dll` next to the game exe, and only if missing fall back to the global `Display_Commander\Reshade` DLL.
   Details: removed `ReshadeLocationType` + multi-location selection from `src/addons/display_commander/utils/reshade_load_path.hpp/.cpp`.
+- [cleanup] [compatibility] **Removed hardcoded ReShade version defaults from loader** - The ReShade load-path code no longer keeps `DEFAULT_VERSION` or `RESHADE_VERSIONS_FALLBACK` constants. If legacy config migration does not provide a version, loading falls back to the normal local→global DLL search.
+  Details: cleaned `src/addons/display_commander/utils/reshade_load_path.cpp/.hpp` by removing the old version-list API and constants.
 
 ## v0.13.54 (2026-03-29)
 

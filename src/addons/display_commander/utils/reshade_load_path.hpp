@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <string>
-#include <vector>
 
 namespace display_commander::utils {
 
@@ -26,9 +25,6 @@ std::string GetGlobalReshadeVersion();
 // Config get/set. Value: "global", "local", "latest", "X.Y.Z", or "no".
 std::string GetReshadeSelectedVersionFromConfig();
 void SetReshadeSelectedVersionInConfig(const std::string& version);
-
-// Supported ReShade versions for dropdown (all known: fallback + GitHub).
-const char* const* GetReshadeVersionList(size_t* out_count);
 
 // Delete local ReShade DLLs (Reshade64.dll, Reshade32.dll) from the given directory (e.g. game exe folder).
 // Safe because we never load the game-folder copy directly; we copy to temp then load. Returns true on success.

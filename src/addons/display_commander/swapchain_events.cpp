@@ -29,7 +29,6 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include "swapchain_events.hpp"
-#include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/d3d9_api_version.hpp"
@@ -1854,12 +1853,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
 
-    // Power saving: skip pipeline binding in background if enabled
-    if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
-        return true;  // Skip the pipeline binding
-    }
-
-    return false;  // Don't skip the pipeline binding
+    return false;  // Don't suppress pipeline binding
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
