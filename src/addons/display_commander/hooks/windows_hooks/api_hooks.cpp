@@ -8,7 +8,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../system/debug_output_hooks.hpp"
 #include "../system/display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "../../globals.hpp"
@@ -639,9 +638,6 @@ bool InstallApiHooks() {
     // Install DPI hooks
     display_commanderhooks::dpi::InstallDpiHooks();
 
-    // Install debug output hooks
-    debug_output::InstallDebugOutputHooks();
-
     // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
     g_api_hooks_installed.store(true);
@@ -677,9 +673,6 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     process_exit_hooks::Shutdown();
-
-    // Uninstall debug output hooks
-    debug_output::UninstallDebugOutputHooks();
 
     // Uninstall PCLStats ETW hooks (installed via OnModuleLoaded when advapi32.dll loaded)
     UninstallPCLStatsEtwHooks();

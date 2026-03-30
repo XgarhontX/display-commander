@@ -12,7 +12,6 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## Unreleased
-- cleanup
 
 ## v0.13.58 (2026-03-29)
 - [settings] [ui] [compatibility] **ReShade screenshots/shader-path toggles are now local and instant** - The Addons tab checkboxes for `./Screenshots` and global shader/texture search paths now use local Display Commander config keys instead of marker files, and apply to ReShade immediately when clicked.

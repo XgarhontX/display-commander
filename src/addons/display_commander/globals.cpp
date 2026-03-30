@@ -582,9 +582,6 @@ std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex dete
 std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix] = {};
 std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id{0};
 
-// OpenGL hook counters
-std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters = {};  // Array for all OpenGL hook events
-
 // Present pacing delay as percentage of frame time - 0% to 100%
 // This adds a delay after present to improve frame pacing and reduce CPU usage
 // Higher values create more consistent frame timing but may increase latency

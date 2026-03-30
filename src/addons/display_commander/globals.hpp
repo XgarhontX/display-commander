@@ -888,26 +888,6 @@ extern StreamlineTabSettings g_streamlineTabSettings;
 void LoadAllSettingsAtStartup();
 }  // namespace settings
 
-// OpenGL hook counter indices
-enum OpenGLHookIndex {
-    OPENGL_HOOK_WGL_SWAPBUFFERS,
-    OPENGL_HOOK_WGL_MAKECURRENT,
-    OPENGL_HOOK_WGL_CREATECONTEXT,
-    OPENGL_HOOK_WGL_DELETECONTEXT,
-    OPENGL_HOOK_WGL_CHOOSEPIXELFORMAT,
-    OPENGL_HOOK_WGL_SETPIXELFORMAT,
-    OPENGL_HOOK_WGL_GETPIXELFORMAT,
-    OPENGL_HOOK_WGL_DESCRIBEPIXELFORMAT,
-    OPENGL_HOOK_WGL_CREATECONTEXTATTRIBSARB,
-    OPENGL_HOOK_WGL_CHOOSEPIXELFORMATARB,
-    OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBIVARB,
-    OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBFVARB,
-    OPENGL_HOOK_WGL_GETPROCADDRESS,
-    OPENGL_HOOK_WGL_SWAPINTERVALEXT,
-    OPENGL_HOOK_WGL_GETSWAPINTERVALEXT,
-    NUM_OPENGL_HOOKS
-};
-
 // Display settings hook counter indices
 enum DisplaySettingsHookIndex {
     DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA,
@@ -950,9 +930,6 @@ constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;
 extern std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix];
 /** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id;
-
-// OpenGL hook counters
-extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;
