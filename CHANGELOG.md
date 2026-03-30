@@ -52,6 +52,8 @@ Feature protosal:
   Details: additional cleanup around the same audio block in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` with strict-unused checks kept clean for this file.
 - [ui] [cleanup] **Removed Focus/Restore window buttons** - The **Focus** and **Restore window** controls were removed to simplify the Main tab window-actions area.
   Details: removed the related UI button draws from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+- [cleanup] **Added root clang-tidy wrapper script** - Added a root-level convenience entrypoint so strict unused scans can be run with one short command while keeping project defaults.
+  Details: added `run-clang-tidy-unused.sh` in repo root; it forwards to `scripts/run-clang-tidy-unused.sh` with default strict-unused arguments and passes through extra CLI options.
 - [cleanup] **Added compact JSON output and git revision metadata** - JSON summaries can now be emitted in compact form for smaller CI artifacts, and include current revision for traceability.
   Details: `scripts/run-clang-tidy-unused.sh` now supports `--json-summary-compact` and writes `metadata.git_rev` when available.
 

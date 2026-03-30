@@ -775,13 +775,6 @@ void ContinuousMonitoringThread() {
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
             }
 
-            // Windows taskbar visibility: 0 = no change, 1 = hide when in foreground, 2 = always hide
-            {
-                const bool in_foreground = !g_app_in_background.load(std::memory_order_acquire);
-                const int taskbar_mode = settings::g_mainTabSettings.taskbar_hide_mode.GetValue();
-                display_commander::utils::UpdateTaskbarVisibility(in_foreground, taskbar_mode);
-            }
-
             // Update keyboard tracking system
             display_commanderhooks::keyboard_tracker::Update();
 
@@ -801,12 +794,6 @@ void ContinuousMonitoringThread() {
             CALL_GUARD_NO_TS();;
             last_1s_update_ns = now_ns;
             check_is_background();
-            // Recheck taskbar visibility whenever we update background state (same as in high-freq path)
-            {
-                const bool in_foreground = !g_app_in_background.load(std::memory_order_acquire);
-                const int taskbar_mode = settings::g_mainTabSettings.taskbar_hide_mode.GetValue();
-                display_commander::utils::UpdateTaskbarVisibility(in_foreground, taskbar_mode);
-            }
             g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
             every1s_tasks();
 
