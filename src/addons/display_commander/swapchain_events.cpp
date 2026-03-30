@@ -37,7 +37,6 @@
 #include "utils/dxgi_color_space.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
-#include "utils/no_inject_windows.hpp"
 #include "utils/perf_measurement.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
@@ -72,7 +71,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 // ============================================================================
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     LogInfo("OnCreateDevice: api: %d (%s), api_version: 0x%x", static_cast<int>(api), GetDeviceApiString(api),
             api_version);
 
@@ -103,7 +102,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 }
 
 void OnInitDevice(reshade::api::device* device) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     LogInfo("OnInitDevice: device: %p", device);
     // Device initialization tracking
     if (device == nullptr) {
@@ -113,7 +112,7 @@ void OnInitDevice(reshade::api::device* device) {
 }
 
 void OnDestroyDevice(reshade::api::device* device) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     LogInfo("OnDestroyDevice: device: %p", device);
     if (device == nullptr) {
         return;
@@ -140,7 +139,7 @@ void OnDestroyDevice(reshade::api::device* device) {
 }
 
 void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (runtime == nullptr) {
         return;
     }
@@ -159,12 +158,9 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
 }
 
 void hookToSwapChain(reshade::api::swapchain* swapchain) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
-        return;
-    }
-    if (should_skip_addon_injection_for_window(hwnd)) {
         return;
     }
     static std::set<reshade::api::swapchain*> hooked_swapchains;
@@ -430,16 +426,13 @@ void RecordNativeFrameTime() {
 
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
 
     if (hwnd == nullptr) return false;
-    if (should_skip_addon_injection_for_window(static_cast<HWND>(hwnd))) {
-        return false;  // No modifications for no-inject windows
-    }
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
@@ -875,11 +868,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 }
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
-    CALL_GUARD(utils::get_now_ns());
-
-    if (hwnd != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(hwnd))) {
-        return true;  // Leave desc unchanged; do not run capture or store desc for no-inject windows
-    }
+    CALL_GUARD_NO_TS();;
 
     if (api == reshade::api::device_api::d3d9) {
         g_dx9_swapchain_detected.store(true);
@@ -904,14 +893,11 @@ std::atomic<bool> s_we_auto_enabled_hdr{false};
 }  // namespace
 
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (swapchain == nullptr) {
         return;
     }
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    if (hwnd != nullptr && should_skip_addon_injection_for_window(hwnd)) {
-        return;
-    }
     if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
         if (hwnd) {
             HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -969,13 +955,13 @@ void ApplyHdr1000MetadataToSwapchain(reshade::api::swapchain* swapchain) {
 }  // namespace
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (swapchain == nullptr) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
     }
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    if (hwnd == nullptr || should_skip_addon_injection_for_window(hwnd)) {
+    if (hwnd == nullptr) {
         return;
     }
     {
@@ -1067,13 +1053,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 }
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
-    CALL_GUARD(utils::get_now_ns());
-    if (swapchain != nullptr) {
-        HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-        if (should_skip_addon_injection_for_window(hwnd)) {
-            return;
-        }
-    }
+    CALL_GUARD_NO_TS();;
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
@@ -1646,7 +1626,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
     auto api = swapchain->get_device()->get_api();
     command_queue->flush_immediate_command_list();
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentUpdateBefore)) {
         return;
@@ -1662,10 +1642,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     if (hwnd == g_proxy_hwnd) {
         return;
     }
-    if (should_skip_addon_injection_for_window(hwnd)) {
-        return;
-    }
-
     reshade::api::effect_runtime* first_runtime = GetSelectedReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
         LogInfoThrottled(1, "Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
@@ -1874,7 +1850,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
 
@@ -1888,7 +1864,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
         return;
@@ -1914,7 +1890,7 @@ void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
 
 // Sampler creation event handler to override mipmap bias and anisotropic filtering
 bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (device == nullptr) {
         return false;
     }
@@ -2082,7 +2058,7 @@ bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& d
 
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     (void)device;
     (void)resource;
     (void)usage_type;

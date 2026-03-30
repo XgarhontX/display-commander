@@ -88,7 +88,7 @@ static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 
 // Helper functions for handle tracking
 static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (handle == nullptr) return;
 
     utils::SRWLockExclusive lock(utils::g_ngx_handle_mutex);
@@ -118,7 +118,7 @@ static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) 
 }
 
 static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (handle == nullptr) return;
 
     utils::SRWLockExclusive lock(utils::g_ngx_handle_mutex);
@@ -152,7 +152,7 @@ static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
 }
 
 static NVSDK_NGX_Feature GetFeatureFromHandle(NVSDK_NGX_Handle* handle) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (handle == nullptr) return static_cast<NVSDK_NGX_Feature>(-1);
 
     utils::SRWLockExclusive lock(utils::g_ngx_handle_mutex);
@@ -162,7 +162,7 @@ static NVSDK_NGX_Feature GetFeatureFromHandle(NVSDK_NGX_Handle* handle) {
 
 // Cleanup function to clear handle map and reset tracking variables
 static void CleanupNGXHandleTracking() {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     utils::SRWLockExclusive lock(utils::g_ngx_handle_mutex);
     g_ngx_handle_map.clear();
 
@@ -322,7 +322,7 @@ typedef NVSDK_NGX_Result(NVSDK_CONV* PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallba
 static PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallback g_ngx_dlss_optimal_settings_callback_original = nullptr;
 
 static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_Parameter* InParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (g_ngx_dlss_optimal_settings_callback_original == nullptr) {
         return NVSDK_NGX_Result_Fail;
     }
@@ -416,7 +416,7 @@ static bool IsDLSSPresetParameter(const std::string& param_name, const std::vect
 
 // Function to automatically set DLSS preset parameters during initialization
 static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (InParameters == nullptr) {
         return;
     }
@@ -492,14 +492,14 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
 
 // Function to reset NGX preset initialization flag
 void ResetNGXPresetInitialization() {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     g_ngx_presets_initialized.store(false);
     LogInfo("NGX preset initialization flag reset - presets will be reapplied on next initialization");
 }
 
 // Hooked NVSDK_NGX_Parameter_SetF function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, float InValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_setf_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -540,7 +540,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
 
 // Hooked NVSDK_NGX_Parameter_SetD function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, double InValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_setd_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -581,7 +581,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
 
 // Hooked NVSDK_NGX_Parameter_SetI function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, int InValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_seti_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -686,7 +686,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
 // Hooked NVSDK_NGX_Parameter_SetUI function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
                                                  unsigned int InValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_setui_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -791,7 +791,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
 // Hooked NVSDK_NGX_Parameter_SetULL function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
                                                   unsigned long long InValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_setull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -860,7 +860,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
 // Hooked NVSDK_NGX_Parameter_GetI function
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
                                                             int* OutValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     ApplyDLSSPresetParameters(InParameter);
     // Increment NGX counters
     g_ngx_counters.parameter_geti_count.fetch_add(1);
@@ -942,7 +942,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
 // Hooked NVSDK_NGX_Parameter_GetUI function
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
                                                              unsigned int* OutValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     ApplyDLSSPresetParameters(InParameter);
     // Increment NGX counters
     g_ngx_counters.parameter_getui_count.fetch_add(1);
@@ -1021,7 +1021,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
 // Hooked NVSDK_NGX_Parameter_GetULL function
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
                                                               unsigned long long* OutValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     ApplyDLSSPresetParameters(InParameter);
     // Increment NGX counters
     g_ngx_counters.parameter_getull_count.fetch_add(1);
@@ -1102,7 +1102,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
 // Hooked NVSDK_NGX_Parameter_GetVoidPointer function
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_Parameter* InParameter,
                                                                       const char* InName, void** OutValue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.parameter_getvoidpointer_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1142,7 +1142,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
                                                         NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d12_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1160,7 +1160,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
                                                         const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d12_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1181,7 +1181,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long I
                                                             const wchar_t* InApplicationDataPath,
                                                             ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion,
                                                             const NVSDK_NGX_Parameter* InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d12_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1200,7 +1200,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_init_projectid_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1218,7 +1218,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_with_ProjectID_Detour(
 // Log common NGX CreateFeature parameters (Width, Height, OutWidth, OutHeight, PerfQualityValue) when getters are
 // available
 static void LogNGXCreateFeatureParameters(NVSDK_NGX_Parameter* InParameters) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (InParameters == nullptr) {
         return;
     }
@@ -1258,7 +1258,7 @@ static void LogNGXCreateFeatureParameters(NVSDK_NGX_Parameter* InParameters) {
 
 static void UpdateDLSSGEnableInterpFromEvaluate(const NVSDK_NGX_Handle* InFeatureHandle,
                                                 const NVSDK_NGX_Parameter* InParameters) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (InFeatureHandle == nullptr || InParameters == nullptr || NVSDK_NGX_Parameter_GetI_Original == nullptr) {
         return;
     }
@@ -1281,11 +1281,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
                                                                  NVSDK_NGX_Feature InFeatureID,
                                                                  const NVSDK_NGX_Parameter* InParameters,
                                                                  NVSDK_NGX_Handle** OutHandle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_createfeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
 
     LogInfo("NGX D3D12 CreateFeature called - FeatureID: %d", InFeatureID);
 
@@ -1295,42 +1295,42 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
 
     // Hook the parameter vtable if we have parameters (const_cast for our preset override / logging only)
     if (InParameters != nullptr) {
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         NVSDK_NGX_Parameter* params_mut = const_cast<NVSDK_NGX_Parameter*>(InParameters);
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         HookNGXParameterVTable(params_mut, "D3D12_CreateFeature");
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         LogNGXCreateFeatureParameters(params_mut);
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-            CALL_GUARD_NO_TS();
+            CALL_GUARD_NO_TS();;;
             const NVSDK_NGX_PerfQuality_Value override_preset =
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
             const int override_preset_int = static_cast<int>(override_preset);
-            CALL_GUARD_NO_TS();
+            CALL_GUARD_NO_TS();;;
             if (override_preset_int >= 0) {
                 NVSDK_NGX_Parameter_SetI_Original(params_mut, NVSDK_NGX_Parameter_PerfQualityValue,
                                                   override_preset_int);
                 g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
                 LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
             }
-            CALL_GUARD_NO_TS();
+            CALL_GUARD_NO_TS();;;
         }
     }
 
     if (NVSDK_NGX_D3D12_CreateFeature_Original != nullptr) {
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         auto res = NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
 
         // Track the handle and feature type if creation was successful
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
             TrackNGXHandle(*OutHandle, InFeatureID);
         }
-        CALL_GUARD_NO_TS();
+        CALL_GUARD_NO_TS();;;
         return res;
     }
 
@@ -1339,7 +1339,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
 
 // D3D12 ReleaseFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Handle* InHandle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_releasefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1381,7 +1381,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
                                                                    const NVSDK_NGX_Handle* InFeatureHandle,
                                                                    const NVSDK_NGX_Parameter* InParameters,
                                                                    PFN_NVSDK_NGX_ProgressCallback InCallback) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1403,7 +1403,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
 
 // D3D12 Shutdown1 detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Shutdown1_Detour(ID3D12Device* InDevice) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
     if (NVSDK_NGX_D3D12_Shutdown1_Original != nullptr) {
         return NVSDK_NGX_D3D12_Shutdown1_Original(InDevice);
@@ -1413,7 +1413,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Shutdown1_Detour(ID3D12Device* InDev
 
 // D3D11 Shutdown1 detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Shutdown1_Detour(ID3D11Device* InDevice) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
     if (NVSDK_NGX_D3D11_Shutdown1_Original != nullptr) {
         return NVSDK_NGX_D3D11_Shutdown1_Original(InDevice);
@@ -1426,7 +1426,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12Graph
                                                                      const NVSDK_NGX_Handle* InFeatureHandle,
                                                                      const NVSDK_NGX_Parameter* InParameters,
                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature_C");
@@ -1443,7 +1443,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
                                                                      const NVSDK_NGX_Handle* InFeatureHandle,
                                                                      const NVSDK_NGX_Parameter* InParameters,
                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature_C");
@@ -1460,7 +1460,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
                                                         NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d11_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1478,7 +1478,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
                                                         const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d11_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1498,7 +1498,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long I
                                                             const wchar_t* InApplicationDataPath,
                                                             ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion,
                                                             const NVSDK_NGX_Parameter* InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.d3d11_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1593,7 +1593,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_init_projectid_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1701,7 +1701,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
                                                                  NVSDK_NGX_Feature InFeatureID,
                                                                  const NVSDK_NGX_Parameter* InParameters,
                                                                  NVSDK_NGX_Handle** OutHandle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_createfeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1747,7 +1747,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
 
 // D3D11 ReleaseFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Handle* InHandle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_releasefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1789,7 +1789,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
                                                                    const NVSDK_NGX_Handle* InFeatureHandle,
                                                                    const NVSDK_NGX_Parameter* InParameters,
                                                                    PFN_NVSDK_NGX_ProgressCallback InCallback) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1812,7 +1812,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
 // UpdateFeature detour — 2 args; nvsdk_ngx.h declares only when NGX_SNIPPET_BUILD is undefined (see ABI block).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Application_Identifier* ApplicationId,
                                                            const NVSDK_NGX_Feature FeatureID) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -1867,7 +1867,7 @@ constexpr std::size_t ngx_param_vtable_idx(NGX_Parameter_VTable_Index i) noexcep
 
 // Function to hook NGX Parameter vtable (following Special-K's approach)
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (Params == nullptr) {
         return false;
     }
@@ -1930,7 +1930,7 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
 
 // NGX D3D12 GetParameters detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_getparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1954,7 +1954,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
 
 // NGX D3D12 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
 
     NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
@@ -1974,7 +1974,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetCapabilityParameters_Detour(NVSDK
 
 // NGX D3D12 AllocateParameters detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d12_allocateparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1998,7 +1998,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_
 
 // NGX D3D11 GetParameters detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_getparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -2022,7 +2022,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
 
 // NGX D3D11 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_ngx_counters.total_count.fetch_add(1);
 
     NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
@@ -2042,7 +2042,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetCapabilityParameters_Detour(NVSDK
 
 // NGX D3D11 AllocateParameters detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment NGX counters
     g_ngx_counters.d3d11_allocateparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -2137,7 +2137,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
         LogInfo("NGX hooks: _nvngx.dll not loaded");
         return false;
     }
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
 
     // Check if NGX hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
@@ -2180,7 +2180,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
 // Cleanup NGX hooks and reset tracking
 void CleanupNGXHooks() {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     LogInfo("Cleaning up NGX hooks and handle tracking");
     CleanupNGXHandleTracking();
 }
@@ -2224,7 +2224,7 @@ std::string GetEnabledFeaturesSummary() {
 
 // Force apply NGX parameter override via API call
 bool ApplyNGXParameterOverride(const char* param_name, const char* param_type) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (param_name == nullptr || param_type == nullptr) {
         return false;
     }

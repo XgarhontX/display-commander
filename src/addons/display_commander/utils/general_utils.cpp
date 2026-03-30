@@ -979,7 +979,7 @@ int GetDLSSPresetValue(const std::string& presetString) {
 // Convert DLSS quality preset string to NVSDK_NGX_PerfQuality_Value. Returns (NVSDK_NGX_PerfQuality_Value)-1 for "Game
 // Default" (no override).
 NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (presetString == "Game Default") {
         return static_cast<NVSDK_NGX_PerfQuality_Value>(-1);
     }

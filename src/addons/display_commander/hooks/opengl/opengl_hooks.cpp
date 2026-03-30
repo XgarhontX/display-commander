@@ -75,88 +75,88 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 }
 
 BOOL WINAPI wglMakeCurrent_Detour(HDC hdc, HGLRC hglrc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_MAKECURRENT].fetch_add(1);
     return wglMakeCurrent_Original(hdc, hglrc);
 }
 
 HGLRC WINAPI wglCreateContext_Detour(HDC hdc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CREATECONTEXT].fetch_add(1);
     return wglCreateContext_Original(hdc);
 }
 
 BOOL WINAPI wglDeleteContext_Detour(HGLRC hglrc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_DELETECONTEXT].fetch_add(1);
     return wglDeleteContext_Original(hglrc);
 }
 
 int WINAPI wglChoosePixelFormat_Detour(HDC hdc, const PIXELFORMATDESCRIPTOR* ppfd) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMAT].fetch_add(1);
     return wglChoosePixelFormat_Original(hdc, ppfd);
 }
 
 BOOL WINAPI wglSetPixelFormat_Detour(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR* ppfd) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SETPIXELFORMAT].fetch_add(1);
     return wglSetPixelFormat_Original(hdc, iPixelFormat, ppfd);
 }
 
 int WINAPI wglGetPixelFormat_Detour(HDC hdc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMAT].fetch_add(1);
     return wglGetPixelFormat_Original(hdc);
 }
 
 BOOL WINAPI wglDescribePixelFormat_Detour(HDC hdc, int iPixelFormat, UINT nBytes, LPPIXELFORMATDESCRIPTOR ppfd) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_DESCRIBEPIXELFORMAT].fetch_add(1);
     return wglDescribePixelFormat_Original(hdc, iPixelFormat, nBytes, ppfd);
 }
 
 HGLRC WINAPI wglCreateContextAttribsARB_Detour(HDC hdc, HGLRC hshareContext, const int* attribList) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CREATECONTEXTATTRIBSARB].fetch_add(1);
     return wglCreateContextAttribsARB_Original(hdc, hshareContext, attribList);
 }
 
 BOOL WINAPI wglChoosePixelFormatARB_Detour(HDC hdc, const int* piAttribIList, const FLOAT* pfAttribFList,
                                            UINT nMaxFormats, int* piFormats, UINT* nNumFormats) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMATARB].fetch_add(1);
     return wglChoosePixelFormatARB_Original(hdc, piAttribIList, pfAttribFList, nMaxFormats, piFormats, nNumFormats);
 }
 
 BOOL WINAPI wglGetPixelFormatAttribivARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes,
                                                 const int* piAttributes, int* piValues) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBIVARB].fetch_add(1);
     return wglGetPixelFormatAttribivARB_Original(hdc, iPixelFormat, iLayerPlane, nAttributes, piAttributes, piValues);
 }
 
 BOOL WINAPI wglGetPixelFormatAttribfvARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes,
                                                 const int* piAttributes, FLOAT* pfValues) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBFVARB].fetch_add(1);
     return wglGetPixelFormatAttribfvARB_Original(hdc, iPixelFormat, iLayerPlane, nAttributes, piAttributes, pfValues);
 }
 
 PROC WINAPI wglGetProcAddress_Detour(LPCSTR lpszProc) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPROCADDRESS].fetch_add(1);
     return wglGetProcAddress_Original(lpszProc);
 }
 
 BOOL WINAPI wglSwapIntervalEXT_Detour(int interval) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPINTERVALEXT].fetch_add(1);
     return wglSwapIntervalEXT_Original(interval);
 }
 
 int WINAPI wglGetSwapIntervalEXT_Detour(void) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETSWAPINTERVALEXT].fetch_add(1);
     return wglGetSwapIntervalEXT_Original();
 }

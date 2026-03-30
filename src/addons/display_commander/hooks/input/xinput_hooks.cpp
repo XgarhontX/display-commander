@@ -301,13 +301,10 @@ void ApplyThumbstickProcessing(
 }
 
 // Helper function containing shared logic for XInputGetState and XInputGetStateEx
-static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, HookIndex hook_index,
-                                   std::atomic<uint64_t>& update_ns_field, const char* error_function_name,
+static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, std::atomic<uint64_t>& update_ns_field,
+                                   const char* error_function_name,
                                    const std::function<DWORD(DWORD, XINPUT_STATE*)>& call_original_func) {
     // Note pState may be null if caller wants to check if device is connected
-    // Track hook call statistics
-    g_hook_stats[hook_index].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(hook_index);
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state && dwUserIndex == 0) {
@@ -453,9 +450,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
             pState->Gamepad.bRightTrigger = 0;
         }
 
-        // Track unsuppressed call (input was processed)
-        g_hook_stats[hook_index].increment_unsuppressed();
-
         // Always update the UI state with the original state (before suppression/modifications)
         // This ensures the UI shows the actual controller state regardless of suppression
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
@@ -490,7 +484,7 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
             g_getstate_userindex0_last_duration_ns.store(elapsed_ns, std::memory_order_relaxed);
         });
     }
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -526,12 +520,12 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
         return ERROR_DEVICE_NOT_CONNECTED;
     };
 
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetState, shared_state->xinput_getstate_update_ns,
-                                 "GetState", call_original);
+    return ProcessXInputGetState(dwUserIndex, pState, shared_state->xinput_getstate_update_ns, "GetState",
+                                 call_original);
 }
 
 static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -558,24 +552,19 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
         return ERROR_DEVICE_NOT_CONNECTED;
     };
 
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetStateEx, shared_state->xinput_getstateex_update_ns,
-                                 "GetStateEx", call_original);
+    return ProcessXInputGetState(dwUserIndex, pState, shared_state->xinput_getstateex_update_ns, "GetStateEx",
+                                 call_original);
 }
 
 static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     if (pVibration == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
 
-    // Track hook call statistics
-    g_hook_stats[HOOK_XInputSetState].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(HOOK_XInputSetState);
-
     // Check if gamepad input should be suppressed - suppress vibration if so
     if (display_commanderhooks::ShouldBlockGamepadInput()) {
         // Return success but don't actually send vibration (suppress it)
-        g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
         return ERROR_SUCCESS;
     }
 
@@ -618,10 +607,6 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     // Call original function with amplified vibration
     DWORD result = set_state(dwUserIndex, &vibration);
 
-    if (result == ERROR_SUCCESS) {
-        g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
-    }
-
     return result;
 }
 
@@ -631,11 +616,7 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION* pVibrati
 
 static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,
                                                       XINPUT_CAPABILITIES* pCapabilities) {
-    CALL_GUARD(utils::get_now_ns());
-    // Track hook statistics (do this first to verify hook is being called)
-    g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(HOOK_XInputGetCapabilities);
-
+    CALL_GUARD_NO_TS();;;
     if (pCapabilities == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -651,10 +632,6 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
     }
 
     DWORD result = get_capabilities(dwUserIndex, dwFlags, pCapabilities);
-
-    if (result == ERROR_SUCCESS) {
-        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
-    }
 
     return result;
 }

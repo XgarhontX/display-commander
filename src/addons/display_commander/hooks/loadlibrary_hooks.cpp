@@ -16,7 +16,6 @@
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
-#include "../settings/main_tab_settings.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
@@ -44,14 +43,6 @@
 extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
 
 namespace display_commanderhooks {
-
-// Helper function to check if a DLL is SpecialK (always blocked - incompatible with Display Commander)
-bool ShouldBlockSpecialKDLL(const std::wstring& dll_path) {
-    std::filesystem::path path(dll_path);
-    std::wstring filename = path.filename().wstring();
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-    return (filename == L"specialk32.dll" || filename == L"specialk64.dll");
-}
 
 // Returns true if path or filename contains "renodx" (case-insensitive) but not "renodx-devkit". Used to detect RenoDX
 // game addons.
@@ -351,7 +342,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -360,17 +351,6 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     const bool already_loaded = (lpLibFileName && GetModuleHandleA(lpLibFileName) != nullptr);
     if (!already_loaded) {
         LogInfo("[%s] LoadLibraryA called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
-    }
-
-    // Check for SpecialK blocking (incompatible with Display Commander)
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
     }
 
     // Check for GameOverlayRenderer (Steam overlay) blocking
@@ -445,7 +425,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 }
 
 HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (LoadLibraryW_Original) {
         return LoadLibraryW_Original(lpLibFileName);
     }
@@ -454,7 +434,7 @@ HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryW function
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -463,17 +443,6 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     const bool already_loaded = (lpLibFileName && GetModuleHandleW(lpLibFileName) != nullptr);
     if (!already_loaded) {
         LogInfo("[%s] LoadLibraryW called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
-    }
-
-    // Check for SpecialK blocking (incompatible with Display Commander)
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
     }
 
     // Check for GameOverlayRenderer (Steam overlay) blocking
@@ -547,7 +516,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryExA function
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -555,17 +524,6 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
     LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
             dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
-
-    // Check for SpecialK blocking (incompatible with Display Commander)
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
 
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
@@ -646,7 +604,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
 // Hooked LoadLibraryExW function
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -654,17 +612,6 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 
     LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
             dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
-
-    // Check for SpecialK blocking (incompatible with Display Commander)
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
 
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
@@ -736,7 +683,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 // Hooked LoadPackagedLibrary (Windows 8+; UWP packaged apps). Same blocking/tracking as LoadLibraryW; no DLSS path
 // override (package full name is not a file path).
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -747,12 +694,6 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 
     if (lpwszPackageFullName) {
         std::wstring w_name = lpwszPackageFullName;
-        if (ShouldBlockSpecialKDLL(w_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
-                    name_str.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
         if (ShouldBlockGameOverlayRendererDLL(w_name)) {
             LogInfo("[%s] GameOverlayRenderer Block: Blocking packaged lib %s from loading (caller: %s)",
                     timestamp.c_str(), name_str.c_str(), caller_str.c_str());
@@ -791,7 +732,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 // Hooked LdrLoadDll (ntdll). Catches loads that bypass kernel32 (e.g. direct ntdll calls). Blocking + tracking only
 // (no DLSS path override from this path).
 LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
@@ -810,14 +751,6 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
     }
 
     if (!dll_name_wide.empty()) {
-        if (ShouldBlockSpecialKDLL(dll_name_wide)) {
-            LogInfo("[%s] SpecialK Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            if (DllHandle != nullptr) {
-                *DllHandle = nullptr;
-            }
-            return STATUS_ACCESS_DENIED_NT;
-        }
         if (ShouldBlockGameOverlayRendererDLL(dll_name_wide)) {
             LogInfo("[%s] GameOverlayRenderer Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(),
                     dll_name.c_str(), caller_str.c_str());
@@ -862,7 +795,7 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
 
 // Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
 HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     HMODULE override_handle = GetDlssOverrideHandle(lpModuleName ? lpModuleName : L"");
     if (override_handle != nullptr) {
         return override_handle;
@@ -872,7 +805,7 @@ HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
 
 // Hooked GetModuleHandleA: same for ANSI
 HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (lpModuleName && *lpModuleName) {
         std::wstring wkey = ToLowerModuleName(lpModuleName);
         HMODULE override_handle = GetDlssOverrideHandle(wkey);
@@ -885,7 +818,7 @@ HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
 
 // Hooked GetModuleHandleExW: return override when querying by name (not by FROM_ADDRESS)
 BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE* phModule) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -904,7 +837,7 @@ BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODU
 
 // Hooked GetModuleHandleExA: same for ANSI
 BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODULE* phModule) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -931,7 +864,7 @@ static bool IsReshadeTryingToFreeDisplayCommander(HMODULE hLibModule, HMODULE ca
 
 // Hooked FreeLibrary function
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
 
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
         LogInfo("[FreeLibrary] ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
@@ -1037,7 +970,7 @@ static bool IsOurProxyModule(const std::wstring& module_path) {
 }
 
 FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     FARPROC result =
         GetProcAddress_Original ? GetProcAddress_Original(hModule, lpProcName) : GetProcAddress(hModule, lpProcName);
     // When someone resolved a proc from our proxy and it was found, log each lpProcName once.
@@ -1569,7 +1502,7 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 }
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     {
         utils::SRWLockExclusive lock(utils::g_module_srwlock);
         if (g_on_module_loaded_seen_handles.find(hModule) != g_on_module_loaded_seen_handles.end()) {

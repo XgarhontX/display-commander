@@ -91,7 +91,7 @@ inline void LogDxgiFactoryErrorUpTo10(const char* method, HRESULT hr, int* pCoun
 
 // Helper function to create a swapchain wrapper from any swapchain interface
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHook hookType) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (swapchain4 == nullptr) {
         LogWarn("CreateSwapChainWrapper: swapchain is null");
         return nullptr;
@@ -108,7 +108,7 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHo
 // DXGISwapChain4Wrapper implementation
 DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain, SwapChainHook hookType)
     : m_originalSwapChain(originalSwapChain), m_refCount(1), m_swapChainHookType(hookType) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
                                : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
                                                                         : "Native";
@@ -138,13 +138,13 @@ STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void** ppvObject
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::AddRef() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     InterlockedIncrement(&m_refCount);
     return m_refCount;
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     InterlockedDecrement(&m_refCount);
 
     if (m_refCount == 0) {
@@ -179,7 +179,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void** ppDevice) {
 
 // IDXGISwapChain methods - delegate to original
 STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (m_swapChainHookType == SwapChainHook::NativeRaw) {
         return m_originalSwapChain->Present(SyncInterval, Flags);
     }
@@ -270,7 +270,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void** ppUnk) {
 
 STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags,
                                              const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (m_swapChainHookType == SwapChainHook::NativeRaw) {
         return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
     }
@@ -404,7 +404,7 @@ DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChain
 }
 
 STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void** ppvObject) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (ppvObject == nullptr) return E_POINTER;
 
     // Support querying for the wrapper interface itself
@@ -427,14 +427,14 @@ STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void** ppvObject) {
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     InterlockedIncrement(&m_refCount);
     return m_refCount;
     // return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     InterlockedDecrement(&m_refCount);
 
     if (m_refCount == 0) {
@@ -957,7 +957,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlaySupport(DXGI_FORMAT EnumFormat, IU
 // IDXGIOutput4 methods - delegate to original
 STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace,
                                                                 IUnknown* pConcernedDevice, UINT* pFlags) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Query for IDXGIOutput4 to call CheckOverlayColorSpaceSupport
     Microsoft::WRL::ComPtr<IDXGIOutput4> output4;
     if (SUCCEEDED(m_originalOutput->QueryInterface(IID_PPV_ARGS(&output4)))) {

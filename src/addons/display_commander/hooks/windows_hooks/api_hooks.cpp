@@ -91,7 +91,7 @@ bool HWNDBelongsToCurrentProcess(HWND hwnd) {
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();
     auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -112,13 +112,13 @@ HWND WINAPI GetFocus_Detour() {
 }
 
 HWND WINAPI GetForegroundWindow_Direct() {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     return GetForegroundWindow_Original ? GetForegroundWindow_Original() : GetForegroundWindow();
 }
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     auto hwnd = GetForegroundWindow_Direct();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -140,7 +140,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -175,7 +175,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr && IsWindow(game_hwnd)) {
         // Call original function first
@@ -220,13 +220,13 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
 
 // True minimized state, bypassing our IsIconic detour (used when we need real state, e.g. skip ApplyWindowChange).
 bool IsIconic_direct(HWND hwnd) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     return (IsIconic_Original ? IsIconic_Original(hwnd) : IsIconic(hwnd)) != FALSE;
 }
 
 // True visibility state, bypassing our IsWindowVisible detour (used when code needs real visibility).
 bool IsWindowVisible_direct(HWND hwnd) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     return (IsWindowVisible_Original ? IsWindowVisible_Original(hwnd) : IsWindowVisible(hwnd)) != FALSE;
 }
 
@@ -257,7 +257,7 @@ BOOL WINAPI IsWindowVisible_Detour(HWND hWnd) {
 // Hooked GetWindowPlacement: when Continue Rendering is on, game window must not report SW_SHOWMINIMIZED (games treat
 // minimized as background).
 BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     BOOL result =
         GetWindowPlacement_Original ? GetWindowPlacement_Original(hWnd, lpwndpl) : GetWindowPlacement(hWnd, lpwndpl);
     if (result && lpwndpl != nullptr && settings::g_advancedTabSettings.continue_rendering.GetValue()
@@ -271,10 +271,7 @@ BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
 
 // Hooked SetThreadExecutionState function
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
-    CALL_GUARD(utils::get_now_ns());
-    // Track total calls
-    g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
-
+    CALL_GUARD_NO_TS();;;
     // Check prevent display sleep & screensaver mode setting
     ScreensaverMode screensaver_mode =
         static_cast<ScreensaverMode>(settings::g_mainTabSettings.screensaver_mode.GetValue());
@@ -284,9 +281,6 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
         return 0x0;  // Block game's attempt to control execution state
     }
 
-    // Track unsuppressed calls (when we call the original function)
-    g_hook_stats[HOOK_SetThreadExecutionState].increment_unsuppressed();
-
     // Call original function for kDefault mode
     return SetThreadExecutionState_Original ? SetThreadExecutionState_Original(esFlags)
                                             : SetThreadExecutionState(esFlags);
@@ -294,67 +288,58 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    CALL_GUARD(utils::get_now_ns());
-    g_hook_stats[HOOK_SetWindowLongPtrW].increment_total();
+    CALL_GUARD_NO_TS();;;
     // Only process if prevent_always_on_top is enabled
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
-    g_hook_stats[HOOK_SetWindowLongPtrW].increment_unsuppressed();
     return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
                                       : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongA function
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    CALL_GUARD(utils::get_now_ns());
-    g_hook_stats[HOOK_SetWindowLongA].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
-    g_hook_stats[HOOK_SetWindowLongA].increment_unsuppressed();
     return SetWindowLongA_Original ? SetWindowLongA_Original(hWnd, nIndex, dwNewLong)
                                    : SetWindowLongA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongW function
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    CALL_GUARD(utils::get_now_ns());
-    g_hook_stats[HOOK_SetWindowLongW].increment_total();
+    CALL_GUARD_NO_TS();;;
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
-    g_hook_stats[HOOK_SetWindowLongW].increment_unsuppressed();
     return SetWindowLongW_Original ? SetWindowLongW_Original(hWnd, nIndex, dwNewLong)
                                    : SetWindowLongW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongPtrA function
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    CALL_GUARD(utils::get_now_ns());
-    g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
-    g_hook_stats[HOOK_SetWindowLongPtrA].increment_unsuppressed();
     return SetWindowLongPtrA_Original ? SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong)
                                       : SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-    CALL_GUARD(utils::get_now_ns());
-    g_hook_stats[HOOK_SetWindowPos].increment_total();
+    CALL_GUARD_NO_TS();;;
     // Only process if prevent_always_on_top is enabled
     if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
         && hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
@@ -362,21 +347,20 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
         hWndInsertAfter = HWND_NOTOPMOST;
     }
 
-    g_hook_stats[HOOK_SetWindowPos].increment_unsuppressed();
     // Call original function with unmodified parameters
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
 BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     return CreateWindowExW_Original ? CreateWindowExW_Original(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
                                                                nHeight, hWndParent, hMenu, hInstance, lpParam)
                                     : CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
@@ -393,26 +377,26 @@ HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // Call original function
     return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
 }
 
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     return SetCursor_Direct(hCursor);
 }
 
 int WINAPI ShowCursor_Direct(BOOL bShow) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // Call original function
     return ShowCursor_Original ? ShowCursor_Original(bShow) : ShowCursor(bShow);
 }
 
 // Hooked ShowCursor function
 int WINAPI ShowCursor_Detour(BOOL bShow) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
 
     if (ShouldBlockMouseInput()) {
         bShow = FALSE;
@@ -431,7 +415,7 @@ static std::atomic<bool> installed_dc_addvectoredexceptionhandler_hook{false};
 
 // Hooked AddVectoredExceptionHandler function
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     // Log the call for debugging
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
     if (installed_dc_addvectoredexceptionhandler_hook) {
@@ -455,7 +439,7 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
 }
 
 PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     installed_dc_addvectoredexceptionhandler_hook.store(true, std::memory_order_release);
 
     return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
@@ -463,7 +447,7 @@ PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLE
 }
 
 HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (ppFactory == nullptr) {
         return E_POINTER;
     }
@@ -611,7 +595,7 @@ bool InstallWindowsApiHooks() {
 }
 
 bool InstallApiHooks() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;;
     if (g_api_hooks_installed.load()) {
         return true;
     }

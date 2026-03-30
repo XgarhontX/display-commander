@@ -44,7 +44,6 @@
 #include "utils/general_utils.hpp"
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
-#include "utils/no_inject_windows.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/timing.hpp"
@@ -103,10 +102,6 @@ bool CheckReShadeVersionCompatibility();
 
 // Forward declaration for multiple ReShade detection
 void DetectMultipleReShadeVersions();
-
-// Forward declaration for multiple Display Commander detection
-// Returns true if multiple versions detected (should refuse to load), false otherwise
-bool DetectMultipleDisplayCommanderVersions();
 
 // Forward declaration for safemode function
 void HandleSafemode();
@@ -174,10 +169,7 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD(utils::get_now_ns());
-    if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
-        return;  // Don't draw DC UI for no-inject windows
-    }
+    CALL_GUARD_NO_TS();;
     // Ensure the current overlay runtime is in our list (fallback if init_effect_runtime was missed, e.g. addon load
     // order)
     if (runtime != nullptr) {
@@ -204,7 +196,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 
 // ReShade effect runtime event handler for input blocking
 void OnInitCommandList(reshade::api::command_list* cmd_list) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Command list initialization tracking
     if (cmd_list == nullptr) {
         return;
@@ -213,7 +205,7 @@ void OnInitCommandList(reshade::api::command_list* cmd_list) {
 }
 
 void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Command list destruction tracking
     if (cmd_list == nullptr) {
         return;
@@ -222,7 +214,7 @@ void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
 }
 
 void OnInitCommandQueue(reshade::api::command_queue* queue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Command queue initialization tracking
     if (queue == nullptr) {
         return;
@@ -231,7 +223,7 @@ void OnInitCommandQueue(reshade::api::command_queue* queue) {
 }
 
 void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Command queue destruction tracking
     if (queue == nullptr) {
         return;
@@ -240,7 +232,7 @@ void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
 }
 
 void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Command list execution tracking
     if (queue == nullptr || cmd_list == nullptr) {
         return;
@@ -249,12 +241,9 @@ void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::comm
 }
 
 void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Present completion tracking
     if (queue == nullptr || swapchain == nullptr) {
-        return;
-    }
-    if (should_skip_addon_injection_for_window(static_cast<HWND>(swapchain->get_hwnd()))) {
         return;
     }
     // Add any tracking logic here if needed
@@ -262,11 +251,8 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
 
 void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (runtime == nullptr || cmd_list == nullptr) {
-        return;
-    }
-    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
         return;
     }
     // Brightness is applied from OnReShadePresent to avoid modifying technique state/uniforms
@@ -276,12 +262,9 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
-        return;
-    }
-    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
         return;
     }
     // Add any tracking logic here if needed
@@ -305,8 +288,8 @@ void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime)
         return;
     }
     HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-    if (game_window == nullptr || should_skip_addon_injection_for_window(game_window)) {
-        return;  // Skip init for no-inject windows (e.g. independent UI)
+    if (game_window == nullptr) {
+        return;
     }
     initialized_with_hwnd = true;
     if (IsWindow(game_window) != 0) {
@@ -322,7 +305,7 @@ void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime)
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (runtime == nullptr) {
         LogInfo("[OnInitEffectRuntime] runtime is null, returning");
         return;
@@ -344,11 +327,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
-    CALL_GUARD(utils::get_now_ns());
-
-    if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
-        return false;  // Don't run addon logic for this window (e.g. independent UI)
-    }
+    CALL_GUARD_NO_TS();;
 
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
@@ -418,7 +397,7 @@ static void DrawCustomCursor(display_commander::ui::IImGuiWrapper& gui_wrapper) 
 
 // Test callback for reshade_overlay event
 void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
     const float fixed_width = 1600.0f;
     float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
@@ -478,13 +457,7 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }
 
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD(utils::get_now_ns());
-    if (runtime != nullptr) {
-        HWND window = static_cast<HWND>(runtime->get_hwnd());
-        if (should_skip_addon_injection_for_window(window)) {
-            return;
-        }
-    }
+    CALL_GUARD_NO_TS();;
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;
 
@@ -994,211 +967,6 @@ void DetectMultipleReShadeVersions() {
     }
 }
 
-namespace {
-struct OtherDcModuleInfo {
-    HMODULE module = nullptr;
-    std::string path;
-    std::string version;
-    LONGLONG load_time_ns = 0;
-    bool has_load_time = false;
-    int state = -1;  // GetDisplayCommanderState() from that module; -1 if not available
-};
-
-// Enumerate modules and collect other Display Commander instances. Returns false on enum failure.
-bool DetectMultipleDisplayCommanderVersions_Collect(std::vector<OtherDcModuleInfo>& out) {
-    typedef const char* (*GetDisplayCommanderVersionFunc)();
-    typedef LONGLONG (*GetLoadedNsFunc)();
-
-    HMODULE modules[1024];
-    DWORD num_modules = 0;
-    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
-        DWORD error = GetLastError();
-        char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg),
-                 "[DisplayCommander] Failed to enumerate process modules for Display Commander detection: %lu\n",
-                 error);
-        OutputDebugStringA(error_msg);
-        return false;
-    }
-    if (num_modules > sizeof(modules)) {
-        num_modules = static_cast<DWORD>(sizeof(modules));
-    }
-    HMODULE current_module = g_hmodule;
-    out.clear();
-
-    char scan_msg[256];
-    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] === Display Commander Module Detection ===\n");
-    OutputDebugStringA(scan_msg);
-    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Scanning %u modules for Display Commander...\n",
-             static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
-    OutputDebugStringA(scan_msg);
-
-    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
-        HMODULE module = modules[i];
-        if (module == nullptr || module == current_module) continue;
-
-        GetDisplayCommanderVersionFunc version_func =
-            reinterpret_cast<GetDisplayCommanderVersionFunc>(GetProcAddress(module, "GetDisplayCommanderVersion"));
-        if (version_func == nullptr) continue;
-
-        OtherDcModuleInfo info;
-        info.module = module;
-        wchar_t module_path[MAX_PATH];
-        DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
-        if (path_length > 0) {
-            char narrow_path[MAX_PATH];
-            WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
-            info.path = narrow_path;
-        } else {
-            info.path = "(path unavailable)";
-        }
-        const char* other_version = version_func();
-        info.version = other_version ? other_version : "(unknown)";
-
-        GetLoadedNsFunc loaded_ns_func = reinterpret_cast<GetLoadedNsFunc>(GetProcAddress(module, "LoadedNs"));
-        if (loaded_ns_func != nullptr) {
-            info.load_time_ns = loaded_ns_func();
-            info.has_load_time = (info.load_time_ns > 0);
-        }
-        typedef int (*GetDisplayCommanderStateFunc)();
-        GetDisplayCommanderStateFunc state_func =
-            reinterpret_cast<GetDisplayCommanderStateFunc>(GetProcAddress(module, "GetDisplayCommanderState"));
-        if (state_func != nullptr) {
-            info.state = state_func();
-        }
-        out.push_back(info);
-    }
-    return true;
-}
-
-// Log, notify other instances, set g_other_dc_version_detected and should_refuse_load.
-void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcModuleInfo>& others,
-                                                    LONGLONG current_load_time_ns, bool& should_refuse_load) {
-    const char* current_version = DISPLAY_COMMANDER_VERSION_STRING;
-    typedef void (*NotifyMultipleVersionsFunc)(const char*);
-
-    for (size_t idx = 0; idx < others.size(); ++idx) {
-        const OtherDcModuleInfo& info = others[idx];
-        int one_based = static_cast<int>(idx) + 1;
-        char found_msg[512];
-        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
-                 one_based, info.module, info.path.c_str());
-        OutputDebugStringA(found_msg);
-        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other version: %s\n", info.version.c_str());
-        OutputDebugStringA(found_msg);
-        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
-        OutputDebugStringA(found_msg);
-
-        const bool other_is_loader = (info.state == static_cast<int>(DisplayCommanderState::DC_STATE_DLL_LOADER));
-        if (other_is_loader) {
-            OutputDebugStringA("[DisplayCommander]   Other instance is loader (DLL_LOADER) - not a conflict.\n");
-        }
-        if (info.has_load_time) {
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n",
-                     info.load_time_ns);
-            OutputDebugStringA(found_msg);
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
-                     current_load_time_ns);
-            OutputDebugStringA(found_msg);
-            if (!other_is_loader) {
-                if (info.load_time_ns < current_load_time_ns) {
-                    snprintf(
-                        found_msg, sizeof(found_msg),
-                        "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
-                        "Refusing to load current instance.\n",
-                        current_load_time_ns - info.load_time_ns);
-                    OutputDebugStringA(found_msg);
-                } else {
-                    snprintf(
-                        found_msg, sizeof(found_msg),
-                        "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
-                        "ns). Allowing current instance to load.\n",
-                        info.load_time_ns - current_load_time_ns);
-                    OutputDebugStringA(found_msg);
-                }
-            }
-        } else {
-            OutputDebugStringA("[DisplayCommander]   Load timestamp not available from other instance.\n");
-        }
-
-        if (!info.version.empty() && info.version != "(unknown)" && !other_is_loader) {
-            ::g_other_dc_version_detected.store(std::make_shared<const std::string>(info.version));
-
-            NotifyMultipleVersionsFunc notify_func = reinterpret_cast<NotifyMultipleVersionsFunc>(
-                GetProcAddress(info.module, "NotifyDisplayCommanderMultipleVersions"));
-            if (notify_func != nullptr) {
-                notify_func(current_version);
-                OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
-            }
-        }
-
-        if (!info.version.empty() && info.version != "(unknown)" && !other_is_loader) {
-            bool instance_should_refuse = false;
-            if (info.has_load_time && info.load_time_ns < current_load_time_ns) {
-                instance_should_refuse = true;
-                should_refuse_load = true;
-            }
-            if (instance_should_refuse) {
-                char error_msg[512];
-                snprintf(error_msg, sizeof(error_msg),
-                         "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                         "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
-                         "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
-                         info.version.c_str(), info.path.c_str(), info.load_time_ns, current_version,
-                         current_load_time_ns);
-                OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
-                         info.version.c_str(), info.path.c_str());
-                OutputDebugStringA(found_msg);
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n", current_version);
-                OutputDebugStringA(found_msg);
-                OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
-            }
-        }
-    }
-}
-}  // namespace
-
-// Function to detect multiple Display Commander versions by scanning all modules
-// Returns true if multiple versions detected (should refuse to load), false otherwise
-bool DetectMultipleDisplayCommanderVersions() {
-    std::vector<OtherDcModuleInfo> others;
-    if (!DetectMultipleDisplayCommanderVersions_Collect(others)) {
-        return false;
-    }
-
-    LONGLONG current_load_time_ns = g_dll_load_time_ns.load(std::memory_order_acquire);
-    char scan_msg[256];
-    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Current instance load time: %lld ns\n",
-             current_load_time_ns);
-    OutputDebugStringA(scan_msg);
-
-    bool should_refuse_load = false;
-    DetectMultipleDisplayCommanderVersions_Resolve(others, current_load_time_ns, should_refuse_load);
-
-    const int dc_module_count = static_cast<int>(others.size());
-    char complete_msg[256];
-    snprintf(complete_msg, sizeof(complete_msg), "[DisplayCommander] === Display Commander Detection Complete ===\n");
-    OutputDebugStringA(complete_msg);
-    snprintf(complete_msg, sizeof(complete_msg),
-             "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n", dc_module_count);
-    OutputDebugStringA(complete_msg);
-
-    if (should_refuse_load) {
-        OutputDebugStringA(
-            "[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
-        return true;
-    }
-    if (dc_module_count > 0) {
-        OutputDebugStringA(
-            "[DisplayCommander] INFO: Multiple Display Commander versions detected, but current instance was loaded "
-            "first. Allowing load.\n");
-    } else {
-        OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
-    }
-    return false;
-}
-
 // Version compatibility check function
 bool CheckReShadeVersionCompatibility() {
     static bool first_time = true;
@@ -1458,7 +1226,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 }
 
 void RegisterReShadeEvents(HMODULE h_module) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
 
@@ -1533,7 +1301,7 @@ constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander
 constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
 namespace {
-enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
+enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess };
 
 // Chooses config path (and sets RESHADE_BASE_PATH_OVERRIDE and g_dc_config_directory) in order of priority:
 // 1) If .DC_CONFIG_GLOBAL exists next to the addon OR in %LocalAppData%\\Programs\\Display_Commander: use
@@ -1607,40 +1375,6 @@ void ProcessAttach_DetectReShadeInModules() {
             break;
         }
     }
-}
-
-using GetDisplayCommanderStateFn = int (*)();
-
-// Scan loaded modules for another Display Commander that already reports HOOKED.
-// If found, set our state to PROXY_DLL_ONLY; otherwise set to HOOKED.
-// Optional: set *another_undecided if any other DC returned UNDECIDED (caller may log later).
-void ProcessAttach_ScanDisplayCommanderState(bool* another_undecided = nullptr) {
-    if (another_undecided) *another_undecided = false;
-    HMODULE self = g_hmodule;
-    if (!self) return;
-    HMODULE modules[1024];
-    DWORD num_modules_bytes = 0;
-    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
-    DWORD num_modules =
-        (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
-    for (DWORD i = 0; i < num_modules; i++) {
-        if (modules[i] == nullptr || modules[i] == self) continue;
-        FARPROC proc = GetProcAddress(modules[i], "GetDisplayCommanderState");
-        if (!proc) continue;
-        int other = reinterpret_cast<GetDisplayCommanderStateFn>(proc)();
-        if (other == static_cast<int>(DisplayCommanderState::DC_STATE_HOOKED)) {
-            g_display_commander_state.store(DisplayCommanderState::DC_STATE_PROXY_DLL_ONLY, std::memory_order_release);
-            return;
-        }
-        if (other == static_cast<int>(DisplayCommanderState::DC_STATE_DLL_LOADER)) {
-            // We are the addon loaded by the loader; we become the hooking instance.
-            g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
-            return;
-        }
-        if (another_undecided && other == static_cast<int>(DisplayCommanderState::DC_STATE_UNDECIDED))
-            *another_undecided = true;
-    }
-    g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
 }
 
 // Returns the file's version resource ProductName (wide), or empty if absent. Used to avoid
@@ -2087,119 +1821,7 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         }
     }
 
-    // Use global version is set but we're loaded from the game folder (same as exe): act as loader only and load global
-    // DC.
-    if (display_commander::utils::GetUseGlobalDcVersionFromConfig()) {
-        WCHAR mod_buf[MAX_PATH];
-        WCHAR exe_buf[MAX_PATH];
-        if (GetModuleFileNameW(h_module, mod_buf, MAX_PATH) > 0 && GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
-            std::filesystem::path mod_dir = std::filesystem::path(mod_buf).parent_path();
-            std::filesystem::path exe_dir = std::filesystem::path(exe_buf).parent_path();
-            std::error_code ec;
-            std::filesystem::path mod_canon = std::filesystem::canonical(mod_dir, ec);
-            std::filesystem::path exe_canon = std::filesystem::canonical(exe_dir, ec);
-            if (!ec && mod_canon == exe_canon) {
-                std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading(nullptr);
-                std::filesystem::path addon_path = display_commander::utils::GetDcAddonPathInDirectory(load_path);
-                if (!addon_path.empty()) {
-                    std::filesystem::path our_module_path(mod_buf);
-                    std::filesystem::path addon_canon = std::filesystem::canonical(addon_path, ec);
-                    std::filesystem::path our_canon = std::filesystem::canonical(our_module_path, ec);
-                    if (ec || addon_canon != our_canon) {
-                        g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
-                                                        std::memory_order_release);
-                        if (LoadLibraryW(addon_path.c_str()) != nullptr) {
-                            OutputDebugStringA(
-                                "[DisplayCommander] Use global version is set; loaded global DC from game-folder "
-                                "instance, returning loader only.\n");
-                            return ProcessAttachEarlyResult::LoaderOnly;
-                        }
-                        g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
-                                                        std::memory_order_release);
-                    }
-                }
-            }
-        }
-    }
-
-    // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
-    // the directory to use (local addon > global > local proxy when mode is "local"; else global/debug/stable path).
-    // If that path != base and contains the addon, we load it and stay quiet.
-    if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
-        WCHAR module_path_buf[MAX_PATH];
-        if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) > 0) {
-            std::filesystem::path module_dir = std::filesystem::path(module_path_buf).parent_path();
-            std::filesystem::path base = display_commander::utils::GetLocalDcDirectory();
-            std::filesystem::path stable_base = base / L"stable";
-            std::filesystem::path debug_base = base / L"Debug";
-            std::error_code ec;
-            std::filesystem::path module_canon = std::filesystem::canonical(module_dir, ec);
-            if (!ec) {
-                bool we_are_under_stable = false;
-                if (std::filesystem::exists(stable_base, ec)) {
-                    std::filesystem::path stable_canon = std::filesystem::canonical(stable_base, ec);
-                    if (!ec) {
-                        auto m_it = module_canon.begin();
-                        auto d_it = stable_canon.begin();
-                        while (d_it != stable_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
-                            ++d_it;
-                            ++m_it;
-                        }
-                        we_are_under_stable = (d_it == stable_canon.end());
-                    }
-                }
-                bool we_are_under_debug = false;
-                if (std::filesystem::exists(debug_base, ec)) {
-                    std::filesystem::path debug_canon = std::filesystem::canonical(debug_base, ec);
-                    if (!ec) {
-                        auto m_it = module_canon.begin();
-                        auto d_it = debug_canon.begin();
-                        while (d_it != debug_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
-                            ++d_it;
-                            ++m_it;
-                        }
-                        we_are_under_debug = (d_it == debug_canon.end());
-                    }
-                }
-                bool we_are_under_versioned = we_are_under_stable || we_are_under_debug;
-                if (!we_are_under_versioned) {
-                    std::filesystem::path load_path =
-                        display_commander::utils::GetDcDirectoryForLoading(static_cast<void*>(h_module));
-                    if (load_path != base) {
-                        std::filesystem::path addon_path =
-                            display_commander::utils::GetDcAddonPathInDirectory(load_path);
-                        if (!addon_path.empty()) {
-                            g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
-                                                            std::memory_order_release);
-                            if (LoadLibraryW(addon_path.c_str()) != nullptr) {
-                                return ProcessAttachEarlyResult::LoaderOnly;
-                            }
-                            g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
-                                                            std::memory_order_release);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
-        OutputDebugStringA(
-            "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
-            "load Display Commander.\n");
-        return ProcessAttachEarlyResult::RefuseLoad;
-    }
-    bool another_undecided = false;
-    ProcessAttach_ScanDisplayCommanderState(&another_undecided);
-    if (IsDisplayCommanderHookingInstance() && DetectMultipleDisplayCommanderVersions()) {
-        OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
-        return ProcessAttachEarlyResult::RefuseLoad;
-    }
-    if (another_undecided) {
-        LogWarn(
-            "Another Display Commander instance was still Undecided during scan; this instance may have claimed "
-            "HOOKED.");
-    }
+    g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
     LPSTR command_line = GetCommandLineA();
     if (command_line != nullptr && command_line[0] != '\0') {
         OutputDebugStringA("[DisplayCommander] Command line: ");
@@ -2509,11 +2131,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if (early == ProcessAttachEarlyResult::EarlySuccess) {
                 LogBoot("[DLLMain] Stage 10");
                 reason = "EarlySuccess";
-                return TRUE;
-            }
-            if (early == ProcessAttachEarlyResult::LoaderOnly) {
-                LogBoot("[DLLMain] Stage 11");
-                reason = "LoaderOnly";
                 return TRUE;
             }
             ProcessAttach_DetectReShadeInModules();
@@ -3125,11 +2742,6 @@ extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, 
     StopInjectionInternal();
 }
 
-// RunDLL entry point to set or reset an NVIDIA driver profile DWORD setting (SpecialK-compatible).
-// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <fullExePath>
-// [resultFilePath] Use ~ for value to reset the setting to driver default (calls NvAPI_DRS_DeleteProfileSetting).
-// Optional resultFilePath: if present, the process writes "OK" or "ERROR: <message>" to that file for the caller to
-// read. Requires admin for DRS changes; run rundll32 elevated if you get NVAPI_INVALID_USER_PRIVILEGE.
 extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
                                                                      int nCmdShow) {
     UNREFERENCED_PARAMETER(hwnd);

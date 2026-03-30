@@ -291,7 +291,7 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGState& state, const s
 // Hook functions
 sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
     (void)pref;
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
 
@@ -310,7 +310,7 @@ sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
 }
 
 sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
 
@@ -330,7 +330,7 @@ sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInf
 }
 
 sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
 
@@ -349,7 +349,7 @@ sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterfac
 // original
 static sl::Result slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     static bool first_call = true;
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
 
     bool optionsLogged = false;
@@ -609,7 +609,7 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
 //   IDXGISwapChain (proxy). We only vtable-hook the DXGI proxy factory and proxy swapchain.
 // Reference: external/Streamline/source/core/sl.api/sl.cpp slUpgradeInterface()
 sl::Result slUpgradeInterface_Detour(void** baseInterface) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const bool disabled = true;
     if (disabled) {
         // NOTE: Breaks UE4SS and unreal mods

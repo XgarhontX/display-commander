@@ -53,7 +53,7 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
 
 // Hooked NvAPI_Disp_GetHdrCapabilities function
 NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES* pHdrCapabilities) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_GET_HDR_CAPABILITIES].fetch_add(1);
@@ -116,7 +116,7 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
                                   const ReflexMarkerTypes& marker_types,
                                   const std::function<int()>& send_present_end_to_driver) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
     g_native_reflex_detected.store(true, std::memory_order_relaxed);
@@ -277,7 +277,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 // Hooked NvAPI_D3D_SetLatencyMarker function
 NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                                                        NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // Filter out RTSS calls (following Special-K approach)
     // RTSS is not native Reflex, so ignore it
     static HMODULE hModRTSS =
@@ -322,7 +322,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
 
 // Hooked NvAPI_D3D_SetSleepMode function
 NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
@@ -384,7 +384,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
 // Direct call to NvAPI_D3D_SetSleepMode without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (pDev == nullptr) {
         LogError("NvAPI_D3D_SetSleepMode_Direct: pDev");
         return NVAPI_INVALID_ARGUMENT;
@@ -403,7 +403,7 @@ NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PAR
 // Direct call to NvAPI_D3D_Sleep without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown* pDev) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     {
         static LONGLONG last_call = 0;
@@ -427,7 +427,7 @@ NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown* pDev) {
 // Direct call to NvAPI_D3D_SetLatencyMarker without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown* pDev, NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
         return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
@@ -438,7 +438,7 @@ NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown* pDev, NV_LATENCY_MARKER
 // Direct call to NvAPI_D3D_GetLatency without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAMS* pGetLatencyParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_GetLatency_Original != nullptr) {
         return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
@@ -449,7 +449,7 @@ NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAM
 // Hooked NvAPI_D3D_GetSleepStatus function
 NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
                                                      NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].fetch_add(1);
 
     if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
@@ -461,7 +461,7 @@ NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
 // Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
 // For internal use to query Reflex sleep status (uses hooked original when hooks are installed)
 NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
         return NvAPI_D3D_GetSleepStatus_Original(pDev, pGetSleepStatusParams);
     }
@@ -470,7 +470,7 @@ NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS
 
 // Hooked NvAPI_D3D_Sleep function
 NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
@@ -523,7 +523,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
 
 // Hooked NvAPI_D3D_GetLatency function
 NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown* pDev, NV_LATENCY_RESULT_PARAMS* pGetLatencyParams) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].fetch_add(1);

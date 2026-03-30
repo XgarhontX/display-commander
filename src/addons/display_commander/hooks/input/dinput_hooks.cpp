@@ -89,18 +89,11 @@ void ClearDInputDevices() {
 HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut,
                                          LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
-    // Track total calls
-    g_hook_stats[HOOK_DInput8CreateDevice].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInput8CreateDevice);
-
     // Call original function
     HRESULT result = DirectInput8Create_Original(hinst, dwVersion, riidltf, ppvOut, punkOuter);
 
     // Check if hooks should be suppressed
     if (!ShouldSuppressDInputHooks()) {
-        // Track unsuppressed calls
-        g_hook_stats[HOOK_DInput8CreateDevice].increment_unsuppressed();
-
         if (SUCCEEDED(result) && ppvOut && *ppvOut) {
             // Track device creation
             std::string interface_name = GetInterfaceName(riidltf);
@@ -118,18 +111,11 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
 // DirectInputCreateA detour
 HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA* ppDI, LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
-    // Track total calls
-    g_hook_stats[HOOK_DInputCreateDevice].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);
-
     // Call original function
     HRESULT result = DirectInputCreateA_Original(hinst, dwVersion, ppDI, punkOuter);
 
     // Check if hooks should be suppressed
     if (!ShouldSuppressDInputHooks()) {
-        // Track unsuppressed calls
-        g_hook_stats[HOOK_DInputCreateDevice].increment_unsuppressed();
-
         if (SUCCEEDED(result) && ppDI && *ppDI) {
             // Track device creation
             TrackDInputDeviceCreation("DirectInputA", 0, "IDirectInputA");
@@ -146,18 +132,11 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 // DirectInputCreateW detour
 HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW* ppDI, LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
-    // Track total calls
-    g_hook_stats[HOOK_DInputCreateDevice].increment_total();
-    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);
-
     // Call original function
     HRESULT result = DirectInputCreateW_Original(hinst, dwVersion, ppDI, punkOuter);
 
     // Check if hooks should be suppressed
     if (!ShouldSuppressDInputHooks()) {
-        // Track unsuppressed calls
-        g_hook_stats[HOOK_DInputCreateDevice].increment_unsuppressed();
-
         if (SUCCEEDED(result) && ppDI && *ppDI) {
             // Track device creation
             TrackDInputDeviceCreation("DirectInputW", 0, "IDirectInputW");

@@ -241,7 +241,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
 
 // Initialize the new UI system
 void InitializeNewUI() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // call guard
 
     LogInfo("Initializing new UI");

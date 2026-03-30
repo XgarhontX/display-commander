@@ -36,8 +36,7 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 
 // Hook detour functions
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
-    CALL_GUARD(utils::get_now_ns());
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -45,13 +44,11 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_unsuppressed();
     return ChangeDisplaySettingsA_Original(lpDevMode, dwFlags);
 }
 
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
-    CALL_GUARD(utils::get_now_ns());
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -59,14 +56,12 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_unsuppressed();
     return ChangeDisplaySettingsW_Original(lpDevMode, dwFlags);
 }
 
 LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    CALL_GUARD(utils::get_now_ns());
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -74,15 +69,12 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA]
-        .increment_unsuppressed();
     return ChangeDisplaySettingsExA_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 
 LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    CALL_GUARD(utils::get_now_ns());
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
@@ -90,23 +82,19 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW]
-        .increment_unsuppressed();
     return ChangeDisplaySettingsExW_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 
 // SetWindowPos_Detour function moved to api_hooks.cpp to avoid duplicate hook creation
 
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
-    CALL_GUARD(utils::get_now_ns());
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_total();
+    CALL_GUARD_NO_TS();;;
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
     if (ShouldPreventExclusiveFullscreen()) {
         // Prevent maximize operations that could lead to fullscreen
         if (nCmdShow == SW_MAXIMIZE || nCmdShow == SW_SHOWMAXIMIZED) {
             LogInfo("ShowWindow blocked maximize attempt - forcing normal window");
-            display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
             return ShowWindow_Original(hWnd, SW_SHOWNORMAL);
         }
     }
@@ -118,11 +106,8 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     if (hWnd == display_commanderhooks::GetGameWindow() && (prevent_minimize || continue_rendering)
         && display_commanderhooks::WindowHasBorder(hWnd) && (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED)) {
         LogInfo("ShowWindow blocked minimize - HWND: 0x%p", hWnd);
-        display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
         return ShowWindow_Original(hWnd, SW_SHOW);  // Keep window visible
     }
-
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
     return ShowWindow_Original(hWnd, nCmdShow);
 }
 
@@ -139,6 +124,8 @@ bool InstallDisplaySettingsHooks() {
         LogInfo("Display settings hooks installation suppressed by user setting");
         return false;
     }
+
+    //
 
     LogInfo("Installing display settings hooks...");
 
@@ -216,7 +203,7 @@ LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode
 }
 
 BOOL ShowWindow_Direct(HWND hWnd, int nCmdShow) {
-    CALL_GUARD_NO_TS();
+    CALL_GUARD_NO_TS();;;
     // Throttle per message type: no more than once per 100 ms for minimize or restore
     constexpr LONGLONG throttle_ns = 100 * 1000000;  // 100 ms
     static LONGLONG s_last_minimize_ns = 0;

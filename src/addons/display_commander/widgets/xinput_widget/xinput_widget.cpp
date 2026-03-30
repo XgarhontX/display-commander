@@ -10,7 +10,6 @@
 #include "../../hooks/input/input_activity_stats.hpp"
 #include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/input/windows_gaming_input_hooks.hpp"
-#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/input/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
@@ -494,20 +493,6 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
 
     imgui.Spacing();
     imgui.Separator();
-    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "XInputGetCapabilities Hook Statistics");
-
-    // Display hook statistics for XInputGetCapabilities
-    const auto& capabilities_stats =
-        display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
-    uint64_t capabilities_total_calls = capabilities_stats.total_calls.load();
-    uint64_t capabilities_unsuppressed_calls = capabilities_stats.unsuppressed_calls.load();
-    uint64_t capabilities_suppressed_calls = capabilities_total_calls - capabilities_unsuppressed_calls;
-
-    imgui.Text("XInputGetCapabilities_Detour Calls: %llu", capabilities_total_calls);
-    imgui.Text("XInputGetCapabilities_Original Calls: %llu", capabilities_unsuppressed_calls);
-    if (capabilities_suppressed_calls > 0) {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Suppressed Calls: %llu", capabilities_suppressed_calls);
-    }
 
     // Reset button
     if (imgui.Button("Reset Counters")) {

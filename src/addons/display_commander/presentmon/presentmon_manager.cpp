@@ -19,7 +19,7 @@ namespace presentmon {
 PresentMonManager g_presentMonManager;
 
 void CreateAndStartPresentMon() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (!kPresentMonEnabled) {
         return;
     }
@@ -36,7 +36,7 @@ void CreateAndStartPresentMon() {
 }
 
 void StopAndDestroyPresentMon(PresentMonStopReason reason) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     try {
         g_presentMonManager.StopWorker(reason);
     } catch (const std::exception& e) {
@@ -468,7 +468,7 @@ PresentMonManager::PresentMonManager()
 }
 
 bool PresentMonManager::GetFlipCompatibility(PresentMonFlipCompatibility& out) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (!m_flip_compat_valid.load()) {
         return false;
     }
@@ -510,7 +510,7 @@ PresentMonManager::~PresentMonManager() {
 }
 
 void PresentMonManager::StartWorker() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     LogInfo("PresentMon: StartWorker() called (pid=%lu)", static_cast<unsigned long>(GetCurrentProcessId()));
     if (m_running.load()) {
         LogInfo("PresentMon: Worker already running, skipping duplicate start");
@@ -565,7 +565,7 @@ void PresentMonManager::StartWorker() {
 }
 
 void PresentMonManager::StopWorker(PresentMonStopReason reason) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Always stop the ETW session when we have a name (exit/destructor paths). Ensures session is
     // cleared even if the worker already exited or crashed (!m_running), so restart works.
     if (m_session_name[0] != 0) {
@@ -610,12 +610,12 @@ void PresentMonManager::StopWorker(PresentMonStopReason reason) {
 }
 
 bool PresentMonManager::IsRunning() const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     return m_running.load();
 }
 
 bool PresentMonManager::IsNeeded() const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // PresentMon is needed for:
     // 1. D3D12 games (for VRR indicator)
     // 2. Non-NVIDIA hardware (for all graphics APIs)
@@ -627,7 +627,7 @@ bool PresentMonManager::IsNeeded() const {
 }
 
 bool PresentMonManager::GetFlipState(PresentMonFlipState& flip_state) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (!m_flip_state_valid.load()) {
         return false;
     }
@@ -646,7 +646,7 @@ bool PresentMonManager::GetFlipState(PresentMonFlipState& flip_state) const {
 }
 
 void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     debug_info.is_running = m_running.load();
     debug_info.thread_started = m_thread_started.load();
     debug_info.etw_session_active = m_etw_session_active.load();
@@ -707,7 +707,7 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
 
 void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::string& present_mode_str,
                                         const std::string& debug_info) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     m_flip_mode.store(mode);
     m_flip_state_valid.store(true);
     m_flip_state_update_time.store(utils::get_now_ns());
@@ -718,7 +718,7 @@ void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::stri
 
 void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status,
                                         const std::string& error, uint64_t events_processed, uint64_t events_lost) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     m_thread_status.store(std::make_shared<const std::string>(thread_status));
     m_etw_session_status.store(std::make_shared<const std::string>(etw_status));
 
@@ -760,7 +760,7 @@ int PresentMonManager::RunPresentMonMainSEHProtected() {
 }
 
 void PresentMonManager::WorkerThread(PresentMonManager* manager) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (manager == nullptr) return;
     int result = -1;
     try {
@@ -822,7 +822,7 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
 }
 
 void PresentMonManager::RequestStopEtw() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     uint64_t sh = m_etw_session_handle.load();
     if (m_session_name[0] == 0) {
         return;
@@ -844,7 +844,7 @@ void PresentMonManager::RequestStopEtw() {
 }
 
 bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACEHANDLE& out_handle) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     out_handle = 0;
     if (session_name == nullptr || session_name[0] == 0) return false;
 
@@ -873,7 +873,7 @@ bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACE
 }
 
 void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (session_name == nullptr || session_name[0] == 0) return;
 
     // Try to stop the session by name (useful when handle is lost)
@@ -919,7 +919,7 @@ static bool GetSessionNameInfoSafe(const wchar_t* session_name, size_t max_name_
 
 void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
                                                  std::string* out_error) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     out_session_names.clear();
     if (out_error) out_error->clear();
     if (prefix == nullptr) return;
@@ -996,7 +996,7 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
 }
 
 void PresentMonManager::LogAllEtwSessions() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (true) {
         return;
     }
@@ -1075,7 +1075,7 @@ void PresentMonManager::LogAllEtwSessions() {
 }
 
 void PresentMonManager::StopAllDcEtwSessions() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     const DWORD our_pid = GetCurrentProcessId();
     std::vector<std::string> sessions;
     GetEtwSessionsWithPrefix(L"DC_", sessions);
@@ -1099,7 +1099,7 @@ void PresentMonManager::StopAllDcEtwSessions() {
 }
 
 void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (our_session_name == nullptr || our_session_name[0] == L'\0') return;
 
     const DWORD our_pid = GetCurrentProcessId();
@@ -1140,7 +1140,7 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
 }
 
 void PresentMonManager::CleanupThread(PresentMonManager* manager) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (manager == nullptr) return;
     constexpr int64_t k_no_events_interval_ns = 15LL * 1000000000LL;  // 15 seconds
 
@@ -1171,7 +1171,7 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
 }
 
 void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (event_record == nullptr) return;
     // Route via TLS if possible; otherwise use global instance (if created)
     PresentMonManager* mgr = t_active_manager;
@@ -1226,7 +1226,7 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
 }
 
 void PresentMonManager::OnEtwEventImpl(PEVENT_RECORD event_record) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     if (event_record == nullptr) return;
     // Count all events (some relevant present/flip signals can come from DWM/system/kernel context)
     m_events_processed.fetch_add(1);
@@ -1495,7 +1495,7 @@ void PresentMonManager::OnEtwEventImpl(PEVENT_RECORD event_record) {
 }
 
 void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_record) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // Some DWM events may include both a surface identifier and hwnd.
     uint64_t surface_luid = 0;
     uint64_t hwnd = 0;
@@ -1536,7 +1536,7 @@ void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_
 }
 
 void PresentMonManager::UpdateFlipCompatibilityFromDwmEvent(PEVENT_RECORD event_record) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     // We key on the user-discovered event type: DWM-Core EventId=291 Task=207
     const auto& d = event_record->EventHeader.EventDescriptor;
     if (d.Id != 291 || d.Task != 207) {
@@ -1638,7 +1638,7 @@ void PresentMonManager::UpdateFlipCompatibilityFromDwmEvent(PEVENT_RECORD event_
 
 void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
                                                            uint64_t within_ms) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     out.clear();
     const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
     const uint64_t within_ns = within_ms * 1000000ULL;
@@ -1681,7 +1681,7 @@ void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMo
 }
 
 void PresentMonManager::GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hwnd_for_window) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     out.global_count = m_per_draw_global_count.load();
     out.count_for_window = 0;
     out.window_matched = false;
@@ -1721,7 +1721,7 @@ void PresentMonManager::GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hw
 }
 
 void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graphics_provider) {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     (void)is_graphics_provider;
 
     const auto& d = event_record->EventHeader.EventDescriptor;
@@ -1809,7 +1809,7 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
 }
 
 void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSummary>& out, bool graphics_only) const {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     out.clear();
     out.reserve(k_event_type_cache_size);
 
@@ -1861,7 +1861,7 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
 }
 
 int PresentMonManager::PresentMonMain() {
-    CALL_GUARD(utils::get_now_ns());
+    CALL_GUARD_NO_TS();;
     LogInfo("[PresentMon] ETW session starting: %ls", m_session_name);
 
     // Start session

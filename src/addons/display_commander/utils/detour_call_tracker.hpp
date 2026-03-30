@@ -79,10 +79,10 @@ std::string FormatAllLatestCalls(uint64_t now_ns);
     static const uint32_t CONCAT(_detour_idx_, __LINE__) = detour_call_tracker::AllocateEntryIndex(        \
         DETOUR_CALL_SITE_KEY);                                                                              \
     detour_call_tracker::DetourCallGuard CONCAT(_detour_guard_, __LINE__)(CONCAT(_detour_idx_, __LINE__),  \
-                                                                          (timestamp_ns))
+                                                                          (0))
 
 // Same as CALL_GUARD but no timestamp (use 0). For direct/thin detours where only crash-site tracking is needed.
-#define CALL_GUARD_NO_TS() CALL_GUARD(0)
+#define CALL_GUARD_NO_TS();; CALL_GUARD(0)
 
 // Set context for the CALL_GUARD at the given line (so crash report shows e.g. "msg=0x0010 hwnd=0x...").
 // Example: DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
