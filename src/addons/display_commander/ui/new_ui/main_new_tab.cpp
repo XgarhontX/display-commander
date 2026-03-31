@@ -4931,7 +4931,7 @@ static void DrawMainTabOptionalPanelDxgiControl(display_commander::ui::GraphicsA
     imgui.Indent();
     DrawDisplaySettings_DXGI(imgui);
     const bool flip_metering_seen = g_nvapi_d3d12_setflipconfig_seen.load(std::memory_order_acquire);
-    imgui.Text("Flip Metering:");
+    imgui.Text("Flip Metering [rtx 5000+]:"); // TODO: add detection for 5000 series
     imgui.SameLine();
     imgui.TextColored(flip_metering_seen ? ::ui::colors::TEXT_SUCCESS : ::ui::colors::TEXT_DIMMED,
                       flip_metering_seen ? "ON" : "OFF");
