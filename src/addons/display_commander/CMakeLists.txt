@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 59)
+set(DISPLAY_COMMANDER_VERSION_PATCH 60)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -24,6 +24,11 @@ else()
   set(DISPLAY_COMMANDER_BITNESS "64-bit")
 endif()
 configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/version_config.hpp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/version_config.hpp
+  @ONLY
+)
+configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/version.rc.in
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
   @ONLY
@@ -35,12 +40,6 @@ add_library(zzz_display_commander MODULE
 )
 target_sources(zzz_display_commander PRIVATE ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def)
 
-target_compile_definitions(zzz_display_commander PRIVATE
-  GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT}
-  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
-  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
-  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
-)
 if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
 endif()
@@ -50,6 +49,7 @@ endif()
 # Includes: repo include/ first; third-party as SYSTEM (never put bare SYSTEM on its own line — MSVC can emit -I.../SYSTEM).
 target_include_directories(zzz_display_commander PRIVATE
   "${_dc_repo_root}/include"
+  "${CMAKE_CURRENT_BINARY_DIR}"
 )
 target_include_directories(zzz_display_commander SYSTEM PRIVATE
   $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/include>

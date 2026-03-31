@@ -5,6 +5,25 @@
 #ifndef DISPLAY_COMMANDER_VERSION_HPP
 #define DISPLAY_COMMANDER_VERSION_HPP
 
+#if defined(__has_include)
+#if __has_include("version_config.hpp")
+#include "version_config.hpp"
+#endif
+#endif
+
+#ifndef DISPLAY_COMMANDER_VERSION_MAJOR
+#define DISPLAY_COMMANDER_VERSION_MAJOR 0
+#endif
+#ifndef DISPLAY_COMMANDER_VERSION_MINOR
+#define DISPLAY_COMMANDER_VERSION_MINOR 0
+#endif
+#ifndef DISPLAY_COMMANDER_VERSION_PATCH
+#define DISPLAY_COMMANDER_VERSION_PATCH 0
+#endif
+#ifndef GIT_COMMIT_COUNT
+#define GIT_COMMIT_COUNT 0
+#endif
+
 // String conversion macro (used for version string)
 #define STRINGIFY(x)  STRINGIFY_(x)
 #define STRINGIFY_(x) #x
@@ -15,13 +34,8 @@
     "." STRINGIFY(DISPLAY_COMMANDER_VERSION_MINOR) "." STRINGIFY(DISPLAY_COMMANDER_VERSION_PATCH)
 
 // Build number from git commit count (set by CMake)
-#ifndef GIT_COMMIT_COUNT
-#define DISPLAY_COMMANDER_VERSION_BUILD        0
-#define DISPLAY_COMMANDER_VERSION_BUILD_STRING "0"
-#else
 #define DISPLAY_COMMANDER_VERSION_BUILD        GIT_COMMIT_COUNT
 #define DISPLAY_COMMANDER_VERSION_BUILD_STRING STRINGIFY(GIT_COMMIT_COUNT)
-#endif
 
 // Version string (includes build number)
 #define DISPLAY_COMMANDER_VERSION_STRING \
