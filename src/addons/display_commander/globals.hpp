@@ -689,6 +689,7 @@ struct ReflexMarkerTypes {
     int simulation_start;
     int present_start;
     int present_end;
+    int sleep;
 };
 
 /** Shared Reflex latency-marker handling (NVAPI and Vulkan NVLL). Calls NotifyGameSetLatencyMarkerCall, runs FPS
@@ -965,12 +966,25 @@ extern FrameData g_frame_data[kFrameDataBufferSize];
 
 // Cyclic buffer: timestamp when NvAPI_D3D_SetLatencyMarker was called, keyed by (frame_id, markerType).
 // Index: g_latency_marker_buffer[frame_id % kFrameDataBufferSize]. marker_time_ns[i] = time when marker type i was set.
-constexpr size_t kLatencyMarkerTypeCount = 13;  // SIMULATION_START(0) .. OUT_OF_BAND_PRESENT_END(12)
+
+enum class DCLatencyMarkers {
+    SIMULATION_START = 0,
+    SIMULATION_END = 1,
+    RENDERSUBMIT_START = 2,
+    RENDERSUBMIT_END = 3,
+    PRESENT_START = 4,
+    PRESENT_END = 5,
+    REFLEX_SLEEP = 6,
+    Count = 7,
+};
+constexpr size_t kLatencyMarkerTypeCount = static_cast<size_t>(DCLatencyMarkers::Count);
 struct LatencyMarkerFrameRecord {
     std::atomic<uint64_t> frame_id{0};
     std::atomic<LONGLONG> marker_time_ns[kLatencyMarkerTypeCount];
     std::atomic<uint64_t> frame_id_by_marker_type[kLatencyMarkerTypeCount];
 };
+
+extern std::atomic<LONGLONG> g_latency_marker_buffer_per_type[kLatencyMarkerTypeCount];
 extern LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize];
 
 // Present pacing delay as percentage of frame time - 0% to 100%

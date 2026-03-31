@@ -170,6 +170,7 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
         static_cast<int>(VK_SIMULATION_START),
         static_cast<int>(VK_PRESENT_START) - 1,
         static_cast<int>(VK_PRESENT_END) - 2,
+        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
     };
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker_vk_nvll, static_cast<int>(params->markerType), params->frameID,
@@ -233,7 +234,22 @@ static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue) {
     if (NvLL_VK_Sleep_Original == nullptr) {
         return 1;
     }
-    return NvLL_VK_Sleep_Original(device, signalValue);
+    auto res= NvLL_VK_Sleep_Original(device, signalValue);
+
+    const ReflexMarkerTypes vk_nvll_markers = {
+        static_cast<int>(VK_SIMULATION_START),
+        static_cast<int>(VK_PRESENT_START) - 1,
+        static_cast<int>(VK_PRESENT_END) - 2,
+        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
+    };
+    uint64_t frame_id = g_latency_marker_buffer_per_type[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load(std::memory_order_relaxed) + 1;
+    ProcessReflexMarkerFpsLimiter(
+        FpsLimiterCallSite::reflex_marker, static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
+        frame_id, vk_nvll_markers, [&]() {
+            return res;
+        });
+
+    return res;
 }
 
 static void RollbackNvllVkHooks() {

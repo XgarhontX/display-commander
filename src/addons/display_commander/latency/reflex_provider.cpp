@@ -127,3 +127,62 @@ bool ReflexProvider::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
 
     return reflex_manager_.GetSleepStatus(status_params, out_reason);
 }
+
+bool ReflexProvider::GetLatencyMetrics(NvapiLatencyMetrics& out_metrics) {
+    if (!IsInitialized()) {
+        return false;
+    }
+
+#if defined(_M_AMD64) || defined(__x86_64__)
+    NV_LATENCY_RESULT_PARAMS_V1 params = {};
+    params.version = NV_LATENCY_RESULT_PARAMS_VER1;
+    if (!reflex_manager_.GetLatency(reinterpret_cast<NV_LATENCY_RESULT_PARAMS*>(&params))) {
+        return false;
+    }
+
+    // Compute average over all valid frame reports to smooth jitter.
+    constexpr int kMaxReports = 64;
+    double sum_pc_latency_ms = 0.0;
+    double sum_gpu_ms = 0.0;
+    int valid_count = 0;
+    uint64_t max_frame_id = 0;
+
+    for (int i = 0; i < kMaxReports; ++i) {
+        const auto& fr = params.frameReport[i];
+        if (fr.frameID == 0) {
+            continue;
+        }
+        if (fr.gpuRenderEndTime <= fr.inputSampleTime) {
+            continue;
+        }
+
+        // NVAPI latency timestamps are in microseconds (same domain as gpuFrameTimeUs).
+        // Convert input->GPU-end delta from µs to ms to match gpuFrameTimeUs/1000.
+        const double pc_latency_us =
+            static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime);
+        const double pc_latency_ms = pc_latency_us / 1000.0;
+        const double gpu_ms = static_cast<double>(fr.gpuFrameTimeUs) / 1000.0;
+
+        sum_pc_latency_ms += pc_latency_ms;
+        sum_gpu_ms += gpu_ms;
+        ++valid_count;
+
+        const uint64_t fid = static_cast<uint64_t>(fr.frameID);
+        if (fid > max_frame_id) {
+            max_frame_id = fid;
+        }
+    }
+
+    if (valid_count == 0) {
+        return false;
+    }
+
+    out_metrics.pc_latency_ms = sum_pc_latency_ms / static_cast<double>(valid_count);
+    out_metrics.gpu_frame_time_ms = sum_gpu_ms / static_cast<double>(valid_count);
+    out_metrics.frame_id = max_frame_id;
+    return true;
+#else
+    (void)out_metrics;
+    return false;
+#endif
+}

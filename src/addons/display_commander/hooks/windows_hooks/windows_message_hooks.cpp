@@ -801,7 +801,7 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
 
 // Function to call ClipCursor directly without going through the hook
 BOOL ClipCursor_Direct(const RECT* lpRect) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // Call the original Windows API directly, bypassing our hook
     return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
 }
@@ -811,13 +811,13 @@ SHORT GetAsyncKeyState_Direct(int vKey) {
     if (g_reshade_module.load() == nullptr) {
         return 0;
     }
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
 }
 
 // Function to restore cursor clipping when input blocking is disabled
 void RestoreClipCursor() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // Only restore if we have a valid clipping rectangle stored
     if ((s_last_clip_cursor.right - s_last_clip_cursor.left) != 0
         && (s_last_clip_cursor.bottom - s_last_clip_cursor.top) != 0) {
@@ -828,7 +828,7 @@ void RestoreClipCursor() {
 
 // Function to clip cursor to game window rectangle
 void ClipCursorToGameWindow() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr && IsWindow(hwnd)) {
         RECT window_rect;

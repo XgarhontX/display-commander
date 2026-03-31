@@ -39,6 +39,10 @@ class ReflexManager {
     bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
                         SleepStatusUnavailableReason* out_reason = nullptr);
 
+    // Query NVAPI Reflex latency report for the current D3D device.
+    // Returns false when Reflex/NVAPI latency reporting is unavailable or on error.
+    bool GetLatency(NV_LATENCY_RESULT_PARAMS* result_params);
+
     // Restore sleep mode to default settings
     static void RestoreSleepMode(IUnknown *d3d_device_, NV_SET_SLEEP_MODE_PARAMS *params);
 

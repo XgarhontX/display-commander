@@ -109,7 +109,7 @@ HWND WINAPI GetFocus_Detour() {
 }
 
 HWND WINAPI GetForegroundWindow_Direct() {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return GetForegroundWindow_Original ? GetForegroundWindow_Original() : GetForegroundWindow();
 }
 
@@ -217,13 +217,13 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
 
 // True minimized state, bypassing our IsIconic detour (used when we need real state, e.g. skip ApplyWindowChange).
 bool IsIconic_direct(HWND hwnd) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return (IsIconic_Original ? IsIconic_Original(hwnd) : IsIconic(hwnd)) != FALSE;
 }
 
 // True visibility state, bypassing our IsWindowVisible detour (used when code needs real visibility).
 bool IsWindowVisible_direct(HWND hwnd) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return (IsWindowVisible_Original ? IsWindowVisible_Original(hwnd) : IsWindowVisible(hwnd)) != FALSE;
 }
 
@@ -254,7 +254,7 @@ BOOL WINAPI IsWindowVisible_Detour(HWND hWnd) {
 // Hooked GetWindowPlacement: when Continue Rendering is on, game window must not report SW_SHOWMINIMIZED (games treat
 // minimized as background).
 BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     BOOL result =
         GetWindowPlacement_Original ? GetWindowPlacement_Original(hWnd, lpwndpl) : GetWindowPlacement(hWnd, lpwndpl);
     if (result && lpwndpl != nullptr && settings::g_advancedTabSettings.continue_rendering.GetValue()
@@ -350,14 +350,14 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 }
 
 BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     return CreateWindowExW_Original ? CreateWindowExW_Original(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
                                                                nHeight, hWndParent, hMenu, hInstance, lpParam)
                                     : CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
@@ -374,7 +374,7 @@ HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // Call original function
     return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
 }
@@ -386,7 +386,7 @@ HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
 }
 
 int WINAPI ShowCursor_Direct(BOOL bShow) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // Call original function
     return ShowCursor_Original ? ShowCursor_Original(bShow) : ShowCursor(bShow);
 }
@@ -436,7 +436,7 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
 }
 
 PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     installed_dc_addvectoredexceptionhandler_hook.store(true, std::memory_order_release);
 
     return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
@@ -444,7 +444,7 @@ PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLE
 }
 
 HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     if (ppFactory == nullptr) {
         return E_POINTER;
     }

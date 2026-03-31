@@ -231,6 +231,21 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
     return false;
 }
 
+bool ReflexManager::GetLatency(NV_LATENCY_RESULT_PARAMS* result_params) {
+    if (result_params == nullptr) {
+        return false;
+    }
+    if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) {
+        return false;
+    }
+    if (!EnsureNvApi()) {
+        return false;
+    }
+
+    const auto st = NvAPI_D3D_GetLatency_Direct(d3d_device_, result_params);
+    return st == NVAPI_OK;
+}
+
 // params may be nullptr if no parameters were stored
 void ReflexManager::RestoreSleepMode(IUnknown* d3d_device_, NV_SET_SLEEP_MODE_PARAMS* params) {
     if (g_global_frame_id.load(std::memory_order_acquire) < 500) {

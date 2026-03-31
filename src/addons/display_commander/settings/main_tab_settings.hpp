@@ -139,6 +139,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_cpu_fps;
     /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
+    /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) in the performance overlay. */
+    ui::new_ui::BoolSetting show_nvapi_latency_stats;
     ui::new_ui::BoolSetting show_fg_mode;
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;

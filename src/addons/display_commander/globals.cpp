@@ -621,6 +621,8 @@ std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finishe
 // Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.
 FrameData g_frame_data[kFrameDataBufferSize] = {};
 
+std::atomic<LONGLONG> g_latency_marker_buffer_per_type[kLatencyMarkerTypeCount] = {};
+
 // Latency marker timestamps per (frame_id, markerType); recorded in NvAPI_D3D_SetLatencyMarker_Detour.
 LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize] = {};
 

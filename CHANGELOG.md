@@ -15,6 +15,9 @@ Feature protosal:
 
 - [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
 
+## v0.13.62 (2026-03-31)
+- [bugfix] **FG frame limiter input latency** - Fixed input latency issues in FG frame limiter.
+
 ## v0.13.61 (2026-03-30)
 - [ui] [bugfix] **Limit Real frames** - Fixed incorrect display of the **Limit Real frames: on** line in the performance overlay so it only shows when appropriate.
 

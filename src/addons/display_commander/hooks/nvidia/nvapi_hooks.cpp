@@ -38,7 +38,7 @@ NvAPI_QueryInterface_pfn NvAPI_QueryInterface_Original = nullptr;
 // Function to look up NVAPI function ID from interface table
 namespace {
 // Exception to the rule, since we don't know the signature of the function.
-constexpr NvU32 kNvApiIdD3D12SetFlipConfig = 0xF3148C42u;
+constexpr NvU32 NvAPI_D3D12_SetFlipConfig = 0xF3148C42u;
 
 NvU32 GetNvAPIFunctionId(const char* functionName) {
     for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
@@ -54,7 +54,7 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
 }  // namespace
 
 void* __cdecl NvAPI_QueryInterface_Detour(NvU32 offset) {
-    if (offset == kNvApiIdD3D12SetFlipConfig) {
+    if (offset == NvAPI_D3D12_SetFlipConfig) {
         ::g_nvapi_d3d12_setflipconfig_seen.fetch_add(1, std::memory_order_relaxed);
         if (!settings::g_mainTabSettings.allow_nvapi_d3d12_setflipconfig.GetValue()) {
             ::g_nvapi_d3d12_setflipconfig_suppressions.fetch_add(1, std::memory_order_relaxed);
@@ -145,7 +145,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     // Reflex low-latency and sleep from working (e.g. with Streamline).
 
     // only for first 6 latency marker types
-    if (marker_type == marker_types.present_start) {
+    if (marker_type == marker_types.present_start || marker_type == marker_types.sleep) {
         ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
     }
     bool use_fps_limiter = GetChosenFpsLimiter(site);
@@ -157,6 +157,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
         const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
         const LONGLONG now_ns = utils::get_now_ns();
+        g_latency_marker_buffer_per_type[marker_type].store(frame_id, std::memory_order_relaxed);
         g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
         g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
         if (g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].load(std::memory_order_relaxed)
@@ -164,8 +165,8 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].store(frame_id,
                                                                                      std::memory_order_relaxed);
         } else {
-            // skip
-            return 0;
+            // skip FIXME
+           return 0;
         }
     }
 
@@ -176,8 +177,16 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     bool native_pacing_sim_start_only = GetEffectiveNativePacingSimStartOnly()
                                         && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
+
+    bool is_effective_sim_start =  marker_type == marker_types.sleep;
+    if ( marker_type == marker_types.simulation_start && g_latency_marker_buffer_per_type[marker_types.simulation_start].load(std::memory_order_relaxed)
+        !=  g_latency_marker_buffer_per_type[marker_types.sleep].load(std::memory_order_relaxed) ) {
+        is_effective_sim_start = true;
+    }
+
     if (native_pacing_sim_start_only) {
-        if (marker_type == marker_types.simulation_start) {
+        if (is_effective_sim_start) {
+
             OnPresentFlags2(false,
                             true);  // Called from wrapper, not present_detour
 
@@ -290,7 +299,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 // Hooked NvAPI_D3D_SetLatencyMarker function
 NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                                                        NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // Filter out RTSS calls (following Special-K approach)
     // RTSS is not native Reflex, so ignore it
     static HMODULE hModRTSS =
@@ -314,15 +323,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             g_global_frame_id.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
 
- /*   const ReflexMarkerTypes nvapi_markers = {
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START),
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END),
-    };*/
     const ReflexMarkerTypes nvapi_markers = {
         static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
+        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
     };
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
@@ -397,7 +402,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
 // Direct call to NvAPI_D3D_SetSleepMode without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     if (pDev == nullptr) {
         LogError("NvAPI_D3D_SetSleepMode_Direct: pDev");
         return NVAPI_INVALID_ARGUMENT;
@@ -416,7 +421,7 @@ NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PAR
 // Direct call to NvAPI_D3D_Sleep without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown* pDev) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     {
         static LONGLONG last_call = 0;
@@ -440,7 +445,7 @@ NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown* pDev) {
 // Direct call to NvAPI_D3D_SetLatencyMarker without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown* pDev, NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
         return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
@@ -451,7 +456,7 @@ NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown* pDev, NV_LATENCY_MARKER
 // Direct call to NvAPI_D3D_GetLatency without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAMS* pGetLatencyParams) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_GetLatency_Original != nullptr) {
         return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
@@ -474,7 +479,7 @@ NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
 // Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
 // For internal use to query Reflex sleep status (uses hooked original when hooks are installed)
 NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
-    CALL_GUARD_NO_TS();;;
+    CALL_GUARD_NO_TS();
     if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
         return NvAPI_D3D_GetSleepStatus_Original(pDev, pGetSleepStatusParams);
     }
@@ -518,20 +523,35 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
         return NVAPI_OK;
     }
 
-    if (!IsNativeReflexActive()) {
-        return NVAPI_OK;
-    }
+    //if (!IsNativeReflexActive()) {
+    //   return NVAPI_OK;
+    //
 
     //   if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
     //      return NVAPI_OK;
     //    }
 
     // Call original function
-    if (NvAPI_D3D_Sleep_Original != nullptr) {
-        return NvAPI_D3D_Sleep_Original(pDev);
+    if (NvAPI_D3D_Sleep_Original == nullptr) {
+        return NVAPI_NO_IMPLEMENTATION;
     }
 
-    return NVAPI_NO_IMPLEMENTATION;
+    auto res= NvAPI_D3D_Sleep_Original(pDev);
+
+    const ReflexMarkerTypes nvapi_markers = {
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
+        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
+    };
+
+    uint64_t frame_id = g_latency_marker_buffer_per_type[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load(std::memory_order_relaxed) + 1;
+    ProcessReflexMarkerFpsLimiter(
+        FpsLimiterCallSite::reflex_marker, static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
+        frame_id, nvapi_markers, [&]() {
+            return res;
+        });
+    return res;
 }
 
 // Hooked NvAPI_D3D_GetLatency function

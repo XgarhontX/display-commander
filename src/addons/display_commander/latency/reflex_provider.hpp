@@ -21,6 +21,16 @@ class ReflexProvider {
     bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
                        SleepStatusUnavailableReason* out_reason = nullptr);
 
+    struct NvapiLatencyMetrics {
+        double pc_latency_ms = 0.0;
+        double gpu_frame_time_ms = 0.0;
+        uint64_t frame_id = 0;
+    };
+
+    // Query NVAPI Reflex latency metrics (PC latency and GPU frame time) for the most recent frame.
+    // Returns false when Reflex latency reporting is unavailable or on error.
+    bool GetLatencyMetrics(NvapiLatencyMetrics& out_metrics);
+
     static void EnsurePCLStatsInitialized();
     static bool IsPCLStatsInitialized();
 
