@@ -930,6 +930,8 @@ constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;
 extern std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix];
 /** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id;
+/** True once nvapi_QueryInterface was called with NVAPI_D3D12_SetFlipConfig ID (0xF3148C42) in this session. */
+extern std::atomic<bool> g_nvapi_d3d12_setflipconfig_seen;
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;

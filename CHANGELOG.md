@@ -13,6 +13,9 @@ Feature protosal:
 
 ## Unreleased
 
+- [hooks] [ui] **Flip Metering detection indicator in DXGI Control** - Display Commander now watches NVAPI QueryInterface traffic for the D3D12 flip-config interface and shows a simple `Flip Metering: ON/OFF` status in Main tab DXGI Control, so you can immediately see if that path was queried in the current session.
+  Details: added a `nvapi_QueryInterface` detour in `src/addons/display_commander/hooks/nvidia/nvapi_hooks.cpp` that flips global atomic `g_nvapi_d3d12_setflipconfig_seen` (`src/addons/display_commander/globals.hpp` / `src/addons/display_commander/globals.cpp`) when ID `0xF3148C42` is requested; UI line added in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+
 ## v0.13.58 (2026-03-29)
 - [settings] [ui] [compatibility] **ReShade screenshots/shader-path toggles are now local and instant** - The Addons tab checkboxes for `./Screenshots` and global shader/texture search paths now use local Display Commander config keys instead of marker files, and apply to ReShade immediately when clicked.
   Details: `src/addons/display_commander/ui/new_ui/addons_tab.cpp` now stores these toggles in `[DisplayCommander] ReShadeScreenshotPathEnabled` and `ReShadeGlobalShadersTexturesPathsEnabled` and re-runs `OverrideReShadeSettings` on toggle; `src/addons/display_commander/main_entry.cpp` now reads those local keys and also removes previously injected ReShade paths/settings when toggles are turned off.

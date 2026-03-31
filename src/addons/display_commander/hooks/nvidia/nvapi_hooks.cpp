@@ -33,9 +33,13 @@ NvAPI_D3D_SetSleepMode_pfn NvAPI_D3D_SetSleepMode_Original = nullptr;
 NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
 NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
+NvAPI_QueryInterface_pfn NvAPI_QueryInterface_Original = nullptr;
 
 // Function to look up NVAPI function ID from interface table
 namespace {
+// Exception to the rule, since we don't know the signature of the function.
+constexpr NvU32 kNvApiIdD3D12SetFlipConfig = 0xF3148C42u;
+
 NvU32 GetNvAPIFunctionId(const char* functionName) {
     for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
         if (strcmp(nvapi_interface_table[i].func, functionName) == 0) {
@@ -48,6 +52,17 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
 }
 
 }  // namespace
+
+void* __cdecl NvAPI_QueryInterface_Detour(NvU32 offset) {
+    if (offset == kNvApiIdD3D12SetFlipConfig) {
+        ::g_nvapi_d3d12_setflipconfig_seen.store(true, std::memory_order_release);
+    }
+
+    if (NvAPI_QueryInterface_Original != nullptr) {
+        return NvAPI_QueryInterface_Original(offset);
+    }
+    return nullptr;
+}
 
 // Hooked NvAPI_Disp_GetHdrCapabilities function
 NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES* pHdrCapabilities) {
@@ -555,7 +570,13 @@ bool InstallNVAPIHooks(HMODULE nvapi_dll) {
         return false;
     }
 
-    LogInfo("NVAPI hooks: Found nvapi_QueryInterface, getting NvAPI_Disp_GetHdrCapabilities");
+    if (!CreateAndEnableHook(queryInterface, NvAPI_QueryInterface_Detour,
+                             reinterpret_cast<LPVOID*>(&NvAPI_QueryInterface_Original), "nvapi_QueryInterface")) {
+        LogInfo("NVAPI hooks: Failed to create and enable nvapi_QueryInterface hook");
+        return false;
+    }
+
+    LogInfo("NVAPI hooks: Found and hooked nvapi_QueryInterface, getting NvAPI_Disp_GetHdrCapabilities");
 
     // Get function ID from interface table
     NvU32 functionId = GetNvAPIFunctionId("NvAPI_Disp_GetHdrCapabilities");
@@ -630,6 +651,12 @@ bool InstallNVAPIHooks(HMODULE nvapi_dll) {
 
 // Uninstall NVAPI hooks
 void UninstallNVAPIHooks() {
+    if (NvAPI_QueryInterface_Original) {
+        MH_DisableHook(NvAPI_QueryInterface_Original);
+        MH_RemoveHook(NvAPI_QueryInterface_Original);
+        NvAPI_QueryInterface_Original = nullptr;
+    }
+
     if (NvAPI_Disp_GetHdrCapabilities_Original) {
         MH_DisableHook(NvAPI_Disp_GetHdrCapabilities_Original);
         MH_RemoveHook(NvAPI_Disp_GetHdrCapabilities_Original);
