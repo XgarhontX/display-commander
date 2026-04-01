@@ -5,6 +5,7 @@
 Known issues:
 - Sometimes config .toml file gets deleted during save.
 - Dishonored renodx d3d9 -> d3d11 requires to set fps to 2x.
+- Injustice 2/Mortal Kombat 11, alt-tab with prevent fullscreen + continue rendering: prevent minimize doesn't work.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
@@ -12,6 +13,8 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.71 (2026-04-01)
+- [ui] [settings] **Main tab Audio optional panel** - When the Audio module is off under Main tab Features, the **Show Audio Control** toggle and the optional Audio section are hidden so you do not see a disabled placeholder. If **Show Audio Control** is on, the duplicate second **Audio control** block at the bottom of the Main tab is no longer drawn (one collapsing section only).
+  Details: `modules::IsModuleEnabled("audio")` gates Advanced optional-panel UI and optional draw order in `main_new_tab.cpp`; `modules::audio::DrawMainTabInline` returns early when `show_main_tab_audio_control` is enabled.
 - [new feature] [ui] [settings] [hooks] **Unclip Cursor** - You can turn on **Unclip Cursor** in Main tab Input Control so the game cannot lock the mouse to its window (every `ClipCursor` from the game is turned into a full release). It is mutually exclusive with **Clip Cursor**; if both were saved in config, **Unclip** is turned off on load.
   Details: `unclip_cursor_enabled` in `main_tab_settings.*`; `ClipCursor_Detour` forces `nullptr` to the original API; `continuous_monitoring` avoids `RestoreClipCursor` while unclip is on.
 

@@ -1674,9 +1674,11 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     }
     imgui.Indent();
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_audio_control, "Show Audio Control", imgui)) {
-        LogInfo("Show main tab Audio Control %s",
-                settings::g_mainTabSettings.show_main_tab_audio_control.GetValue() ? "on" : "off");
+    if (modules::IsModuleEnabled("audio")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_audio_control, "Show Audio Control", imgui)) {
+            LogInfo("Show main tab Audio Control %s",
+                    settings::g_mainTabSettings.show_main_tab_audio_control.GetValue() ? "on" : "off");
+        }
     }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_window_action_buttons,
                         "Show window action buttons", imgui)) {
@@ -2029,6 +2031,7 @@ static void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWr
                 "on multimonitor setups when moving the mouse and clicking.\n\n"
                 "Mutually exclusive with Unclip Cursor.");
         }
+        imgui.SameLine();
 
         bool unclip_cursor = settings::g_mainTabSettings.unclip_cursor_enabled.GetValue();
         if (imgui.Checkbox("Unclip Cursor", &unclip_cursor)) {
@@ -2423,7 +2426,8 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
         const MainTabOptionalSectionKind k = kMainTabOptionalPanelsDrawOrder[oi];
         switch (k) {
             case MainTabOptionalSectionKind::AudioControl:
-                if (settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
+                if (modules::IsModuleEnabled("audio")
+                    && settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
                     DrawMainTabOptionalPanelAudioControl(imgui);
                 }
                 break;
