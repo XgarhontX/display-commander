@@ -560,6 +560,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
 
     auto res= NvAPI_D3D_Sleep_Original(pDev);
 
+    #ifdef USE_REFLEX_SLEEP
     const ReflexMarkerTypes nvapi_markers = {
         static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
@@ -573,6 +574,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
         frame_id, nvapi_markers, [&]() {
             return res;
         });
+    #endif
     return res;
 }
 

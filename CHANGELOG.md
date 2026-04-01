@@ -16,12 +16,17 @@ Feature protosal:
 - [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
 - [ui] [experimental] **Reflex last-10-frames debug table** - Added a Debug-subtab view that shows up to 10 recent NVAPI Reflex latency frame reports with a manual **Refresh** button. Timestamp columns are displayed relative to the smallest non-zero timestamp, and zero values show as `N/A` for easier comparison.
 
+## v0.13.65 (2026-03-31)
+
+- [bugfix] [compatibility] **ReShade .addon64 / .addon32 load** - Fixed Display Commander not loading when ReShade loads it from the Addons folder as `zzz_display_commander.addon64` or `zzz_display_commander.addon32`.
+  Details: `AddonInit` / `FinishAddonRegistration` in `addon.cpp` — wait for `DC_STATE_HOOKED` before registering, then unregister and re-register the addon and DC overlay with ReShade so initialization matches the hooked startup path.
+
 ## v0.13.64 (2026-03-31)
 - [cleanup] [hooks] **FPS limiter changes reverted** - Recent FPS limiter–related NVAPI and Vulkan low-latency hook work has been rolled back for now so behavior matches the prior release line while that approach is revisited.
   Details: `nvapi_hooks.cpp` and `nvlowlatencyvk_hooks.cpp` no longer carry the experimental FPS limiter path from the last few patches.
 
 ## v0.13.63 (2026-03-31)
-- **NVAPI Reflex latency stats in overlay** - Added an optional NVAPI-backed PC latency and GPU frame time line to the performance overlay, powered by `NvAPI_D3D_GetLatency` and Reflex markers.  
+- **NVAPI Reflex latency stats in overlay** - Added an optional NVAPI-backed PC latency and GPU frame time line to the performance overlay, powered by `NvAPI_D3D_GetLatency` and Reflex markers.
   Details: Enabled via the Main tab → Test Overlay → NVAPI stats subsection; values are smoothed over the NVAPI frame report window and only queried when the checkbox is on (to avoid extra driver calls when unused)
 
 ## v0.13.62 (2026-03-31)
