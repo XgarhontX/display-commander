@@ -5953,43 +5953,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
     }
 
-    // Show stopwatch
-    if (settings::g_mainTabSettings.show_stopwatch.GetValue()) {
-        bool is_running = g_stopwatch_running.load();
-
-        // Update elapsed time if running
-        if (is_running) {
-            LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
-            LONGLONG now_ns = utils::get_now_ns();
-            LONGLONG elapsed_ns = now_ns - start_time_ns;
-            g_stopwatch_elapsed_time_ns.store(elapsed_ns);
-        }
-
-        LONGLONG elapsed_ns = g_stopwatch_elapsed_time_ns.load();
-        double elapsed_seconds = static_cast<double>(elapsed_ns) / static_cast<double>(utils::SEC_TO_NS);
-
-        // Format as HH:MM:SS.mmm
-        int hours = static_cast<int>(elapsed_seconds / 3600.0);
-        int minutes = static_cast<int>((elapsed_seconds - (hours * 3600.0)) / 60.0);
-        int seconds = static_cast<int>(elapsed_seconds - (hours * 3600.0) - (minutes * 60.0));
-        int milliseconds = static_cast<int>((elapsed_seconds - static_cast<int>(elapsed_seconds)) * 1000.0);
-
-        if (is_running) {
-            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds,
-                              milliseconds);
-        } else {
-            imgui.Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
-        }
-
-        if (imgui.IsItemHovered() && show_tooltips) {
-            if (is_running) {
-                imgui.SetTooltipEx("Stopwatch: Running\nPress Ctrl+S to pause");
-            } else {
-                imgui.SetTooltipEx("Stopwatch: Paused\nPress Ctrl+S to reset and start");
-            }
-        }
-    }
-
     // Show action notifications (volume, mute, etc.) for 10 seconds
     ActionNotification notification = g_action_notification.load();
     if (notification.type != ActionNotificationType::None) {
@@ -6664,15 +6627,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.Separator();
         imgui.TextUnformatted("Misc");
         imgui.Columns(4, "overlay_checkboxes", false);
-
-        bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
-        if (imgui.Checkbox("Stopwatch", &show_stopwatch)) {
-            settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
-        }
-        imgui.NextColumn();
 
         bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
         if (imgui.Checkbox("VU bars", &show_overlay_vu_bars)) {

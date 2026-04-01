@@ -27,15 +27,10 @@ const char* const HOTKEY_KEYS[] = {
     "HotkeyInputBlocking",
     "HotkeyDisplayCommanderUi",
     "HotkeyPerformanceOverlay",
-    "HotkeyStopwatch",
     "HotkeyVolumeUp",
     "HotkeyVolumeDown",
     "HotkeySystemVolumeUp",
     "HotkeySystemVolumeDown",
-    "ExclusiveKeysADEnabled",
-    "ExclusiveKeysWSEnabled",
-    "ExclusiveKeysAWSDEnabled",
-    "ExclusiveKeysCustomGroups",
 };
 constexpr size_t NUM_HOTKEY_KEYS = sizeof(HOTKEY_KEYS) / sizeof(HOTKEY_KEYS[0]);
 
@@ -57,8 +52,7 @@ static int MigrateHotkeyKeysFromMap(const std::map<std::string, std::string>& kv
     for (const auto& [k, v] : kv_map) {
         if (!IsHotkeyConfigKey(k.c_str())) continue;
         std::string val = v;
-        if (k == "EnableHotkeys" || k == "ExclusiveKeysADEnabled" || k == "ExclusiveKeysWSEnabled" ||
-            k == "ExclusiveKeysAWSDEnabled") {
+        if (k == "EnableHotkeys") {
             val = NormalizeBoolValue(v);
         }
         g_hotkeys_cache[k] = val;
@@ -102,8 +96,7 @@ void TryMigrateFromGameIni() {
             v.erase(0, v.find_first_not_of(" \t"));
             v.erase(v.find_last_not_of(" \t") + 1);
             if (!IsHotkeyConfigKey(k.c_str())) continue;
-            if (k == "EnableHotkeys" || k == "ExclusiveKeysADEnabled" || k == "ExclusiveKeysWSEnabled" ||
-                k == "ExclusiveKeysAWSDEnabled") {
+            if (k == "EnableHotkeys") {
                 v = NormalizeBoolValue(v);
             }
             g_hotkeys_cache[k] = v;
@@ -223,8 +216,7 @@ bool LoadHotkeysFile() {
         if (!in_hotkeys) continue;
         std::string k, v;
         if (ParseTomlLine(line, k, v)) {
-            if (k == "EnableHotkeys" || k == "ExclusiveKeysADEnabled" || k == "ExclusiveKeysWSEnabled" ||
-                k == "ExclusiveKeysAWSDEnabled") {
+            if (k == "EnableHotkeys") {
                 v = NormalizeBoolValue(v);
             }
             g_hotkeys_cache[k] = v;

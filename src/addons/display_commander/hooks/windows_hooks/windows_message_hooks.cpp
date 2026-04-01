@@ -7,7 +7,6 @@
 #include "../../process_exit_hooks.hpp"  // For UnhandledExceptionHandler
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
-#include "../../settings/hotkeys_tab_settings.hpp"       // For exclusive key groups
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
@@ -2419,327 +2418,35 @@ void Initialize() {
         s_key_in_active_group[i].store(false);
         s_key_to_group_index[i].store(-1);
     }
-    // Initialize with empty groups
     s_cached_active_groups.store(std::make_shared<std::vector<std::vector<int>>>());
 }
 
 // Get active exclusive groups from settings
 static std::vector<std::vector<int>> GetActiveGroups() {
-    std::vector<std::vector<int>> active_groups;
-
-    // Check if hotkeys are enabled
-    if (!s_enable_hotkeys.load()) {
-        return active_groups;
-    }
-
-    // Check if game is in foreground OR UI is open
-    HWND game_hwnd = g_last_swapchain_hwnd.load();
-    HWND foreground_hwnd = GetForegroundWindow_Direct();
-    bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
-    bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-
-    if (!is_game_in_foreground && !is_ui_open) {
-        return active_groups;
-    }
-
-    auto& hotkey_settings = settings::g_hotkeysTabSettings;
-
-    // Predefined AD group
-    if (hotkey_settings.exclusive_keys_ad_enabled.GetValue()) {
-        active_groups.push_back({'A', 'D'});
-    }
-
-    // Predefined WS group
-    if (hotkey_settings.exclusive_keys_ws_enabled.GetValue()) {
-        active_groups.push_back({'W', 'S'});
-    }
-
-    // Predefined AWSD group
-    if (hotkey_settings.exclusive_keys_awsd_enabled.GetValue()) {
-        active_groups.push_back({'A', 'W', 'S', 'D'});
-    }
-
-    // Parse custom groups
-    std::string custom_groups_str = hotkey_settings.exclusive_keys_custom_groups.GetValue();
-    if (!custom_groups_str.empty()) {
-        // Split by | to get individual groups
-        std::istringstream iss(custom_groups_str);
-        std::string group_str;
-        while (std::getline(iss, group_str, '|')) {
-            // Split by comma to get keys in this group
-            std::istringstream group_iss(group_str);
-            std::string key_str;
-            std::vector<int> group_keys;
-            while (std::getline(group_iss, key_str, ',')) {
-                // Parse key name to vkey
-                std::string lower = key_str;
-                std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-                lower.erase(0, lower.find_first_not_of(" \t"));
-                lower.erase(lower.find_last_not_of(" \t") + 1);
-
-                int vkey = 0;
-                if (lower.length() == 1 && lower[0] >= 'a' && lower[0] <= 'z') {
-                    vkey = std::toupper(static_cast<unsigned char>(lower[0]));
-                } else if (lower == "left") {
-                    vkey = VK_LEFT;
-                } else if (lower == "right") {
-                    vkey = VK_RIGHT;
-                } else if (lower == "up") {
-                    vkey = VK_UP;
-                } else if (lower == "down") {
-                    vkey = VK_DOWN;
-                }
-
-                if (vkey > 0) {
-                    group_keys.push_back(vkey);
-                }
-            }
-            if (group_keys.size() >= 2) {
-                active_groups.push_back(group_keys);
-            }
-        }
-    }
-
-    return active_groups;
+    return {};
 }
 
 // Update cached list of keys belonging to active groups
 void UpdateCachedActiveKeys() {
-    // Clear previous cache
     for (int i = 0; i < 256; ++i) {
         s_key_in_active_group[i].store(false);
         s_key_to_group_index[i].store(-1);
     }
-
-    // Get active groups
-    std::vector<std::vector<int>> active_groups = GetActiveGroups();
-
-    // Create new shared_ptr with active groups
-    auto new_groups = std::make_shared<std::vector<std::vector<int>>>(std::move(active_groups));
-
-    // Atomically swap the shared_ptr
-    s_cached_active_groups.store(new_groups);
-
-    // Mark all keys that belong to active groups
-    for (size_t group_idx = 0; group_idx < new_groups->size(); ++group_idx) {
-        const auto& group = (*new_groups)[group_idx];
-        for (int key : group) {
-            if (key >= 0 && key < 256) {
-                s_key_in_active_group[key].store(true);
-                s_key_to_group_index[key].store(static_cast<int>(group_idx));
-            }
-        }
-    }
+    s_cached_active_groups.store(std::make_shared<std::vector<std::vector<int>>>());
 }
 
 // Find which group a key belongs to (using cached data)
 static int FindKeyGroupCached(int vKey) {
-    if (vKey < 0 || vKey >= 256) {
-        return -1;
-    }
-    if (s_key_in_active_group[vKey].load()) {
-        return s_key_to_group_index[vKey].load();
-    }
     return -1;
 }
 
-bool ShouldSuppressKey(int vKey) {
-    if (vKey < 0 || vKey >= 256) {
-        return false;
-    }
+bool ShouldSuppressKey(int /*vKey*/) { return false; }
 
-    // Use cached data for fast lookup
-    if (!s_key_in_active_group[vKey].load()) {
-        return false;  // Key not in any exclusive group
-    }
+void MarkKeyDown(int /*vKey*/) {}
 
-    int group_index = FindKeyGroupCached(vKey);
-    auto cached_groups = s_cached_active_groups.load();
-    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
-        return false;
-    }
+void MarkKeyUp(int /*vKey*/) {}
 
-    const auto& group = (*cached_groups)[group_index];
-
-    for (int key : group) {
-        if (key == vKey) {
-            continue;
-        }
-        if (s_key_actually_pressed[key].load()) {
-            return true;
-        }
-        LONGLONG this_key_time = s_key_press_timestamp[vKey].load();
-        LONGLONG active_key_time = s_key_press_timestamp[key].load();
-        if (active_key_time > this_key_time) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void MarkKeyDown(int vKey) {
-    if (vKey < 0 || vKey >= 256) {
-        return;
-    }
-
-    // Record timestamp and mark as actually pressed
-    LONGLONG now_ns = utils::get_now_ns();
-    s_key_press_timestamp[vKey].store(now_ns);
-    s_key_actually_pressed[vKey].store(true);
-
-    // Use cached data for fast lookup
-    if (!s_key_in_active_group[vKey].load()) {
-        return;  // Key not in any exclusive group
-    }
-
-    int group_index = FindKeyGroupCached(vKey);
-    auto cached_groups = s_cached_active_groups.load();
-    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
-        return;
-    }
-
-    const auto& group = (*cached_groups)[group_index];
-
-    // Find the most recently pressed key in this group that is still actually pressed
-    int most_recent_key = vKey;
-    LONGLONG most_recent_time = now_ns;
-
-    for (int key : group) {
-        if (s_key_actually_pressed[key].load()) {
-            LONGLONG key_time = s_key_press_timestamp[key].load();
-            if (key_time > most_recent_time) {
-                most_recent_time = key_time;
-                most_recent_key = key;
-            }
-        }
-    }
-
-    // Check if the active key changed
-    int old_active_key = s_exclusive_group_active_key[vKey].load();
-
-    // Mark the most recently pressed key as active for all keys in the group
-    for (int key : group) {
-        s_exclusive_group_active_key[key].store(most_recent_key);
-    }
-
-    // If the active key changed and the new active key is different from the old one,
-    // and the new active key is actually pressed, we need to simulate it being pressed down
-    if (old_active_key != most_recent_key && most_recent_key > 0) {
-        // The new active key needs to be simulated as pressed down on next frame
-        // This is because it might have been suppressed earlier, so the game never saw it as pressed
-        s_key_needs_simulate_press[most_recent_key].store(true);
-    }
-}
-
-void MarkKeyUp(int vKey) {
-    if (vKey < 0 || vKey >= 256) {
-        return;
-    }
-
-    // Mark as not actually pressed
-    s_key_actually_pressed[vKey].store(false);
-
-    // Use cached data for fast lookup
-    if (!s_key_in_active_group[vKey].load()) {
-        return;  // Key not in any exclusive group
-    }
-
-    int group_index = FindKeyGroupCached(vKey);
-    auto cached_groups = s_cached_active_groups.load();
-    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
-        return;
-    }
-
-    const auto& group = (*cached_groups)[group_index];
-
-    // Find which keys are still actually pressed in this group
-    std::vector<int> still_pressed;
-    for (int key : group) {
-        if (s_key_actually_pressed[key].load()) {
-            still_pressed.push_back(key);
-        }
-    }
-
-    if (still_pressed.empty()) {
-        // No keys are pressed anymore, clear active key for all keys in the group
-        for (int key : group) {
-            s_exclusive_group_active_key[key].store(0);
-        }
-    } else {
-        // Find the most recently pressed key among those still pressed
-        int most_recent_key = still_pressed[0];
-        LONGLONG most_recent_time = s_key_press_timestamp[most_recent_key].load();
-
-        for (int key : still_pressed) {
-            LONGLONG key_time = s_key_press_timestamp[key].load();
-            if (key_time > most_recent_time) {
-                most_recent_time = key_time;
-                most_recent_key = key;
-            }
-        }
-
-        // Check if the active key changed
-        int old_active_key = s_exclusive_group_active_key[group[0]].load();
-
-        // Mark the most recently pressed key as active for all keys in the group
-        for (int key : group) {
-            s_exclusive_group_active_key[key].store(most_recent_key);
-        }
-
-        // If the active key changed and the new active key is different from the old one,
-        // we need to simulate it being pressed down on next frame
-        if (old_active_key != most_recent_key && most_recent_key > 0) {
-            // The new active key needs to be simulated as pressed down on next frame
-            // This is because it might have been suppressed earlier, so the game never saw it as pressed
-            s_key_needs_simulate_press[most_recent_key].store(true);
-        }
-    }
-}
-
-void Update() {
-    // This is called from ProcessHotkeys to simulate key presses for keys that became active
-    // When the active key changes, we need to simulate the new active key being pressed down
-    // because it might have been suppressed earlier, so the game never saw it as pressed
-
-    for (int vKey = 0; vKey < 256; ++vKey) {
-        if (s_key_needs_simulate_press[vKey].load()) {
-            // Check if this key is still actually pressed and still the active key
-            if (s_key_actually_pressed[vKey].load()) {
-                // Use cached data to verify this key is still in an active group
-                if (s_key_in_active_group[vKey].load()) {
-                    int group_index = FindKeyGroupCached(vKey);
-                    auto cached_groups = s_cached_active_groups.load();
-                    if (group_index >= 0 && cached_groups && group_index < static_cast<int>(cached_groups->size())) {
-                        // Verify this key is still the active key
-                        int active_key = s_exclusive_group_active_key[vKey].load();
-                        if (active_key == vKey) {
-                            // Simulate key down event for this key
-                            INPUT input;
-                            input.type = INPUT_KEYBOARD;
-                            input.ki.wVk = static_cast<WORD>(vKey);
-                            input.ki.wScan = 0;
-                            input.ki.dwFlags = 0;  // Key down
-                            input.ki.time = 0;
-                            input.ki.dwExtraInfo = 0;
-
-                            // Use original SendInput to avoid hook recursion
-                            if (SendInput_Original) {
-                                SendInput_Original(1, &input, sizeof(INPUT));
-                            } else {
-                                SendInput(1, &input, sizeof(INPUT));
-                            }
-
-                            LogDebug("Exclusive keys: Simulated key down for %c (became active)", vKey);
-                        }
-                    }
-                }
-            }
-
-            // Clear the flag
-            s_key_needs_simulate_press[vKey].store(false);
-        }
-    }
-}
+void Update() {}
 
 }  // namespace exclusive_key_groups
 

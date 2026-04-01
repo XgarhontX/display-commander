@@ -34,7 +34,6 @@ class HotkeysTabSettings {
     StringSetting hotkey_input_blocking;
     StringSetting hotkey_display_commander_ui;
     StringSetting hotkey_performance_overlay;
-    StringSetting hotkey_stopwatch;
     StringSetting hotkey_volume_up;
     StringSetting hotkey_volume_down;
     StringSetting hotkey_system_volume_up;
@@ -47,15 +46,6 @@ class HotkeysTabSettings {
     StringSetting hotkey_win_right;
     StringSetting hotkey_move_to_primary;
     StringSetting hotkey_move_to_secondary;
-
-    // Exclusive key groups - predefined groups
-    BoolSetting exclusive_keys_ad_enabled;      // A and D keys
-    BoolSetting exclusive_keys_ws_enabled;      // W and S keys
-    BoolSetting exclusive_keys_awsd_enabled;   // A, W, S, D keys
-
-    // Custom exclusive key groups (stored as JSON array of groups, each group is comma-separated keys)
-    // Format: "A,S|W,S|Q,E" where | separates groups and , separates keys within a group
-    StringSetting exclusive_keys_custom_groups;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

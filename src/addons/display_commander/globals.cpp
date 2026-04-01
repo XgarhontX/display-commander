@@ -549,11 +549,6 @@ std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected{null
 // Performance optimization settings
 std::atomic<LONGLONG> g_flush_before_present_time_ns{0};
 
-// Stopwatch state
-std::atomic<bool> g_stopwatch_running{false};
-std::atomic<LONGLONG> g_stopwatch_start_time_ns{0};
-std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns{0};
-
 // Game playtime tracking (time from game start)
 std::atomic<LONGLONG> g_game_start_time_ns{0};
 

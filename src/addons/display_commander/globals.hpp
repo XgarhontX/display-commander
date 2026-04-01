@@ -820,11 +820,6 @@ extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detect
 // Performance optimization settings
 extern std::atomic<LONGLONG> g_flush_before_present_time_ns;
 
-// Stopwatch state
-extern std::atomic<bool> g_stopwatch_running;
-extern std::atomic<LONGLONG> g_stopwatch_start_time_ns;
-extern std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns;
-
 // Game playtime tracking (time from game start)
 extern std::atomic<LONGLONG> g_game_start_time_ns;
 

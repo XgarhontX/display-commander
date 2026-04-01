@@ -13,7 +13,6 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
       hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "end", "DisplayCommander"),
       hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl shift o", "DisplayCommander"),
-      hotkey_stopwatch("HotkeyStopwatch", "ctrl shift s", "DisplayCommander"),
       hotkey_volume_up("HotkeyVolumeUp", "ctrl shift up", "DisplayCommander"),
       hotkey_volume_down("HotkeyVolumeDown", "ctrl shift down", "DisplayCommander"),
       hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl alt up", "DisplayCommander"),
@@ -23,11 +22,7 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_win_left("HotkeyWinLeft", "win left", "DisplayCommander"),
       hotkey_win_right("HotkeyWinRight", "win right", "DisplayCommander"),
       hotkey_move_to_primary("HotkeyMoveToPrimary", "numpad+", "DisplayCommander"),
-      hotkey_move_to_secondary("HotkeyMoveToSecondary", "numpad-", "DisplayCommander"),
-      exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
-      exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
-      exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
-      exclusive_keys_custom_groups("ExclusiveKeysCustomGroups", "", "DisplayCommander") {}
+      hotkey_move_to_secondary("HotkeyMoveToSecondary", "numpad-", "DisplayCommander") {}
 
 void HotkeysTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -50,14 +45,12 @@ void HotkeysTabSettings::SaveAll() {
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
     return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle,
             &hotkey_adhd_toggle, &hotkey_input_blocking, &hotkey_display_commander_ui,
-            &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up,
+            &hotkey_performance_overlay, &hotkey_volume_up,
             &hotkey_volume_down,
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left,
             &hotkey_win_right,
             &hotkey_move_to_primary,
-            &hotkey_move_to_secondary,
-            &exclusive_keys_ad_enabled,
-            &exclusive_keys_ws_enabled,             &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
+            &hotkey_move_to_secondary};
 }
 
 }  // namespace settings

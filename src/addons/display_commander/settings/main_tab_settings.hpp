@@ -148,7 +148,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dlss_render_preset;   // Render preset: A, B, C, D, E, etc. (letter presets)
     /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */
     ui::new_ui::BoolSetting show_fps_limiter_src;
-    ui::new_ui::BoolSetting show_stopwatch;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;
     ui::new_ui::BoolSetting show_overlay_vram;

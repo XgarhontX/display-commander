@@ -26,7 +26,6 @@ enum class HotkeyId : int {
     InputBlocking,
     DisplayCommanderUi,
     PerformanceOverlay,
-    Stopwatch,
     WinDown,
     WinUp,
     WinLeft,

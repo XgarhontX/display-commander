@@ -12,6 +12,10 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.70 (2026-04-01)
+- [removal] [ui] [settings] **Exclusive Keys feature removed** - Exclusive key-group controls were removed from Hotkeys, so Display Commander no longer applies automatic key-release/suppression behavior for grouped keys.
+  Details: removed Exclusive Keys settings from `hotkeys_tab_settings.*` and `config/hotkeys_file.cpp`; removed the Exclusive Keys UI section and processing path from `ui/new_ui/hotkeys_tab.cpp`; exclusive-key hook helpers in `windows_message_hooks.cpp` were reduced to no-op behavior.
+- [removal] [ui] [settings] **Stopwatch feature removed** - The stopwatch overlay and its related controls were removed to simplify the overlay and hotkey/action surface.
+  Details: removed Stopwatch UI/overlay paths from `main_new_tab.cpp`, deleted `show_stopwatch` and `HotkeyStopwatch` settings wiring, removed stopwatch hotkey/action routes from `hotkeys_tab` and `input_remapping`, and removed stopwatch globals.
 - [cleanup] [settings] **Input remapping actions can now be module-provided** - Gamepad action remaps now support module-registered action callbacks, so audio action remaps are handled by the Audio module instead of direct backend calls from input remapping.
   Details: added module action specs/registry querying and trigger APIs in `module_registry`; moved audio remap actions (`mute/unmute`, game/system volume up/down) into `modules/audio/audio_module.cpp`; `input_remapping.cpp` now triggers module actions and appends enabled module actions to available action list.
 - [cleanup] [settings] **System volume hotkeys moved to Audio module hotkey registration** - System volume up/down hotkeys are now provided by the Audio module via module hotkey callbacks, so the Hotkeys tab no longer depends on direct audio backend functions.

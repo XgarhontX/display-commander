@@ -946,27 +946,6 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE* stat
     }
 }
 
-// Shared function to toggle stopwatch (used by both hotkeys and gamepad actions)
-void ToggleStopwatch() {
-    bool is_running = g_stopwatch_running.load();
-    LONGLONG now_ns = utils::get_now_ns();
-
-    if (is_running) {
-        // Running -> Pause: Save current elapsed time
-        LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
-        LONGLONG current_elapsed_ns = now_ns - start_time_ns;
-        g_stopwatch_elapsed_time_ns.store(current_elapsed_ns);
-        g_stopwatch_running.store(false);
-        LogInfo("Stopwatch paused");
-    } else {
-        // Paused -> Running: Reset to 0 and start fresh
-        g_stopwatch_start_time_ns.store(now_ns);
-        g_stopwatch_elapsed_time_ns.store(0);
-        g_stopwatch_running.store(true);
-        LogInfo("Stopwatch started/resumed (reset to 0)");
-    }
-}
-
 void InputRemapper::execute_action(const std::string& action_name) {
     // Helper function to trigger generic action notification
     auto trigger_action_notification = [](const std::string& name) {
@@ -1086,12 +1065,6 @@ void InputRemapper::execute_action(const std::string& action_name) {
         trigger_action_notification("Black curtain (other displays) " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Black curtain (other displays) %s via action",
                 new_state ? "enabled" : "disabled");
-    } else if (action_name == "stopwatch toggle" || action_name == "stopwatch start/pause") {
-        // Toggle stopwatch (start/pause)
-        ToggleStopwatch();
-        bool is_running = g_stopwatch_running.load();
-        trigger_action_notification("Stopwatch " + std::string(is_running ? "Started" : "Paused"));
-        LogInfo("InputRemapper::execute_action() - Stopwatch %s via action", is_running ? "started" : "paused");
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1111,8 +1084,7 @@ std::vector<std::string> get_available_actions() {
     std::vector<std::string> actions = {"screenshot",
                                         "performance overlay toggle",
                                         "display commander ui toggle",
-                                        "adhd toggle",
-                                        "stopwatch toggle"};
+                                        "adhd toggle"};
 #if defined(DC_EXTERNAL_MODULES)
     actions.push_back("time slowdown toggle");
     actions.push_back("increase game speed");

@@ -380,8 +380,6 @@ void InitializeHotkeyDefinitions() {
              oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
-        {"stopwatch", "Stopwatch Start/Pause", "ctrl shift s", "Start or pause the stopwatch (2-state toggle)",
-         []() { display_commander::input_remapping::ToggleStopwatch(); }},
         {"win_down", "Win+Down (Minimize)", "win down",
          "Minimize borderless game window (Special-K style). Only when game is in foreground.",
          []() {
@@ -532,8 +530,6 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinUp)].parsed =
@@ -711,8 +707,6 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::DisplayCommanderUi)].parsed));
     s.hotkey_performance_overlay.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed));
-    s.hotkey_stopwatch.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed));
     s.hotkey_win_down.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed));
     s.hotkey_win_up.SetValue(
@@ -759,7 +753,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
         // Create a table for hotkeys
         const int table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
         if (imgui.BeginTable("HotkeysTable", 4, table_flags)) {
-            imgui.TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
+            imgui.TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthFixed, 400.0f);
             imgui.TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 250.0f);
             imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 150.0f);
             imgui.TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 250.0f);
@@ -779,7 +773,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
                     case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
-                    case HotkeyId::Stopwatch: setting_ptr = &settings.hotkey_stopwatch; break;
                     case HotkeyId::WinDown: setting_ptr = &settings.hotkey_win_down; break;
                     case HotkeyId::WinUp: setting_ptr = &settings.hotkey_win_up; break;
                     case HotkeyId::WinLeft: setting_ptr = &settings.hotkey_win_left; break;
@@ -812,109 +805,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Format: ctrl+shift+key");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Empty string = disabled");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"ctrl a\", \"alt numpad+\"");
-    }
-
-    // Exclusive Keys Section
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    if (imgui.CollapsingHeader("Exclusive Keys", ImGuiTreeNodeFlags_DefaultOpen)) {
-        imgui.TextWrapped(
-            "Exclusive key groups ensure that when one key in a group is pressed, other keys in the same group are "
-            "automatically released. Useful for strafe macros and preventing conflicting key states.");
-        imgui.Spacing();
-
-        // Predefined groups
-        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Predefined Groups:");
-        imgui.Spacing();
-
-        CheckboxSetting(settings.exclusive_keys_ad_enabled, "AD Group (A and D keys)", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("When A is pressed, D is released. When D is pressed, A is released.");
-        }
-
-        CheckboxSetting(settings.exclusive_keys_ws_enabled, "WS Group (W and S keys)", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("When W is pressed, S is released. When S is pressed, W is released.");
-        }
-
-        CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
-        }
-
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
-
-        // Custom groups
-        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Custom Groups:");
-        imgui.Spacing();
-        imgui.TextWrapped("Format: Groups separated by |, keys within groups separated by commas");
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"A,S|Q,E|Left,Right\"");
-        imgui.Spacing();
-
-        // Parse and display custom groups as individual entries
-        std::string custom_groups = settings.exclusive_keys_custom_groups.GetValue();
-        std::vector<std::string> group_list;
-        if (!custom_groups.empty()) {
-            std::istringstream iss(custom_groups);
-            std::string group_str;
-            while (std::getline(iss, group_str, '|')) {
-                if (!group_str.empty()) {
-                    group_list.push_back(group_str);
-                }
-            }
-        }
-
-        // Display existing groups with delete buttons
-        for (size_t i = 0; i < group_list.size(); ++i) {
-            imgui.PushID(static_cast<int>(i));
-            ImVec2 avail = imgui.GetContentRegionAvail();
-            imgui.SetNextItemWidth(avail.x - 80);
-            char group_buffer[256] = {0};
-            strncpy_s(group_buffer, sizeof(group_buffer), group_list[i].c_str(), _TRUNCATE);
-            if (imgui.InputText("##GroupEdit", group_buffer, sizeof(group_buffer))) {
-                group_list[i] = std::string(group_buffer);
-                // Rebuild custom groups string
-                std::ostringstream oss;
-                for (size_t j = 0; j < group_list.size(); ++j) {
-                    if (j > 0) oss << "|";
-                    oss << group_list[j];
-                }
-                settings.exclusive_keys_custom_groups.SetValue(oss.str());
-            }
-            imgui.SameLine();
-            if (imgui.Button("Delete")) {
-                group_list.erase(group_list.begin() + i);
-                // Rebuild custom groups string
-                std::ostringstream oss;
-                for (size_t j = 0; j < group_list.size(); ++j) {
-                    if (j > 0) oss << "|";
-                    oss << group_list[j];
-                }
-                settings.exclusive_keys_custom_groups.SetValue(oss.str());
-                imgui.PopID();
-                break;  // Exit loop after deletion
-            }
-            imgui.PopID();
-        }
-
-        // Add new group button
-        if (imgui.Button("Add Group")) {
-            group_list.push_back("Key1,Key2");
-            // Rebuild custom groups string
-            std::ostringstream oss;
-            for (size_t j = 0; j < group_list.size(); ++j) {
-                if (j > 0) oss << "|";
-                oss << group_list[j];
-            }
-            settings.exclusive_keys_custom_groups.SetValue(oss.str());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Add a new custom exclusive key group");
-        }
     }
 
     // Debug Information Section
@@ -1024,138 +914,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
 
 }
 
-// Parse a key name string to virtual key code
-int ParseKeyNameToVKey(const std::string& key_name) {
-    std::string lower = key_name;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-
-    // Trim whitespace
-    lower.erase(0, lower.find_first_not_of(" \t"));
-    lower.erase(lower.find_last_not_of(" \t") + 1);
-
-    if (lower.length() == 1 && lower[0] >= 'a' && lower[0] <= 'z') {
-        return std::toupper(static_cast<unsigned char>(lower[0]));
-    } else if (lower == "left") {
-        return VK_LEFT;
-    } else if (lower == "right") {
-        return VK_RIGHT;
-    } else if (lower == "up") {
-        return VK_UP;
-    } else if (lower == "down") {
-        return VK_DOWN;
-    }
-
-    return 0;  // Invalid key
-}
-
-// Process exclusive key groups - automatically release other keys in a group when one is pressed
-void ProcessExclusiveKeyGroups() {
-    // Check if hotkeys are enabled globally (exclusive keys are part of hotkeys system)
-    bool hotkeys_enabled = s_enable_hotkeys.load();
-    if (!hotkeys_enabled) {
-        return;
-    }
-
-    // Check if game is in foreground or overlay UI is open (same as ProcessHotkeys)
-    HWND game_hwnd = g_last_swapchain_hwnd.load();
-    HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
-    bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
-    bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-
-    if (!is_game_in_foreground && !is_ui_open) {
-        return;
-    }
-
-    auto& settings = settings::g_hotkeysTabSettings;
-
-    // Build list of active exclusive groups
-    std::vector<std::vector<int>> active_groups;
-
-    // Predefined AD group
-    if (settings.exclusive_keys_ad_enabled.GetValue()) {
-        active_groups.push_back({'A', 'D'});
-    }
-
-    // Predefined WS group
-    if (settings.exclusive_keys_ws_enabled.GetValue()) {
-        active_groups.push_back({'W', 'S'});
-    }
-
-    // Predefined AWSD group
-    if (settings.exclusive_keys_awsd_enabled.GetValue()) {
-        active_groups.push_back({'A', 'W', 'S', 'D'});
-    }
-
-    // Parse custom groups
-    std::string custom_groups_str = settings.exclusive_keys_custom_groups.GetValue();
-    if (!custom_groups_str.empty()) {
-        // Split by | to get individual groups
-        std::istringstream iss(custom_groups_str);
-        std::string group_str;
-        while (std::getline(iss, group_str, '|')) {
-            // Split by comma to get keys in this group
-            std::istringstream group_iss(group_str);
-            std::string key_str;
-            std::vector<int> group_keys;
-            while (std::getline(group_iss, key_str, ',')) {
-                int vkey = ParseKeyNameToVKey(key_str);
-                if (vkey > 0) {
-                    group_keys.push_back(vkey);
-                }
-            }
-            if (group_keys.size() >= 2) {  // At least 2 keys needed for exclusivity
-                active_groups.push_back(group_keys);
-            }
-        }
-    }
-
-    // Process each active group
-    for (const auto& group : active_groups) {
-        // Check if any key in this group was just pressed
-        for (int pressed_key : group) {
-            if (display_commanderhooks::keyboard_tracker::IsKeyPressed(pressed_key)) {
-                // This key was just pressed - release all other keys in the group
-                INPUT inputs[256];
-                int input_count = 0;
-
-                for (int other_key : group) {
-                    if (other_key != pressed_key) {
-                        // Check if the other key is currently down
-                        if (display_commanderhooks::keyboard_tracker::IsKeyDown(other_key)) {
-                            // Send key up event for this key
-                            inputs[input_count].type = INPUT_KEYBOARD;
-                            inputs[input_count].ki.wVk = static_cast<WORD>(other_key);
-                            inputs[input_count].ki.wScan = 0;
-                            inputs[input_count].ki.dwFlags = KEYEVENTF_KEYUP;
-                            inputs[input_count].ki.time = 0;
-                            inputs[input_count].ki.dwExtraInfo = 0;
-                            input_count++;
-                        }
-                    }
-                }
-
-                // Send all key up events at once
-                if (input_count > 0) {
-                    SendInput(static_cast<UINT>(input_count), inputs, sizeof(INPUT));
-                    LogDebug("Exclusive keys: Released %d keys when %c was pressed", input_count, pressed_key);
-                }
-
-                // Mark the pressed key as active in exclusive groups
-                // This records the timestamp and updates the active key to be the most recently pressed one
-                display_commanderhooks::exclusive_key_groups::MarkKeyDown(pressed_key);
-
-                // Only process one key press per group per frame
-                break;
-            }
-        }
-
-        // Check for keys that were released (not simulated releases, but actual releases)
-        // MarkKeyUp will be called from the hooks when keys are actually released,
-        // which will automatically update the active key to be the most recently pressed one
-        // that's still actually pressed
-    }
-}
-
 bool IsCapturingHotkey() { return s_capturing_hotkey_index >= 0; }
 
 // Process all hotkeys (call from continuous monitoring loop, same thread as keyboard_tracker::Update)
@@ -1247,11 +1005,6 @@ void ProcessHotkeys() {
     // Win+Down / Win+Up / Win+Left / Win+Right are handled by configurable hotkeys (see definitions with id win_down,
     // win_up, win_left, win_right) and processed in the generic loop below.
 
-    // Process exclusive key groups first (before hotkeys)
-    ProcessExclusiveKeyGroups();
-
-    // Update exclusive key groups - simulate key presses for keys that became active
-    display_commanderhooks::exclusive_key_groups::Update();
     // Allow hotkeys if game in foreground or overlay UI open
     if (!allow_hotkeys) {
         // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61.
