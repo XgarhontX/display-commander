@@ -1082,36 +1082,53 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
-            std::vector<std::string> preset_options =
-                dlssg_summary.ray_reconstruction_active ? GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets)
-                                                        : GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
-            std::vector<const char*> preset_cstrs;
-            preset_cstrs.reserve(preset_options.size());
-            for (const auto& option : preset_options) {
-                preset_cstrs.push_back(option.c_str());
-            }
+            const bool rr_active = dlssg_summary.ray_reconstruction_active;
 
-            std::string current_value = dlssg_summary.ray_reconstruction_active
-                                            ? settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue()
-                                            : settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-            int current_selection = 0;
-            for (size_t i = 0; i < preset_options.size(); ++i) {
-                if (current_value == preset_options[i]) {
-                    current_selection = static_cast<int>(i);
+            std::vector<std::string> sr_preset_options = GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
+            std::vector<const char*> sr_preset_cstrs;
+            sr_preset_cstrs.reserve(sr_preset_options.size());
+            for (const auto& option : sr_preset_options) {
+                sr_preset_cstrs.push_back(option.c_str());
+            }
+            std::string sr_current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+            int sr_current_selection = 0;
+            for (size_t i = 0; i < sr_preset_options.size(); ++i) {
+                if (sr_current_value == sr_preset_options[i]) {
+                    sr_current_selection = static_cast<int>(i);
                     break;
                 }
             }
+            const char* sr_label = rr_active ? "SR Preset##MainTabSRPreset" : "SR Preset (active)##MainTabSRPreset";
+            imgui.SetNextItemWidth(250.0f);
+            if (imgui.Combo(sr_label, &sr_current_selection, sr_preset_cstrs.data(),
+                            static_cast<int>(sr_preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(sr_preset_options[sr_current_selection]);
+                ResetNGXPresetInitialization();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
+            }
 
-            const char* combo_label =
-                dlssg_summary.ray_reconstruction_active ? "RR Preset##MainTab" : "SR Preset##MainTab";
-            if (imgui.Combo(combo_label, &current_selection, preset_cstrs.data(),
-                            static_cast<int>(preset_cstrs.size()))) {
-                const std::string& new_value = preset_options[current_selection];
-                if (dlssg_summary.ray_reconstruction_active) {
-                    settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(new_value);
-                } else {
-                    settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(new_value);
+            std::vector<std::string> rr_preset_options =
+                GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets);
+            std::vector<const char*> rr_preset_cstrs;
+            rr_preset_cstrs.reserve(rr_preset_options.size());
+            for (const auto& option : rr_preset_options) {
+                rr_preset_cstrs.push_back(option.c_str());
+            }
+            std::string rr_current_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+            int rr_current_selection = 0;
+            for (size_t i = 0; i < rr_preset_options.size(); ++i) {
+                if (rr_current_value == rr_preset_options[i]) {
+                    rr_current_selection = static_cast<int>(i);
+                    break;
                 }
+            }
+            const char* rr_label = rr_active ? "RR Preset (active)##MainTabRRPreset" : "RR Preset##MainTabRRPreset";
+            imgui.SetNextItemWidth(250.0f);
+            if (imgui.Combo(rr_label, &rr_current_selection, rr_preset_cstrs.data(),
+                            static_cast<int>(rr_preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(rr_preset_options[rr_current_selection]);
                 ResetNGXPresetInitialization();
             }
             if (imgui.IsItemHovered()) {
@@ -2241,7 +2258,7 @@ static void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsA
                 break;
             }
         }
-        imgui.SetNextItemWidth(160.0f);
+        imgui.SetNextItemWidth(300.0f);
         if (imgui.Combo("DLSS Quality Preset Override", &current_quality_index, dlss_quality_preset_items, 7)) {
             settings::g_swapchainTabSettings.dlss_quality_preset_override.SetValue(
                 dlss_quality_preset_items[current_quality_index]);
@@ -2284,9 +2301,10 @@ static void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsA
                                       : current_sub.empty() ? "(root folder)"
                                                             : current_sub.c_str();
             imgui.SameLine();
-            imgui.SetNextItemWidth(140.0f);
+            imgui.SetNextItemWidth(200.0f);
             if (imgui.BeginCombo((std::string("##dlss_sub_") + std::to_string(dll_index)).c_str(),
                                  combo_label)) {
+
                 if (imgui.Selectable("(root folder)", current_sub.empty())) {
                     subfolder_setting.SetValue("");
                 }
@@ -6936,6 +6954,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
+        imgui.SetNextItemWidth(300.0f);
         if (imgui.Checkbox("DLSS Quality Preset", &show_dlss_quality_preset)) {
             settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
         }
@@ -6947,6 +6966,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
+        imgui.SetNextItemWidth(300.0f);
         if (imgui.Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
             settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
             ResetNGXPresetInitialization();
