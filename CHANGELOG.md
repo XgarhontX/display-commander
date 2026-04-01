@@ -12,6 +12,14 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.70 (2026-04-01)
+- [cleanup] [settings] **Input remapping actions can now be module-provided** - Gamepad action remaps now support module-registered action callbacks, so audio action remaps are handled by the Audio module instead of direct backend calls from input remapping.
+  Details: added module action specs/registry querying and trigger APIs in `module_registry`; moved audio remap actions (`mute/unmute`, game/system volume up/down) into `modules/audio/audio_module.cpp`; `input_remapping.cpp` now triggers module actions and appends enabled module actions to available action list.
+- [cleanup] [settings] **System volume hotkeys moved to Audio module hotkey registration** - System volume up/down hotkeys are now provided by the Audio module via module hotkey callbacks, so the Hotkeys tab no longer depends on direct audio backend functions.
+  Details: removed built-in `system_volume_up` / `system_volume_down` actions from `ui/new_ui/hotkeys_tab.cpp`; added equivalent module hotkey callbacks in `modules/audio/audio_module.cpp` and registration through `FillHotkeys`.
+- [cleanup] [settings] **Audio volume polling moved out of continuous monitoring into Audio module thread** - Per-second game/system volume refresh now runs from an Audio module-owned worker thread, so audio state polling no longer depends on generic continuous monitoring scheduling.
+  Details: removed `Every1sVolume` from `continuous_monitoring.cpp`; Audio module now starts a dedicated 1s volume sync loop from `modules/audio/audio_module.cpp`.
+- [cleanup] [hooks] **Audio background monitor startup moved into Audio module lifecycle** - Audio background monitoring is now started by the Audio module enable path instead of core swapchain initialization, keeping module ownership clearer.
+  Details: removed `RunBackgroundAudioMonitor` thread startup from `swapchain_events.cpp`; added Audio module `on_enabled` callback startup in `modules/audio/audio_module.cpp` and wired it in `module_registry.cpp`.
 - [ui] [settings] **Main tab module controls now render as full control headers** - Enabled modules can now render full collapsing control sections in Main tab near core controls (like Resolution), so module-owned controls are placed in a consistent location.
   Details: added `DrawEnabledModulesMainTabInline(...)` in `module_registry` and moved invocation from the Features list row to the main control area; Audio now renders its own `Audio control` collapsing header from `modules/audio/audio_module.cpp`.
 - [cleanup] [ui] [settings] **Audio UI ownership fully moved into the Audio module** - Audio settings rendering is now owned by `modules/audio` instead of `main_new_tab`, and modules can optionally draw inline content in Main tab Features.

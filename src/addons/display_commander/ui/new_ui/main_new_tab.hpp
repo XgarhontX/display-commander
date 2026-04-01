@@ -54,9 +54,6 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
 void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 
-// Draw per-channel VU meter bars in the performance overlay (compact)
-void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
-
 // Draw performance overlay content (clock, FPS, VRR, VRAM, flip, DLSS, volume, graphs, etc.).
 // Use with IImGuiWrapper (ReShade or standalone). device_api used for flip status; pass GraphicsApi::Unknown when no
 // device.

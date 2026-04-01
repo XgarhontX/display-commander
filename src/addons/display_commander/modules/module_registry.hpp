@@ -41,6 +41,7 @@ using ModuleDrawOverlayCallback = void (*)(display_commander::ui::IImGuiWrapper&
 using ModuleDrawMainTabInlineCallback = void (*)(display_commander::ui::IImGuiWrapper&,
                                                  reshade::api::effect_runtime*);
 using ModuleHotkeyCallback = void (*)();
+using ModuleActionCallback = void (*)();
 
 struct ModuleHotkeySpec {
     std::string id;
@@ -56,6 +57,19 @@ struct RegisteredModuleHotkey {
     ModuleHotkeySpec spec;
 };
 
+struct ModuleActionSpec {
+    std::string id;
+    std::string display_name;
+    std::string description;
+    ModuleActionCallback on_trigger_fn = nullptr;
+};
+
+struct RegisteredModuleAction {
+    std::string module_id;
+    std::string module_display_name;
+    ModuleActionSpec spec;
+};
+
 struct ModuleRegistrationSpec {
     ModuleDescriptor descriptor;
     bool default_enabled = false;
@@ -68,6 +82,7 @@ struct ModuleRegistrationSpec {
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
     std::vector<ModuleHotkeySpec> hotkeys;
+    std::vector<ModuleActionSpec> actions;
 };
 
 void InitializeModuleRegistry();
@@ -86,5 +101,7 @@ void DrawModuleMainTabInlineById(std::string_view module_id, display_commander::
 void DrawEnabledModulesMainTabInline(display_commander::ui::IImGuiWrapper& imgui,
                                      reshade::api::effect_runtime* runtime);
 std::vector<RegisteredModuleHotkey> GetEnabledModuleHotkeys();
+std::vector<RegisteredModuleAction> GetEnabledModuleActions();
+bool TriggerEnabledModuleActionById(std::string_view action_id);
 
 }  // namespace modules

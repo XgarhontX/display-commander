@@ -1,6 +1,5 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
-#include "modules/audio/backend/audio_backend.hpp"
 #include "display/display_cache.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
@@ -48,7 +47,6 @@ constexpr bool kMonitorPerSecondEnabled = true;
 constexpr int kMonitorPerSecondIntervalSec = 1;
 constexpr bool kMonitorScreensaver = true;
 constexpr bool kMonitorFpsAggregate = true;
-constexpr bool kMonitorVolume = true;
 constexpr bool kMonitorRefreshRate = true;
 constexpr bool kMonitorVrrStatus = true;
 constexpr bool kMonitorExclusiveKeyGroups = true;
@@ -318,20 +316,6 @@ static void Every1sFpsAggregate() {
     g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
 }
 
-static void Every1sVolume() {
-    g_continuous_monitoring_section.store("every1s_tasks:volume", std::memory_order_release);
-    float current_volume = 0.0f;
-    g_continuous_monitoring_section.store("every1s_tasks:volume:game", std::memory_order_release);
-    if (GetVolumeForCurrentProcess(&current_volume)) {
-        s_game_volume_percent.store(current_volume);
-    }
-    float system_volume = 0.0f;
-    g_continuous_monitoring_section.store("every1s_tasks:volume:system", std::memory_order_release);
-    if (GetSystemVolume(&system_volume)) {
-        s_system_volume_percent.store(system_volume);
-    }
-}
-
 static void Every1sRefreshRate() {
     g_continuous_monitoring_section.store("every1s_tasks:refresh_rate", std::memory_order_release);
     auto stats = dxgi::fps_limiter::GetRefreshRateStats();
@@ -393,9 +377,6 @@ void every1s_tasks() {
     }
     if (kMonitorFpsAggregate) {
         Every1sFpsAggregate();
-    }
-    if (kMonitorVolume) {
-        Every1sVolume();
     }
     if (kMonitorRefreshRate) {
         Every1sRefreshRate();

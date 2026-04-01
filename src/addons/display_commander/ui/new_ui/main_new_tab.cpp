@@ -1842,6 +1842,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 }
             }
 
+            modules::DrawModuleMainTabInlineById(module.id, imgui, nullptr);
         }
         imgui.Unindent();
     }
@@ -2615,8 +2616,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         display_commander::widgets::resolution_widget::DrawResolutionWidget(imgui);
         imgui.Unindent();
     }
-
-    modules::DrawEnabledModulesMainTabInline(imgui, runtime);
 
     imgui.Spacing();
 

@@ -27,8 +27,6 @@ enum class HotkeyId : int {
     DisplayCommanderUi,
     PerformanceOverlay,
     Stopwatch,
-    SystemVolumeUp,
-    SystemVolumeDown,
     WinDown,
     WinUp,
     WinLeft,

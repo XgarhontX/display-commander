@@ -7,9 +7,11 @@
 namespace modules::audio {
 
 void Initialize(ModuleConfigApi* config_api);
+void OnEnabled();
 void DrawTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
 void DrawOverlay(display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainTabInline(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
 void FillHotkeys(std::vector<ModuleHotkeySpec>* hotkeys_out);
+void FillActions(std::vector<ModuleActionSpec>* actions_out);
 
 }  // namespace modules::audio

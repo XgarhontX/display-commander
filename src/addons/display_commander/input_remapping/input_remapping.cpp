@@ -6,11 +6,11 @@
 #include "input_remapping.hpp"
 #include <reshade.hpp>
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../modules/audio/backend/audio_backend.hpp"
 #include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
 #include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../hooks/system/timeslowdown_hooks.hpp"
+#include "../modules/module_registry.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
@@ -1025,78 +1025,9 @@ void InputRemapper::execute_action(const std::string& action_name) {
         trigger_action_notification("Performance Overlay " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Performance overlay %s via action",
                 new_state ? "enabled" : "disabled");
-    } else if (action_name == "mute/unmute audio") {
-        // Toggle audio mute state
-        bool current_state = settings::g_mainTabSettings.audio_mute.GetValue();
-        bool new_state = !current_state;
-        settings::g_mainTabSettings.audio_mute.SetValue(new_state);
-
-        // Apply the mute state immediately
-        if (SetMuteForCurrentProcess(new_state)) {
-            ::g_muted_applied.store(new_state);
-            LogInfo("InputRemapper::execute_action() - Audio %s via action", new_state ? "muted" : "unmuted");
-        } else {
-            LogError("InputRemapper::execute_action() - Failed to %s audio", new_state ? "mute" : "unmute");
-        }
-    } else if (action_name == "increase volume") {
-        // Increase volume by relative 20% (multiply by 1.2), minimum 1% change
-        float current_volume = 0.0f;
-        if (!GetVolumeForCurrentProcess(&current_volume)) {
-            current_volume = ::s_game_volume_percent.load();
-        }
-
-        float percent_change = 0.0f;
-        if (current_volume <= 0.0f) {
-            // Special case: if at 0%, jump to 1%
-            percent_change = 1.0f;
-        } else {
-            // Calculate relative 20% increase (multiply by 1.2) for stability
-            float new_volume = current_volume * 1.2f;
-            // Ensure minimum 1% absolute change
-            float min_new_volume = current_volume + 1.0f;
-            if (new_volume < min_new_volume) {
-                new_volume = min_new_volume;
-            }
-            percent_change = new_volume - current_volume;
-        }
-
-        // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
-        if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float new_volume = ::s_game_volume_percent.load();
-            LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
-                    current_volume, new_volume, percent_change);
-        } else {
-            LogError("InputRemapper::execute_action() - Failed to increase volume");
-        }
-    } else if (action_name == "decrease volume") {
-        // Decrease volume by relative 20% (divide by 1.2), minimum 1% change
-        float current_volume = 0.0f;
-        if (!GetVolumeForCurrentProcess(&current_volume)) {
-            current_volume = ::s_game_volume_percent.load();
-        }
-
-        if (current_volume <= 0.0f) {
-            // Already at 0%, can't go lower
-            return;
-        }
-
-        // Calculate relative 20% decrease (divide by 1.2) for stability
-        float new_volume = current_volume / 1.2f;
-        // Ensure minimum 1% absolute change
-        float max_new_volume = current_volume - 1.0f;
-        if (new_volume > max_new_volume) {
-            new_volume = max_new_volume;
-        }
-        float percent_change = new_volume - current_volume;
-
-        // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
-        if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float final_volume = ::s_game_volume_percent.load();
-            LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
-                    current_volume, final_volume, percent_change);
-        } else {
-            LogError("InputRemapper::execute_action() - Failed to decrease volume");
-        }
+    } else if (modules::TriggerEnabledModuleActionById(action_name)) {
+        trigger_action_notification(action_name);
+        LogInfo("InputRemapper::execute_action() - Module action triggered: %s", action_name.c_str());
     } else if (action_name == "increase game speed") {
 #if !defined(DC_EXTERNAL_MODULES)
         LogWarn("InputRemapper::execute_action() - Increase game speed is private and requires DC_EXTERNAL_MODULES");
@@ -1147,66 +1078,6 @@ void InputRemapper::execute_action(const std::string& action_name) {
         trigger_action_notification("Display Commander UI " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Display Commander UI %s via action",
                 new_state ? "enabled" : "disabled");
-    } else if (action_name == "increase system volume") {
-        // Increase system volume by relative 20% (multiply by 1.2), minimum 1% change
-        float current_volume = 0.0f;
-        if (!GetSystemVolume(&current_volume)) {
-            // If we can't get current system volume, use stored value or default
-            current_volume = ::s_system_volume_percent.load();
-        }
-
-        float percent_change = 0.0f;
-        if (current_volume <= 0.0f) {
-            // Special case: if at 0%, jump to 1%
-            percent_change = 1.0f;
-        } else {
-            // Calculate relative 20% increase (multiply by 1.2) for stability
-            float new_volume = current_volume * 1.2f;
-            // Ensure minimum 1% absolute change
-            float min_new_volume = current_volume + 1.0f;
-            if (new_volume < min_new_volume) {
-                new_volume = min_new_volume;
-            }
-            percent_change = new_volume - current_volume;
-        }
-
-        if (AdjustSystemVolume(percent_change)) {
-            float new_volume = 0.0f;
-            GetSystemVolume(&new_volume);
-            LogInfo("InputRemapper::execute_action() - System volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
-                    current_volume, new_volume, percent_change);
-        } else {
-            LogError("InputRemapper::execute_action() - Failed to increase system volume");
-        }
-    } else if (action_name == "decrease system volume") {
-        // Decrease system volume by relative 20% (divide by 1.2), minimum 1% change
-        float current_volume = 0.0f;
-        if (!GetSystemVolume(&current_volume)) {
-            // If we can't get current system volume, use stored value or default
-            current_volume = ::s_system_volume_percent.load();
-        }
-
-        if (current_volume <= 0.0f) {
-            // Already at 0%, can't go lower
-            return;
-        }
-
-        // Calculate relative 20% decrease (divide by 1.2) for stability
-        float new_volume = current_volume / 1.2f;
-        // Ensure minimum 1% absolute change
-        float max_new_volume = current_volume - 1.0f;
-        if (new_volume > max_new_volume) {
-            new_volume = max_new_volume;
-        }
-        float percent_change = new_volume - current_volume;
-        if (AdjustSystemVolume(percent_change)) {
-            float final_volume = 0.0f;
-            GetSystemVolume(&final_volume);
-            LogInfo("InputRemapper::execute_action() - System volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
-                    current_volume, final_volume, percent_change);
-        } else {
-            LogError("InputRemapper::execute_action() - Failed to decrease system volume");
-        }
     } else if (action_name == "adhd toggle" || action_name == "adhd multi-monitor toggle") {
         // Toggle black curtain on other displays (same setting as Main tab second checkbox / hotkey)
         bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
@@ -1239,11 +1110,6 @@ std::string get_remap_type_name(RemapType type) {
 std::vector<std::string> get_available_actions() {
     std::vector<std::string> actions = {"screenshot",
                                         "performance overlay toggle",
-                                        "mute/unmute audio",
-                                        "increase volume",
-                                        "decrease volume",
-                                        "increase system volume",
-                                        "decrease system volume",
                                         "display commander ui toggle",
                                         "adhd toggle",
                                         "stopwatch toggle"};
@@ -1252,6 +1118,13 @@ std::vector<std::string> get_available_actions() {
     actions.push_back("increase game speed");
     actions.push_back("decrease game speed");
 #endif
+    const std::vector<modules::RegisteredModuleAction> module_actions = modules::GetEnabledModuleActions();
+    actions.reserve(actions.size() + module_actions.size());
+    for (const modules::RegisteredModuleAction& module_action : module_actions) {
+        if (!module_action.spec.id.empty()) {
+            actions.push_back(module_action.spec.id);
+        }
+    }
     return actions;
 }
 }  // namespace display_commander::input_remapping

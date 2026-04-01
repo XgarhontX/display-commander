@@ -10,17 +10,40 @@
 #include "../../ui/new_ui/main_new_tab.hpp"
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/exponential_smooth.hpp"
 #include "../../utils/logging.hpp"
 
 // Libraries <standard C++>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <iomanip>
 #include <cstdio>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 namespace modules::audio {
 namespace {
+
+std::atomic<bool> g_background_audio_monitor_started{false};
+std::atomic<bool> g_audio_volume_sync_thread_started{false};
+
+void RunAudioVolumeSyncThread() {
+    while (!g_shutdown.load(std::memory_order_acquire)) {
+        float current_volume = 0.0f;
+        if (::GetVolumeForCurrentProcess(&current_volume)) {
+            s_game_volume_percent.store(current_volume, std::memory_order_release);
+        }
+
+        float system_volume = 0.0f;
+        if (::GetSystemVolume(&system_volume)) {
+            s_system_volume_percent.store(system_volume, std::memory_order_release);
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
 
 // Returns a short label for an audio channel (L, R, C, LFE, etc.) for display in per-channel volume/VU UI.
 const char* GetAudioChannelLabel(unsigned int channel_index, unsigned int channel_count) {
@@ -435,10 +458,67 @@ void HotkeyVolumeDown() {
     }
 }
 
+void HotkeySystemVolumeUp() {
+    float current_volume = 0.0f;
+    if (!::GetSystemVolume(&current_volume)) {
+        current_volume = ::s_system_volume_percent.load();
+    }
+
+    float step = 0.0f;
+    if (current_volume <= 0.0f) {
+        step = 1.0f;
+    } else {
+        step = (std::max)(1.0f, current_volume * 0.20f);
+    }
+
+    if (::AdjustSystemVolume(step)) {
+        std::ostringstream oss;
+        oss << "System volume increased by " << std::fixed << std::setprecision(1) << step << "% via module hotkey";
+        LogInfo(oss.str().c_str());
+    } else {
+        LogWarn("Failed to increase system volume via module hotkey");
+    }
+}
+
+void HotkeySystemVolumeDown() {
+    float current_volume = 0.0f;
+    if (!::GetSystemVolume(&current_volume)) {
+        current_volume = ::s_system_volume_percent.load();
+    }
+
+    if (current_volume <= 0.0f) {
+        return;
+    }
+
+    const float step = (std::max)(1.0f, current_volume * 0.20f);
+    if (::AdjustSystemVolume(-step)) {
+        std::ostringstream oss;
+        oss << "System volume decreased by " << std::fixed << std::setprecision(1) << step << "% via module hotkey";
+        LogInfo(oss.str().c_str());
+    } else {
+        LogWarn("Failed to decrease system volume via module hotkey");
+    }
+}
+
 }  // namespace
 
 void Initialize(ModuleConfigApi* config_api) {
     (void)config_api;
+}
+
+void OnEnabled() {
+    bool background_expected = false;
+    if (g_background_audio_monitor_started.compare_exchange_strong(background_expected, true,
+                                                                   std::memory_order_acq_rel)) {
+        LogInfo("[AudioModule] Starting RunBackgroundAudioMonitor thread");
+        std::thread(RunBackgroundAudioMonitor).detach();
+    }
+
+    bool sync_expected = false;
+    if (g_audio_volume_sync_thread_started.compare_exchange_strong(sync_expected, true, std::memory_order_acq_rel)) {
+        LogInfo("[AudioModule] Starting audio volume sync thread");
+        std::thread(RunAudioVolumeSyncThread).detach();
+    }
 }
 
 void DrawTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime) {
@@ -446,9 +526,96 @@ void DrawTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_r
     DrawAudioSettingsInternal(imgui);
 }
 
+
+
+void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
+    CALL_GUARD_NO_TS();;
+    unsigned int meter_count = 0;
+    if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {
+        return;
+    }
+    static std::vector<float> s_overlay_vu_peaks;
+    static std::vector<float> s_overlay_vu_smoothed;
+    if (s_overlay_vu_peaks.size() < meter_count) {
+        s_overlay_vu_peaks.resize(meter_count);
+        s_overlay_vu_smoothed.resize(meter_count, 0.0f);
+    }
+    unsigned int effective_meter_count = meter_count;
+    if (::GetAudioMeterPeakValues(meter_count, s_overlay_vu_peaks.data())) {
+        // use meter_count as-is
+    } else if (meter_count > 6 && ::GetAudioMeterPeakValues(6, s_overlay_vu_peaks.data())) {
+        effective_meter_count = 6;
+    } else if (meter_count > 2 && ::GetAudioMeterPeakValues(2, s_overlay_vu_peaks.data())) {
+        effective_meter_count = 2;
+    } else {
+        return;
+    }
+    // Wall-clock first-order smoothing (same feel as α=0.05 per step at 60 Hz); see utils/exponential_smooth.hpp.
+    static uint64_t s_overlay_vu_last_smooth_ns = 0;
+    const uint64_t now_ns = utils::get_now_ns();
+    float dt_sec = (1.0f / 60.0f);
+    if (s_overlay_vu_last_smooth_ns != 0ULL) {
+        dt_sec = static_cast<float>(static_cast<double>(now_ns - s_overlay_vu_last_smooth_ns) * 1e-9);
+        dt_sec = (std::min)((std::max)(dt_sec, 1.0e-4f), 0.25f);
+    }
+    s_overlay_vu_last_smooth_ns = now_ns;
+    const float k_vu_tau_sec = utils::first_order_tau_for_step_alpha(0.1f, 60.0f);
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const float p = (std::min)(1.0f, s_overlay_vu_peaks[i]);
+        const float s = s_overlay_vu_smoothed[i];
+        s_overlay_vu_smoothed[i] = utils::exponential_smooth_toward(s, p, dt_sec, k_vu_tau_sec);
+    }
+    const float bar_height = 96.0f;
+    const float bar_width = 20.0f;
+    // Column width from widest channel label (L, LFE, Ch0, …) so labels do not overlap.
+    const float col_pad_x = 6.0f;
+    float column_width = bar_width + (col_pad_x * 2.0f);
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
+        const float tw = imgui.CalcTextSize(ch_label).x;
+        column_width = (std::max)(column_width, tw + (col_pad_x * 2.0f));
+    }
+    const float total_width = static_cast<float>(effective_meter_count) * column_width;
+    auto draw_list = imgui.GetWindowDrawList();
+    const ImVec2 cursor = imgui.GetCursorScreenPos();
+    if (draw_list != nullptr) {
+        for (unsigned int i = 0; i < effective_meter_count; ++i) {
+            const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
+            const float col_x = cursor.x + static_cast<float>(i) * column_width;
+            const float x = col_x + ((column_width - bar_width) * 0.5f);
+            const ImVec2 bg_min(x, cursor.y);
+            const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
+            const float fill_h = level * bar_height;
+            const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
+            const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
+            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
+            draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
+            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+        }
+    }
+    imgui.Dummy(ImVec2(total_width, bar_height));
+    const float label_y = cursor.y + bar_height + 2.0f;
+    const float line_height = imgui.GetTextLineHeightWithSpacing();
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
+        const float col_x = cursor.x + static_cast<float>(i) * column_width;
+        const float text_w = imgui.CalcTextSize(ch_label).x;
+        imgui.SetCursorScreenPos(ImVec2(col_x + ((column_width - text_w) * 0.5f), label_y));
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
+    }
+    if (show_tooltips && imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Per-channel level (default output device). Smoothed with ~0.32 s time constant (exp decay by "
+            "wall time, not raw frame count).");
+    }
+    imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
+    imgui.Dummy(ImVec2(total_width, line_height));
+}
+
 void DrawOverlay(display_commander::ui::IImGuiWrapper& imgui) {
     if (settings::g_mainTabSettings.show_overlay_vu_bars.GetValue()) {
-        ui::new_ui::DrawOverlayVUBars(imgui, false);
+        DrawOverlayVUBars(imgui, false);
     }
 }
 
@@ -479,6 +646,31 @@ void FillHotkeys(std::vector<ModuleHotkeySpec>* hotkeys_out) {
     hotkeys_out->push_back(ModuleHotkeySpec{
         "volume_down", "Volume Down", "ctrl shift down", "Decrease audio volume (percentage-based, min 1%)",
         &HotkeyVolumeDown});
+    hotkeys_out->push_back(ModuleHotkeySpec{
+        "system_volume_up", "System Volume Up", "ctrl alt up",
+        "Increase system master volume (percentage-based, min 1%)", &HotkeySystemVolumeUp});
+    hotkeys_out->push_back(ModuleHotkeySpec{
+        "system_volume_down", "System Volume Down", "ctrl alt down",
+        "Decrease system master volume (percentage-based, min 1%)", &HotkeySystemVolumeDown});
+}
+
+void FillActions(std::vector<ModuleActionSpec>* actions_out) {
+    if (actions_out == nullptr) {
+        return;
+    }
+
+    actions_out->push_back(
+        ModuleActionSpec{"mute/unmute audio", "Mute/Unmute Audio", "Toggle audio mute state", &HotkeyMuteToggle});
+    actions_out->push_back(ModuleActionSpec{"increase volume", "Increase Volume",
+                                            "Increase game volume (percentage-based, min 1%)", &HotkeyVolumeUp});
+    actions_out->push_back(ModuleActionSpec{"decrease volume", "Decrease Volume",
+                                            "Decrease game volume (percentage-based, min 1%)", &HotkeyVolumeDown});
+    actions_out->push_back(ModuleActionSpec{"increase system volume", "Increase System Volume",
+                                            "Increase system master volume (percentage-based, min 1%)",
+                                            &HotkeySystemVolumeUp});
+    actions_out->push_back(ModuleActionSpec{"decrease system volume", "Decrease System Volume",
+                                            "Decrease system master volume (percentage-based, min 1%)",
+                                            &HotkeySystemVolumeDown});
 }
 
 }  // namespace modules::audio

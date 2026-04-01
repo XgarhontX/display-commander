@@ -1,5 +1,4 @@
-#include "addon.hpp"
-#include "modules/audio/backend/audio_backend.hpp"
+
 #include "display/display_initial_state.hpp"
 #include "display/hdr_control.hpp"
 #include "globals.hpp"
@@ -8,7 +7,6 @@
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/system/timeslowdown_hooks.hpp"
-#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
@@ -254,10 +252,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize refresh rate monitoring
     LogInfo("[DoInitializationWithHwnd] before StartRefreshRateMonitoring");
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-
-    // Initialize experimental tab
-    LogInfo("[DoInitializationWithHwnd] before RunBackgroundAudioMonitor detach");
-    std::thread(RunBackgroundAudioMonitor).detach();
 
     LogInfo("[DoInitializationWithHwnd] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();

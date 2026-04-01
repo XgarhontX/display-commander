@@ -1,6 +1,5 @@
 #include "hotkeys_tab.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../../modules/audio/backend/audio_backend.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
@@ -383,57 +382,6 @@ void InitializeHotkeyDefinitions() {
          }},
         {"stopwatch", "Stopwatch Start/Pause", "ctrl shift s", "Start or pause the stopwatch (2-state toggle)",
          []() { display_commander::input_remapping::ToggleStopwatch(); }},
-        {"system_volume_up", "System Volume Up", "ctrl alt up",
-         "Increase system master volume (percentage-based, min 1%)",
-         []() {
-             float current_volume = 0.0f;
-             if (!GetSystemVolume(&current_volume)) {
-                 current_volume = s_system_volume_percent.load();
-             }
-
-             // Calculate percentage-based step: 20% of current volume, minimum 1%
-             float step = 0.0f;
-             if (current_volume <= 0.0f) {
-                 // Special case: if at 0%, jump to 1%
-                 step = 1.0f;
-             } else {
-                 // 20% of current volume, with minimum of 1%
-                 step = (std::max)(1.0f, current_volume * 0.20f);
-             }
-
-             if (AdjustSystemVolume(step)) {
-                 std::ostringstream oss;
-                 oss << "System volume increased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
-                 LogInfo(oss.str().c_str());
-             } else {
-                 LogWarn("Failed to increase system volume via hotkey");
-             }
-         }},
-        {"system_volume_down", "System Volume Down", "ctrl alt down",
-         "Decrease system master volume (percentage-based, min 1%)",
-         []() {
-             float current_volume = 0.0f;
-             if (!GetSystemVolume(&current_volume)) {
-                 current_volume = s_system_volume_percent.load();
-             }
-
-             // Calculate percentage-based step: 20% of current volume, minimum 1%
-             if (current_volume <= 0.0f) {
-                 // Already at 0%, can't go lower
-                 return;
-             }
-
-             // 20% of current volume, with minimum of 1%
-             float step = (std::max)(1.0f, current_volume * 0.20f);
-
-             if (AdjustSystemVolume(-step)) {
-                 std::ostringstream oss;
-                 oss << "System volume decreased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
-                 LogInfo(oss.str().c_str());
-             } else {
-                 LogWarn("Failed to decrease system volume via hotkey");
-             }
-         }},
         {"win_down", "Win+Down (Minimize)", "win down",
          "Minimize borderless game window (Special-K style). Only when game is in foreground.",
          []() {
@@ -586,10 +534,6 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinUp)].parsed =
@@ -769,10 +713,6 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed));
     s.hotkey_stopwatch.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed));
-    s.hotkey_system_volume_up.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed));
-    s.hotkey_system_volume_down.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed));
     s.hotkey_win_down.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed));
     s.hotkey_win_up.SetValue(
@@ -840,8 +780,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
                     case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
                     case HotkeyId::Stopwatch: setting_ptr = &settings.hotkey_stopwatch; break;
-                    case HotkeyId::SystemVolumeUp: setting_ptr = &settings.hotkey_system_volume_up; break;
-                    case HotkeyId::SystemVolumeDown: setting_ptr = &settings.hotkey_system_volume_down; break;
                     case HotkeyId::WinDown: setting_ptr = &settings.hotkey_win_down; break;
                     case HotkeyId::WinUp: setting_ptr = &settings.hotkey_win_up; break;
                     case HotkeyId::WinLeft: setting_ptr = &settings.hotkey_win_left; break;

@@ -31,6 +31,7 @@ struct ModuleEntry {
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
     std::vector<ModuleHotkeySpec> hotkeys;
+    std::vector<ModuleActionSpec> actions;
     std::unique_ptr<ModuleConfigApi> config_api;
 };
 
@@ -98,10 +99,12 @@ void RegisterPublicModules() {
         spec.default_enabled = true;
         spec.default_show_in_overlay = false;
         spec.initialize_fn = &audio::Initialize;
+        spec.on_enabled_fn = &audio::OnEnabled;
         spec.draw_tab_fn = &audio::DrawTab;
         spec.draw_overlay_fn = &audio::DrawOverlay;
         spec.draw_main_tab_inline_fn = &audio::DrawMainTabInline;
         audio::FillHotkeys(&spec.hotkeys);
+        audio::FillActions(&spec.actions);
 
         ModuleEntry entry{};
         entry.descriptor = spec.descriptor;
@@ -116,6 +119,7 @@ void RegisterPublicModules() {
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
         entry.hotkeys = spec.hotkeys;
+        entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
     }
 
@@ -148,6 +152,7 @@ void RegisterPublicModules() {
     entry.on_enabled_fn = spec.on_enabled_fn;
     entry.on_disabled_fn = spec.on_disabled_fn;
     entry.hotkeys = spec.hotkeys;
+    entry.actions = spec.actions;
     AddModuleEntry(std::move(entry));
 }
 
@@ -173,6 +178,7 @@ void RegisterPrivateModules() {
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
         entry.hotkeys = spec.hotkeys;
+        entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
     }
 #endif
@@ -369,6 +375,56 @@ std::vector<RegisteredModuleHotkey> GetEnabledModuleHotkeys() {
     }
 
     return hotkeys;
+}
+
+std::vector<RegisteredModuleAction> GetEnabledModuleActions() {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+
+    std::vector<RegisteredModuleAction> actions;
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.enabled || entry.actions.empty()) {
+            continue;
+        }
+
+        actions.reserve(actions.size() + entry.actions.size());
+        for (const ModuleActionSpec& spec : entry.actions) {
+            if (spec.id.empty() || spec.on_trigger_fn == nullptr) {
+                continue;
+            }
+
+            RegisteredModuleAction action{};
+            action.module_id = entry.descriptor.id;
+            action.module_display_name = entry.descriptor.display_name;
+            action.spec = spec;
+            actions.push_back(std::move(action));
+        }
+    }
+
+    return actions;
+}
+
+bool TriggerEnabledModuleActionById(std::string_view action_id) {
+    if (action_id.empty()) {
+        return false;
+    }
+
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.enabled || entry.actions.empty()) {
+            continue;
+        }
+        for (const ModuleActionSpec& spec : entry.actions) {
+            if (spec.id == action_id && spec.on_trigger_fn != nullptr) {
+                spec.on_trigger_fn();
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 }  // namespace modules
