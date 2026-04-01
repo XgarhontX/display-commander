@@ -13,6 +13,8 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.71 (2026-04-01)
+- [cleanup] **GitHub Actions submodule checkout** - Removed a stale Git submodule pointer to `external-private/display-commander2-modules` from the repository index. That path is optional local-only content (see `DC_EXTERNAL_MODULES`); it was not listed in `.gitmodules`, so `actions/checkout` with recursive submodules failed with “No url found for submodule path”. CI and clones no longer hit that error.
+  Details: `git rm --cached external-private/display-commander2-modules`; directory remains gitignored for developers who have the private tree.
 - [ui] [settings] **Main tab Audio optional panel** - When the Audio module is off under Main tab Features, the **Show Audio Control** toggle and the optional Audio section are hidden so you do not see a disabled placeholder. If **Show Audio Control** is on, the duplicate second **Audio control** block at the bottom of the Main tab is no longer drawn (one collapsing section only).
   Details: `modules::IsModuleEnabled("audio")` gates Advanced optional-panel UI and optional draw order in `main_new_tab.cpp`; `modules::audio::DrawMainTabInline` returns early when `show_main_tab_audio_control` is enabled.
 - [new feature] [ui] [settings] [hooks] **Unclip Cursor** - You can turn on **Unclip Cursor** in Main tab Input Control so the game cannot lock the mouse to its window (every `ClipCursor` from the game is turned into a full release). It is mutually exclusive with **Clip Cursor**; if both were saved in config, **Unclip** is turned off on load.
