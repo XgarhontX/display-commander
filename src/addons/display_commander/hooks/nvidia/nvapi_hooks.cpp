@@ -162,8 +162,8 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
         if (g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].load(std::memory_order_relaxed)
             != frame_id) {
-            g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].store(frame_id,
-                                                                                     std::memory_order_relaxed);
+            g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].store(
+                frame_id,std::memory_order_relaxed);
         } else {
             // skip FIXME
            return 0;
@@ -329,6 +329,28 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
         static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
     };
+    #ifdef FIX_REFLEX
+    NV_LATENCY_MARKER_TYPE marker_type_org = pSetLatencyMarkerParams->markerType;
+    if (pSetLatencyMarkerParams->markerType <= NV_LATENCY_MARKER_TYPE::PRESENT_END) {
+
+        for (int other_marker_type = 0; other_marker_type < marker_type_org; other_marker_type++) {
+            uint64_t other_frame_id  = g_latency_marker_buffer_per_type[other_marker_type].load(std::memory_order_relaxed);
+
+            if (other_frame_id < pSetLatencyMarkerParams->frameID) {
+                pSetLatencyMarkerParams->markerType = NV_LATENCY_MARKER_TYPE::PRESENT_START;
+                ProcessReflexMarkerFpsLimiter(
+                    FpsLimiterCallSite::reflex_marker, static_cast<int>(other_marker_type),
+                    pSetLatencyMarkerParams->frameID, nvapi_markers, [&]() {
+                        const NvAPI_Status s = NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+                        return (s == NVAPI_OK) ? 0 : static_cast<int>(s);
+                    });
+            }
+        }
+        pSetLatencyMarkerParams->markerType = marker_type_org;
+    }
+    #endif
+
+
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
         pSetLatencyMarkerParams->frameID, nvapi_markers, [&]() {

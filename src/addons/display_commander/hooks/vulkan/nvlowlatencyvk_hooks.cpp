@@ -175,7 +175,10 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker_vk_nvll, static_cast<int>(params->markerType), params->frameID,
         vk_nvll_markers, [&]() { return (NvLL_VK_SetLatencyMarker_Original(device, params) == NVLL_VK_OK) ? 0 : 1; });
-    return (r == 0) ? NVLL_VK_OK : static_cast<NvLL_VK_Status>(r);
+
+
+
+        return (r == 0) ? NVLL_VK_OK : static_cast<NvLL_VK_Status>(r);
 }
 
 static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pSignalSemaphoreHandle) {
@@ -236,6 +239,7 @@ static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue) {
     }
     auto res= NvLL_VK_Sleep_Original(device, signalValue);
 
+    #ifdef USE_REFLEX_SLEEP
     const ReflexMarkerTypes vk_nvll_markers = {
         static_cast<int>(VK_SIMULATION_START),
         static_cast<int>(VK_PRESENT_START) - 1,
@@ -248,6 +252,7 @@ static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue) {
         frame_id, vk_nvll_markers, [&]() {
             return res;
         });
+    #endif
 
     return res;
 }
