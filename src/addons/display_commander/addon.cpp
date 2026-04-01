@@ -63,5 +63,6 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
         LogInfo("[AddonInit] Display Commander state is not HOOKED, refusing to load");
         return false;
     }
-    return FinishAddonRegistration(addon_module, reshade_module, true);
+    FinishAddonRegistration(addon_module, reshade_module, true);
+    return true;
 }
