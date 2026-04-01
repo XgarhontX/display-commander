@@ -15,8 +15,14 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 )
 
 
-# ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
-list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
+# DC_NO_MODULES=ON: omit in-repo module implementations; module_registry.cpp remains (empty registry + stubs via DC_INTERNAL_MODULES=0).
+# Omit proxy_dll/*.cpp (API rename forwarders); main_entry still calls InstallRealDXGIMinHookHooks via inline stub in dxgi_proxy_init.hpp.
+if(DC_NO_MODULES)
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/example_dummy/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/proxy_dll/.*\\.cpp$")
+endif()
 
 if(DC_EXTERNAL_MODULES)
   set(_dc_external_modules_src_dir "${_dc_external_modules_root}/src/nmodules")
@@ -117,9 +123,10 @@ if(MSVC)
   )
 endif()
 
-# System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/user32/winhttp: version info,
-# ETW (PresentMon-style), Win32. No opengl32.lib (proxy exports; standalone UI loads GL at runtime).
-target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 user32 winhttp)
+# System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/user32/winhttp: device/setup,
+# ETW (PresentMon-style), Win32. version: GetFileVersionInfo*/VerQueryValueW (main_entry ReShade detection; was implicit via
+# version_proxy.cpp before DC_NO_MODULES omits proxy_dll). No opengl32.lib (proxy exports; standalone UI loads GL at runtime).
+target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 user32 winhttp version)
 
 # MinHook (static); NVAPI is loaded at runtime (nvapi_loader), headers only from external/nvapi.
 if(EXISTS "${_dc_repo_root}/external/minhook")
