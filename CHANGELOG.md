@@ -12,6 +12,8 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.68 (2026-03-31)
+- [bugfix] [critical] **Fixed crash when unloading modules** - Display Commander now shuts down module instances more safely during unload, preventing rare crashes when modules are being removed or the addon is exiting.
+- [new feature] [cleanup] **Added in-repo example dummy module** - Added a minimal built-in module template (tick + tab + overlay callbacks) to make creating new modules easier and less error-prone.
 - [new feature] [ui] [settings] **Added modules** - External modules now can be loaded if needed.
 
 ## v0.13.68 (2026-03-31)

@@ -3,6 +3,7 @@
 
 // Source Code <Display Commander>
 #include "../config/display_commander_config.hpp"
+#include "example_dummy/example_dummy_module.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
 #include "private_modules_registration.hpp"
@@ -83,6 +84,33 @@ void AddModuleEntry(ModuleEntry&& entry) {
 
 void RegisterPublicModules() {
     // Public modules are registered here (always compiled in public builds).
+    ModuleRegistrationSpec spec{};
+    spec.descriptor.id = "example_dummy";
+    spec.descriptor.display_name = "Example Dummy";
+    spec.descriptor.description = "Minimal in-repo example module with tick, tab, and overlay callbacks.";
+    spec.descriptor.has_tab = true;
+    spec.descriptor.tab_name = "Example Dummy";
+    spec.descriptor.tab_id = "example_dummy";
+    spec.descriptor.is_advanced_tab = true;
+    spec.default_enabled = false;
+    spec.default_show_in_overlay = false;
+    spec.initialize_fn = &example_dummy::Initialize;
+    spec.tick_fn = &example_dummy::Tick;
+    spec.draw_tab_fn = &example_dummy::DrawTab;
+    spec.draw_overlay_fn = &example_dummy::DrawOverlay;
+
+    ModuleEntry entry{};
+    entry.descriptor = spec.descriptor;
+    entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+    entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+    entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+    entry.initialize_fn = spec.initialize_fn;
+    entry.tick_fn = spec.tick_fn;
+    entry.draw_tab_fn = spec.draw_tab_fn;
+    entry.draw_overlay_fn = spec.draw_overlay_fn;
+    entry.on_enabled_fn = spec.on_enabled_fn;
+    entry.on_disabled_fn = spec.on_disabled_fn;
+    AddModuleEntry(std::move(entry));
 }
 
 void RegisterPrivateModules() {
@@ -172,9 +200,8 @@ bool SetModuleEnabled(std::string_view module_id, bool enabled) {
             entry->on_enabled_fn();
         }
     } else {
-        if (entry->on_disabled_fn != nullptr) {
-            entry->on_disabled_fn();
-        }
+        // Soft-disable only: keep module resident in memory to avoid unload-related crashes.
+        // Disabled modules are hidden/skipped by descriptor.enabled checks in tab/tick/overlay paths.
     }
     return true;
 }
