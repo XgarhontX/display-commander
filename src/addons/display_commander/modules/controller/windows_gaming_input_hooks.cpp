@@ -1,15 +1,27 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "windows_gaming_input_hooks.hpp"
-#include <MinHook.h>
-#include <windows.gaming.input.h>
-#include <atomic>
-#include <set>
-#include <string>
-#include <utility>
+
+// Source Code <Display Commander>
+#include "../../hooks/hook_suppression_manager.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
-#include "../hook_suppression_manager.hpp"
+
+// Libraries <MinHook>
+#include <MinHook.h>
+
+// Libraries <standard C++>
+#include <atomic>
+#include <set>
+#include <string>
+#include <utility>
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — Windows.Gaming.Input (SDK)
+#include <windows.gaming.input.h>
 
 namespace {
 

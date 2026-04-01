@@ -1,4 +1,7 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "remapping_widget.hpp"
+
+// Source Code <Display Commander>
 #include "../../config/display_commander_config.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
@@ -6,6 +9,7 @@
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 
+// Libraries <ReShade> / <imgui>
 #include <reshade_imgui.hpp>
 
 namespace display_commander::widgets::remapping_widget {

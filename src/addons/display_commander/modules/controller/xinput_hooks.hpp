@@ -1,18 +1,23 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
-#include <windows.h>
+// Libraries <standard C++>
 #include <cstdint>
 #include <memory>
 
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — XInput API
 #include <XInput.h>
 
 namespace display_commander {
 namespace widgets {
 namespace xinput_widget {
 struct XInputSharedState;
-}
-}
-}
+}  // namespace xinput_widget
+}  // namespace widgets
+}  // namespace display_commander
 
 namespace display_commanderhooks {
 

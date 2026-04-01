@@ -11,10 +11,10 @@
 #include "../system/display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "../../globals.hpp"
+#include "../../modules/module_registry.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"
 #include "../opengl/opengl_hooks.hpp"
-#include "../input/windows_gaming_input_hooks.hpp"
 #include "windows_message_hooks.hpp"
 
 namespace display_commanderhooks {
@@ -650,8 +650,8 @@ void UninstallApiHooks() {
         return;
     }
 
-    // Uninstall Windows.Gaming.Input hooks
-    UninstallWindowsGamingInputHooks();
+    // Module-owned detours (e.g. Windows.Gaming.Input) before global MinHook teardown
+    ::modules::NotifyModulesUninstallApiHooks();
 
     // Uninstall LoadLibrary hooks
     UninstallLoadLibraryHooks();

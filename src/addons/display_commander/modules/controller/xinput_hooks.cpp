@@ -1,22 +1,29 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "xinput_hooks.hpp"
-#include <MinHook.h>
-#include <array>
-#include <cmath>
-#include <functional>
-#include <optional>
-#include <string>
-#include <vector>
+
+// Source Code <Display Commander>
 #include "../../globals.hpp"
-#include "../../input_remapping/input_remapping.hpp"
+#include "../../hooks/hook_suppression_manager.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../../widgets/xinput_widget/xinput_widget.hpp"
-#include "../hook_suppression_manager.hpp"
-#include "../windows_hooks/windows_message_hooks.hpp"
+#include "input_remapping.hpp"
+#include "xinput_widget.hpp"
+
+// Libraries <MinHook>
+#include <MinHook.h>
+
+// Libraries <standard C++>
+#include <array>
+#include <cmath>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE

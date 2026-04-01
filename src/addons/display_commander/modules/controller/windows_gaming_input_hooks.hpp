@@ -1,9 +1,15 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
-#include <roapi.h>
-#include <windows.h>
-#include <wrl.h>
+// Libraries <standard C++>
 #include <atomic>
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — WinRT / RoAPI
+#include <roapi.h>
+#include <wrl.h>
 
 namespace display_commanderhooks {
 

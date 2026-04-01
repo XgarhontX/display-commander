@@ -4,6 +4,7 @@
 // Source Code <Display Commander>
 #include "../config/display_commander_config.hpp"
 #include "audio/audio_module.hpp"
+#include "controller/controller_module.hpp"
 #include "example_dummy/example_dummy_module.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
@@ -25,11 +26,14 @@ struct ModuleEntry {
     ModuleDescriptor descriptor;
     void (*initialize_fn)(ModuleConfigApi* config_api) = nullptr;
     void (*tick_fn)() = nullptr;
+    ModuleReshadePresentBeforeCallback reshade_present_before_fn = nullptr;
     void (*draw_tab_fn)(display_commander::ui::IImGuiWrapper&, reshade::api::effect_runtime*) = nullptr;
     void (*draw_overlay_fn)(display_commander::ui::IImGuiWrapper&) = nullptr;
     ModuleDrawMainTabInlineCallback draw_main_tab_inline_fn = nullptr;
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
+    ModuleLifecycleCallback on_uninstall_api_hooks_fn = nullptr;
+    ModuleOnLibraryLoadedCallback on_library_loaded_fn = nullptr;
     std::vector<ModuleHotkeySpec> hotkeys;
     std::vector<ModuleActionSpec> actions;
     std::unique_ptr<ModuleConfigApi> config_api;
@@ -113,11 +117,53 @@ void RegisterPublicModules() {
         entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
+        entry.reshade_present_before_fn = spec.reshade_present_before_fn;
         entry.draw_tab_fn = spec.draw_tab_fn;
         entry.draw_overlay_fn = spec.draw_overlay_fn;
         entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
+        entry.on_library_loaded_fn = spec.on_library_loaded_fn;
+        entry.hotkeys = spec.hotkeys;
+        entry.actions = spec.actions;
+        AddModuleEntry(std::move(entry));
+    }
+
+    {
+        ModuleRegistrationSpec spec{};
+        spec.descriptor.id = "controller";
+        spec.descriptor.display_name = "Controller";
+        spec.descriptor.description = "XInput / Windows.Gaming.Input hooks, controller UI, and remapping support.";
+        spec.descriptor.has_tab = true;
+        spec.descriptor.tab_name = "Controller";
+        spec.descriptor.tab_id = "controller";
+        spec.descriptor.is_advanced_tab = true;
+        spec.default_enabled = true;
+        spec.default_show_in_overlay = false;
+        spec.initialize_fn = &controller::Initialize;
+        spec.on_enabled_fn = &controller::OnEnabled;
+        spec.on_disabled_fn = &controller::OnDisabled;
+        spec.on_uninstall_api_hooks_fn = &controller::OnUninstallApiHooks;
+        spec.draw_tab_fn = &controller::DrawTab;
+        spec.on_library_loaded_fn = &controller::OnLibraryLoaded;
+        spec.reshade_present_before_fn = &controller::OnReshadePresentBefore;
+
+        ModuleEntry entry{};
+        entry.descriptor = spec.descriptor;
+        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.initialize_fn = spec.initialize_fn;
+        entry.tick_fn = spec.tick_fn;
+        entry.reshade_present_before_fn = spec.reshade_present_before_fn;
+        entry.draw_tab_fn = spec.draw_tab_fn;
+        entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
+        entry.on_enabled_fn = spec.on_enabled_fn;
+        entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
+        entry.on_library_loaded_fn = spec.on_library_loaded_fn;
         entry.hotkeys = spec.hotkeys;
         entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
@@ -146,11 +192,14 @@ void RegisterPublicModules() {
     entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
     entry.initialize_fn = spec.initialize_fn;
     entry.tick_fn = spec.tick_fn;
+    entry.reshade_present_before_fn = spec.reshade_present_before_fn;
     entry.draw_tab_fn = spec.draw_tab_fn;
     entry.draw_overlay_fn = spec.draw_overlay_fn;
     entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
     entry.on_enabled_fn = spec.on_enabled_fn;
     entry.on_disabled_fn = spec.on_disabled_fn;
+    entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
+    entry.on_library_loaded_fn = spec.on_library_loaded_fn;
     entry.hotkeys = spec.hotkeys;
     entry.actions = spec.actions;
     AddModuleEntry(std::move(entry));
@@ -172,11 +221,14 @@ void RegisterPrivateModules() {
             entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
+        entry.reshade_present_before_fn = spec.reshade_present_before_fn;
         entry.draw_tab_fn = spec.draw_tab_fn;
         entry.draw_overlay_fn = spec.draw_overlay_fn;
         entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
+        entry.on_library_loaded_fn = spec.on_library_loaded_fn;
         entry.hotkeys = spec.hotkeys;
         entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
@@ -186,24 +238,76 @@ void RegisterPrivateModules() {
 
 }  // namespace
 
+void NotifyModulesUninstallApiHooks() {
+    InitializeModuleRegistry();
+    std::vector<ModuleLifecycleCallback> callbacks;
+    {
+        utils::SRWLockShared lock(g_modules_lock);
+        callbacks.reserve(g_modules.size());
+        for (const ModuleEntry& entry : g_modules) {
+            if (entry.on_uninstall_api_hooks_fn != nullptr) {
+                callbacks.push_back(entry.on_uninstall_api_hooks_fn);
+            }
+        }
+    }
+    for (ModuleLifecycleCallback fn : callbacks) {
+        if (fn != nullptr) {
+            fn();
+        }
+    }
+}
+
 void InitializeModuleRegistry() {
     bool expected = false;
     if (!g_registry_initialized.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_modules_lock);
-    g_modules.clear();
+    std::vector<ModuleLifecycleCallback> on_enabled_after_unlock;
+    {
+        utils::SRWLockExclusive lock(g_modules_lock);
+        g_modules.clear();
 
-    RegisterPublicModules();
-    RegisterPrivateModules();
+        RegisterPublicModules();
+        RegisterPrivateModules();
 
-    for (ModuleEntry& entry : g_modules) {
-        if (entry.initialize_fn != nullptr) {
-            entry.initialize_fn(entry.config_api.get());
+        for (ModuleEntry& entry : g_modules) {
+            if (entry.initialize_fn != nullptr) {
+                entry.initialize_fn(entry.config_api.get());
+            }
         }
-        if (entry.descriptor.enabled && entry.on_enabled_fn != nullptr) {
-            entry.on_enabled_fn();
+        on_enabled_after_unlock.reserve(g_modules.size());
+        for (ModuleEntry& entry : g_modules) {
+            if (entry.descriptor.enabled && entry.on_enabled_fn != nullptr) {
+                on_enabled_after_unlock.push_back(entry.on_enabled_fn);
+            }
+        }
+    }
+    for (ModuleLifecycleCallback fn : on_enabled_after_unlock) {
+        if (fn != nullptr) {
+            fn();
+        }
+    }
+}
+
+void NotifyEnabledModulesOnLibraryLoaded(HMODULE h_module, const wchar_t* module_path_lower) {
+    if (h_module == nullptr || module_path_lower == nullptr) {
+        return;
+    }
+    InitializeModuleRegistry();
+    std::vector<ModuleOnLibraryLoadedCallback> callbacks;
+    {
+        utils::SRWLockShared lock(g_modules_lock);
+        for (const ModuleEntry& entry : g_modules) {
+            if (!entry.descriptor.enabled || entry.on_library_loaded_fn == nullptr) {
+                continue;
+            }
+            callbacks.push_back(entry.on_library_loaded_fn);
+        }
+    }
+    for (ModuleOnLibraryLoadedCallback fn : callbacks) {
+        if (fn != nullptr) {
+            fn(h_module, module_path_lower);
         }
     }
 }
@@ -228,26 +332,36 @@ bool IsModuleEnabled(std::string_view module_id) {
 
 bool SetModuleEnabled(std::string_view module_id, bool enabled) {
     InitializeModuleRegistry();
-    utils::SRWLockExclusive lock(g_modules_lock);
-    ModuleEntry* entry = FindModuleEntry(module_id);
-    if (entry == nullptr) {
-        return false;
-    }
-    const bool was_enabled = entry->descriptor.enabled;
-    if (was_enabled == enabled) {
-        return true;
-    }
-    entry->descriptor.enabled = enabled;
-    if (entry->config_api) {
-        entry->config_api->SetBool("enabled", enabled);
-    }
-    if (enabled) {
-        if (entry->on_enabled_fn != nullptr) {
-            entry->on_enabled_fn();
+    ModuleLifecycleCallback on_enabled_fn_after_unlock = nullptr;
+    ModuleLifecycleCallback on_disabled_fn_after_unlock = nullptr;
+    {
+        utils::SRWLockExclusive lock(g_modules_lock);
+        ModuleEntry* entry = FindModuleEntry(module_id);
+        if (entry == nullptr) {
+            return false;
         }
-    } else {
-        // Soft-disable only: keep module resident in memory to avoid unload-related crashes.
-        // Disabled modules are hidden/skipped by descriptor.enabled checks in tab/tick/overlay paths.
+        const bool was_enabled = entry->descriptor.enabled;
+        if (was_enabled == enabled) {
+            return true;
+        }
+        entry->descriptor.enabled = enabled;
+        if (entry->config_api) {
+            entry->config_api->SetBool("enabled", enabled);
+        }
+        if (enabled && entry->on_enabled_fn != nullptr) {
+            on_enabled_fn_after_unlock = entry->on_enabled_fn;
+        }
+        if (!enabled && entry->on_disabled_fn != nullptr) {
+            on_disabled_fn_after_unlock = entry->on_disabled_fn;
+        }
+        // Soft-disable when !enabled: keep module resident in memory to avoid unload-related crashes; UI skips disabled
+        // modules via descriptor.enabled.
+    }
+    if (on_enabled_fn_after_unlock != nullptr) {
+        on_enabled_fn_after_unlock();
+    }
+    if (on_disabled_fn_after_unlock != nullptr) {
+        on_disabled_fn_after_unlock();
     }
     return true;
 }
@@ -295,6 +409,17 @@ void TickEnabledModules() {
             continue;
         }
         entry.tick_fn();
+    }
+}
+
+void NotifyEnabledModulesReshadePresentBefore() {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.enabled || entry.reshade_present_before_fn == nullptr) {
+            continue;
+        }
+        entry.reshade_present_before_fn();
     }
 }
 

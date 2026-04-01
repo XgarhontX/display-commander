@@ -7,6 +7,7 @@ Known issues:
 - Dishonored renodx d3d9 -> d3d11 requires to set fps to 2x.
 - Injustice 2/Mortal Kombat 11, alt-tab with prevent fullscreen + continue rendering: prevent minimize doesn't work.
 - Injected reflex is broken after cleanup.
+- DC's main UI when open lowers fps.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
@@ -15,6 +16,41 @@ Feature protosal:
 
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
+
+## v0.13.83 (2026-04-01)
+- [cleanup] [compatibility] **Present-before module notification** - **`swapchain_events`** no longer calls **`xinput_widget::CheckAndHandleScreenshot()`** directly. Modules may register **`reshade_present_before_fn`**; **`NotifyEnabledModulesReshadePresentBefore()`** runs from the ReShade **`present`** path (before present). Controller registers **`OnReshadePresentBefore`** for the screenshot check. ReShade does not expose **`invoke_addon_event`** to add-ons, so this is an in-DC broadcast (same timing as the prior call; avoids re-dispatching **`present`**, which would recurse).
+
+## v0.13.82 (2026-04-01)
+- [cleanup] [hooks] **`NotifyModulesUninstallApiHooks`** - **`UninstallApiHooks`** no longer calls the Controller module directly. Modules may register **`on_uninstall_api_hooks_fn`**; the registry iterates all modules and invokes each non-null callback before LoadLibrary / message / DPI teardown and **`MH_DisableHook(MH_ALL_HOOKS)`**. Controller implements **`OnUninstallApiHooks`** (same WGI uninstall as **`OnDisabled`**, shared helper).
+
+## v0.13.81 (2026-04-01)
+- [cleanup] [hooks] **WGI uninstall from Controller module** - **`UninstallWindowsGamingInputHooks`** is no longer called directly from **`UninstallApiHooks`**. **Controller `OnDisabled()`** performs the uninstall; **`SetModuleEnabled(..., false)`** now invokes **`on_disabled_fn`** after releasing the module lock (was previously stored but never called). **`UninstallApiHooks`** previously called **`modules::controller::OnDisabled()`** for process teardown (superseded by **v0.13.82** notification API).
+
+## v0.13.80 (2026-04-01)
+- [cleanup] **Input remapping init from Controller module** - **`initialize_input_remapping()`** now runs in **Controller module `Initialize`** (via `InitializeModuleRegistry` inside the new UI setup) after the XInput and remapping widgets initialize. Removed duplicate calls from **`main_entry.cpp`** (`DoInitializationWithoutHwndSafe_Late`) and **`swapchain_events.cpp`** (`DoInitializationWithHwnd`).
+
+## v0.13.79 (2026-04-01)
+- [cleanup] **Input remapping under Controller module** - `input_remapping.cpp` / `input_remapping.hpp` moved from `input_remapping/` to `modules/controller/` (namespace unchanged: `display_commander::input_remapping`). Includes updated in `xinput_hooks.cpp`, `remapping_widget.hpp`, `swapchain_events.cpp`, `main_entry.cpp`, `main_new_tab.cpp`, and `hotkeys_tab.cpp`. Implementation includes now use `../../` paths and sibling `xinput_widget.hpp`.
+
+## v0.13.78 (2026-04-01)
+- [cleanup] [hooks] **Windows Gaming Input hooks under Controller module** - `windows_gaming_input_hooks.cpp` / `windows_gaming_input_hooks.hpp` moved from `hooks/input/` to `modules/controller/` (`display_commanderhooks::*` unchanged: `RoGetActivationFactory` detour, `InstallWindowsGamingInputHooks` / `UninstallWindowsGamingInputHooks`, `g_wgi_state`). Consumers outside the module include `modules/controller/windows_gaming_input_hooks.hpp`; controller sources use the sibling header.
+
+## v0.13.77 (2026-04-01)
+- [cleanup] [hooks] **XInput hooks under Controller module** - `xinput_hooks.cpp` / `xinput_hooks.hpp` moved from `hooks/input/` to `modules/controller/` (API remains `display_commanderhooks::*`). Includes updated in controller sources and `xinput_widget.cpp`; hook suppression / windows message hooks still live under `hooks/`.
+
+## v0.13.76 (2026-04-01)
+- [cleanup] **Remapping widget under Controller module** - `remapping_widget.cpp` / `remapping_widget.hpp` moved from `widgets/remapping_widget/` to `modules/controller/` (namespace unchanged: `display_commander::widgets::remapping_widget`). **InitializeRemappingWidget** now runs from **Controller module `Initialize`** together with the XInput widget; `new_ui_tabs.cpp` no longer references remapping init.
+
+## v0.13.75 (2026-04-01)
+- [cleanup] **XInput widget sources under Controller module** - `xinput_widget.cpp` / `xinput_widget.hpp` now live in `modules/controller/` (same `display_commander::widgets::xinput_widget` namespace for hooks and remapping). Includes updated in `xinput_hooks.cpp`, `input_remapping.cpp`, `swapchain_events.cpp`, and controller module files; removed `widgets/xinput_widget/`.
+
+## v0.13.74 (2026-04-01)
+- [cleanup] [ui] **XInput panel draw API** - Replaced the free function `DrawXInputWidget` with `XInputWidget::DrawIfReady` and stopped exporting `g_xinput_widget` from the widget header so the Controller module is the only external caller path for the panel.
+
+## v0.13.73 (2026-04-01)
+- [cleanup] [hooks] [ui] **Controller as a module** - Controller / XInput / Windows.Gaming.Input behavior is registered as the **Controller** module (Features toggle, tab id `controller`). When a DLL loads, Display Commander notifies enabled modules so the Controller module can attach hooks for XInput and `windows.gaming.input.dll` without hard-coding those DLL names in the global LoadLibrary handler. The Controller tab is registered like other module tabs (no duplicate manual tab entry). Installation is triggered only when the module is enabled. (Hook sources for XInput / WGI later moved to `modules/controller/`.)
+  Details: `ModuleOnLibraryLoadedCallback` and `NotifyEnabledModulesOnLibraryLoaded` in `module_registry.*`; `modules/controller/controller_module.*`; `loadlibrary_hooks.cpp` dispatches to modules; `OnEnabled` / `RetryInstallXInputHooksIfEnabled` replace direct `InstallXInputHooks` in `main_entry.cpp` and `swapchain_events.cpp`. `InitializeModuleRegistry` and `SetModuleEnabled` invoke `on_enabled` after releasing the module SRWLOCK so LoadLibrary recursion cannot deadlock.
+- [cleanup] [ui] **Controller tab layout in module** - The full Controller tab sequence (input polling rates, XInput panel, remapping) is composed in `modules/controller/controller_tab.*`. Hook/remap integration uses `GetSharedState` and related APIs from `modules/controller/xinput_widget.hpp` (namespace unchanged).
 
 ## v0.13.72 (2026-04-01)
 - [cleanup] **GitHub Actions submodule checkout** - Removed a stale Git submodule pointer to `external-private/display-commander2-modules` from the repository index. That path is optional local-only content (see `DC_EXTERNAL_MODULES`); it was not listed in `.gitmodules`, so `actions/checkout` with recursive submodules failed with “No url found for submodule path”. CI and clones no longer hit that error.

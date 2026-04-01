@@ -1,25 +1,33 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "xinput_widget.hpp"
-#include <windows.h>
-#include <algorithm>
-#include <reshade_imgui.hpp>
-#include <sstream>
-#include <vector>
+
+// Source Code <Display Commander>
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/system/timeslowdown_hooks.hpp"
-#include "../../hooks/input/windows_gaming_input_hooks.hpp"
-#include "../../hooks/input/xinput_hooks.hpp"
-#include "../../ui/ui_colors.hpp"
+#include "windows_gaming_input_hooks.hpp"
+#include "xinput_hooks.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hook_suppression_settings.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
+#include "../../ui/ui_colors.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
-#include "../remapping_widget/remapping_widget.hpp"
+
+// Libraries <ReShade> / <imgui>
+#include <reshade_imgui.hpp>
+
+// Libraries <standard C++>
+#include <algorithm>
+#include <sstream>
+#include <vector>
+
+// Libraries <Windows.h>
+#include <Windows.h>
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -39,8 +47,9 @@ static ULONGLONG GetOriginalTickCount64() {
 // Global shared state
 std::shared_ptr<XInputSharedState> XInputWidget::g_shared_state = std::make_shared<XInputSharedState>();
 
-// Global widget instance
-std::unique_ptr<XInputWidget> g_xinput_widget = nullptr;
+namespace {
+std::unique_ptr<XInputWidget> g_xinput_widget;
+}  // namespace
 
 XInputWidget::XInputWidget() {
     // Initialize shared state if not already done
@@ -1544,6 +1553,12 @@ void XInputWidget::SaveSettings() {
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }
 
+void XInputWidget::DrawIfReady(display_commander::ui::IImGuiWrapper& imgui) {
+    if (g_xinput_widget) {
+        g_xinput_widget->OnDraw(imgui);
+    }
+}
+
 // Global functions for integration
 void InitializeXInputWidget() {
     if (!g_xinput_widget) {
@@ -1556,61 +1571,6 @@ void InitializeXInputWidget() {
             shared_state->ui_overlay_open.store(false);
         }
     }
-}
-
-void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui) {
-    if (g_xinput_widget) {
-        g_xinput_widget->OnDraw(imgui);
-    }
-}
-
-namespace {
-// For GetState(0) polling rate: rolling 1s window
-uint64_t g_last_getstate0_count = 0;
-uint64_t g_last_getstate0_tick_ms = 0;
-float g_getstate0_rate_hz = 0.0f;
-}  // namespace
-
-void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui) {
-    if (!imgui.CollapsingHeader("Input polling rates", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return;
-    }
-    imgui.Indent();
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("XInput GetState(0) calls/sec (game polling).");
-    }
-
-    // XInput GetState(0) rate (use original tick so time-slowdown doesn't skew rate)
-    const uint64_t getstate0_calls = display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
-    const uint64_t now_ms = GetOriginalTickCount64();
-    if (g_last_getstate0_tick_ms == 0) {
-        g_last_getstate0_tick_ms = now_ms;
-        g_last_getstate0_count = getstate0_calls;
-    }
-    const uint64_t elapsed_ms = now_ms - g_last_getstate0_tick_ms;
-    if (elapsed_ms >= 1000) {
-        const uint64_t delta =
-            (getstate0_calls >= g_last_getstate0_count) ? (getstate0_calls - g_last_getstate0_count) : 0;
-        g_getstate0_rate_hz =
-            (elapsed_ms > 0) ? (1000.0f * static_cast<float>(delta) / static_cast<float>(elapsed_ms)) : 0.0f;
-        g_last_getstate0_count = getstate0_calls;
-        g_last_getstate0_tick_ms = now_ms;
-    }
-    imgui.Text("XInput GetState(0): %.1f/sec (total: %llu)", g_getstate0_rate_hz,
-               static_cast<unsigned long long>(getstate0_calls));
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Game (or addon) calls to XInputGetState(0) per second.");
-    }
-
-    imgui.Unindent();
-}
-
-void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui) {
-    DrawControllerPollingRatesSection(imgui);
-    imgui.Spacing();
-    DrawXInputWidget(imgui);
-    imgui.Spacing();
-    display_commander::widgets::remapping_widget::DrawRemappingWidget(imgui);
 }
 
 // Global functions for hooks to use

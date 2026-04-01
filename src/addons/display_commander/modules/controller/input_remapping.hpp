@@ -1,17 +1,18 @@
-/*
- * Copyright (C) 2024 Display Commander
- * Gamepad to keyboard input remapping system
- */
-
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
-#include <Windows.h>
+// Libraries <standard C++>
 #include <array>
 #include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <xinput.h>
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — XInput API
+#include <XInput.h>
 
 
 // Guide button constant (not defined in standard XInput headers)

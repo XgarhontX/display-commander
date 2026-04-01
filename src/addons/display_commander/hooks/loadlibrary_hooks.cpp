@@ -20,12 +20,11 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
-#include "input/windows_gaming_input_hooks.hpp"
-#include "input/xinput_hooks.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
 #include "opengl/opengl_hooks.hpp"
+#include "../modules/module_registry.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
@@ -1474,6 +1473,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     std::wstring lowerModuleName = moduleName;
     std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
 
+    modules::NotifyEnabledModulesOnLibraryLoaded(hModule, lowerModuleName.c_str());
+
     // DLSS tracking: set global module/path for nvngx_dlss.dll, nvngx_dlssg.dll, nvngx_dlssd.dll, or .bin identified as
     // such
     {
@@ -1537,25 +1538,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] Streamline hooks installed successfully");
         } else {
             LogError("[OnModuleLoaded] Failed to install Streamline hooks");
-        }
-    }
-
-    // XInput hooks
-    else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
-        if (InstallXInputHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] XInput hooks installed successfully");
-        } else {
-            LogError("[OnModuleLoaded] Failed to install XInput hooks");
-        }
-    }
-
-    // GameInput hooks removed.
-    // Windows.Gaming.Input (WinRT) hooks – RoGetActivationFactory from combase
-    else if (lowerModuleName.find(L"windows.gaming.input.dll") != std::wstring::npos) {
-        if (InstallWindowsGamingInputHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] Windows.Gaming.Input hooks installed successfully");
-        } else {
-            LogError("[OnModuleLoaded] Failed to install Windows.Gaming.Input hooks");
         }
     }
 

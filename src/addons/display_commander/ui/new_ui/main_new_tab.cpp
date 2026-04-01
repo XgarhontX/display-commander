@@ -9,7 +9,6 @@
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../hooks/nvidia/nvapi_hooks.hpp"
@@ -19,7 +18,6 @@
 #include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
-#include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
@@ -2048,43 +2046,6 @@ static void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWr
                 "Mutually exclusive with Clip Cursor.");
         }
 
-        imgui.Spacing();
-
-        // Enable Gamepad Remapping (same value as Controller tab)
-        {
-            auto& remapper = display_commander::input_remapping::InputRemapper::get_instance();
-            bool remapping_enabled = remapper.is_remapping_enabled();
-            if (imgui.Checkbox("Enable XBOX-style Gamepad Remapping", &remapping_enabled)) {
-                remapper.set_remapping_enabled(remapping_enabled);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, XINPUT gamepad buttons can be remapped to keyboard keys, other gamepad buttons, "
-                    "or actions (e.g. volume, screenshot). Supports chords (e.g. Home + D-Pad for volume) and hold "
-                    "mode.\n\n"
-                    "This checkbox is the same setting as in the Controller tab. For full setup (remapping list, "
-                    "input method, \"Block Gamepad Input When Home Pressed\", default chords), open the Controller "
-                    "tab.");
-            }
-            if (remapping_enabled) {
-                imgui.Spacing();
-                // Home button behavior for Display Commander UI
-                bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
-                if (imgui.Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
-                    settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
-                        "gamepad buttons were pressed between Home down and Home up.\n\n"
-                        "Example:\n"
-                        "- Press Home, do nothing else, release Home -> Toggle Display Commander UI\n"
-                        "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
-                }
-            }
-        }
-
-        imgui.Unindent();
     }
 }
 
@@ -2694,12 +2655,13 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 "messages so the game keeps running in the background. Also called fake fullscreen.");
         }
 
+        /*
         if (display_commanderhooks::g_wgi_state.wgi_called.load() && continue_rendering_changed) {
             imgui.TextColored(ui::colors::TEXT_WARNING,
                               ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
         }
         imgui.Spacing();
-
+*/
         // Prevent display sleep & screensaver mode
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver",
                                     imgui, 320.f)) {

@@ -7,8 +7,6 @@
 #include "../../ui/ui_scale.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
-#include "../../widgets/remapping_widget/remapping_widget.hpp"
-#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
@@ -254,11 +252,6 @@ void InitializeNewUI() {
     ui::new_ui::InitHotkeysTab();
     ui::new_ui::InitAddonsTab();
 
-    // Initialize XInput widget
-    display_commander::widgets::xinput_widget::InitializeXInputWidget();
-
-    // Initialize remapping widget
-    display_commander::widgets::remapping_widget::InitializeRemappingWidget();
     modules::InitializeModuleRegistry();
 
     g_tab_manager.AddTab(
@@ -308,20 +301,6 @@ void InitializeNewUI() {
             }
         },
         true);  // Hotkeys tab: visibility gated by show_hotkeys_tab (default on)
-
-    g_tab_manager.AddTab(
-        "Controller", "controller",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                display_commander::widgets::xinput_widget::DrawControllerTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing Controller tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing Controller tab");
-            }
-        },
-        true);  // Controller tab is advanced
 
     // Add reshade tab
     g_tab_manager.AddTab(

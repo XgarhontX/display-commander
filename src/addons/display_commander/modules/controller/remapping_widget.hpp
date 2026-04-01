@@ -1,25 +1,32 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
-#include "../../input_remapping/input_remapping.hpp"
+// Source Code <Display Commander>
+#include "input_remapping.hpp"
 
-#include <windows.h>
-
+// Libraries <ReShade> / <imgui>
 #include <imgui.h>
-#include <xinput.h>
 
+// Libraries <standard C++>
 #include <memory>
 #include <string>
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — XInput API
+#include <XInput.h>
 
 namespace display_commander {
 namespace ui {
 struct IImGuiWrapper;
-}
+}  // namespace ui
 }  // namespace display_commander
 
 namespace display_commander::widgets::remapping_widget {
 // Remapping widget class
 class RemappingWidget {
-  public:
+   public:
     RemappingWidget();
     ~RemappingWidget() = default;
 
@@ -32,7 +39,7 @@ class RemappingWidget {
     // Cleanup the widget (call at shutdown)
     void Cleanup();
 
-  private:
+   private:
     // UI state
     bool is_initialized_ = false;
     int selected_controller_ = 0;
@@ -42,7 +49,7 @@ class RemappingWidget {
 
     // Add/Edit dialog state
     struct RemapDialogState {
-        int selected_remap_type = 0; // 0=Keyboard, 1=Gamepad, 2=Action
+        int selected_remap_type = 0;  // 0=Keyboard, 1=Gamepad, 2=Action
         int selected_gamepad_button = 0;
         int selected_keyboard_key = 0;
         int selected_input_method = 0;
@@ -70,7 +77,7 @@ class RemappingWidget {
     WORD GetGamepadButtonFromIndex(int index) const;
     int GetKeyboardVkFromIndex(int index) const;
     void ResetDialogState();
-    void LoadRemapToDialog(const input_remapping::ButtonRemap &remap);
+    void LoadRemapToDialog(const input_remapping::ButtonRemap& remap);
 
     // Settings management
     void LoadSettings();
@@ -79,7 +86,7 @@ class RemappingWidget {
     // Counter management
     void ResetTriggerCounters();
 
-  public:
+   public:
     // Global widget instance
     static std::unique_ptr<RemappingWidget> g_remapping_widget;
 };
@@ -88,4 +95,4 @@ class RemappingWidget {
 void InitializeRemappingWidget();
 void CleanupRemappingWidget();
 void DrawRemappingWidget(display_commander::ui::IImGuiWrapper& imgui);
-} // namespace display_commander::widgets::remapping_widget
+}  // namespace display_commander::widgets::remapping_widget

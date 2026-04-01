@@ -4,12 +4,10 @@
 #include "globals.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
-#include "hooks/input/xinput_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/system/timeslowdown_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "input_remapping/input_remapping.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -33,7 +31,6 @@
 #include "utils/logging.hpp"
 #include "utils/perf_measurement.hpp"
 #include "utils/timing.hpp"
-#include "widgets/xinput_widget/xinput_widget.hpp"
 #include "window_management/window_management.hpp"
 
 #include <d3d9.h>
@@ -236,11 +233,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("[DoInitializationWithHwnd] before CaptureInitialState");
     display_initial_state::g_initialDisplayState.CaptureInitialState();
 
-    // Initialize input remapping system
-    LogInfo("[DoInitializationWithHwnd] before initialize_input_remapping");
-    display_commander::input_remapping::initialize_input_remapping();
-
-    // Initialize UI system
+    // Initialize UI system (module registry runs inside; Controller module initializes input remapping)
     LogInfo("[DoInitializationWithHwnd] before InitializeNewUISystem");
     ui::new_ui::InitializeNewUISystem();
     LogInfo("[DoInitializationWithHwnd] before StartContinuousMonitoring");
@@ -275,13 +268,9 @@ void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("[DoInitializationWithHwnd]: Initialization completed");
 
     // Retry XInput hooks for any XInput DL L already loaded (e.g. before first present)
-    LogInfo("[DoInitializationWithHwnd] before InstallXInputHooks (retry)");
-    if (display_commanderhooks::InstallXInputHooks(nullptr)) {
-        LogInfo("[DoInitializationWithHwnd]: XInput hooks installed successfully");
-    } else {
-        LogInfo("[DoInitializationWithHwnd]: XInput hooks not installed (no XInput DLL loaded yet or suppressed)");
-    }
-    LogInfo("[DoInitializationWithHwnd  ] after InstallXInputHooks");
+    //LogInfo("[DoInitializationWithHwnd] before Controller module XInput hook retry");
+   // modules::controller::RetryInstallXInputHooksIfEnabled();
+   // LogInfo("[DoInitializationWithHwnd] after Controller module XInput hook retry");
 
     // Initialize keyboard tracking system
     LogInfo("[DoInitializationWithHwnd] before keyboard_tracker::Initialize");
@@ -1742,8 +1731,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         }
     }
 
-    // Check for XInput screenshot trigger
-    display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
+    // ReShade present-before: notify enabled modules (e.g. Controller screenshot trigger)
+    modules::NotifyEnabledModulesReshadePresentBefore();
 
     auto should_block_mouse_and_keyboard_input =
         display_commanderhooks::ShouldBlockMouseInput() && display_commanderhooks::ShouldBlockKeyboardInput();

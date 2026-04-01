@@ -143,4 +143,5 @@ private_docs
 
 
 #  git ls-files -ic --exclude-standard
-./external-private/
+external-private/
+external-private/display-commander2-modules

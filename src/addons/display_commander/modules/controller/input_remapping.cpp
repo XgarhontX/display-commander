@@ -1,22 +1,21 @@
-/*
- * Copyright (C) 2024 Display Commander
- * Gamepad to keyboard input remapping system implementation
- */
-
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "input_remapping.hpp"
-#include <reshade.hpp>
-#include "../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../config/display_commander_config.hpp"
-#include "../globals.hpp"
-#include "../hooks/windows_hooks/api_hooks.hpp"
-#include "../hooks/system/timeslowdown_hooks.hpp"
-#include "../modules/module_registry.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../utils/logging.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "../utils/srwlock_wrapper.hpp"
 
+// Source Code <Display Commander>
+#include "../../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../../config/display_commander_config.hpp"
+#include "../../globals.hpp"
+#include "../../hooks/system/timeslowdown_hooks.hpp"
+#include "../../hooks/windows_hooks/api_hooks.hpp"
+#include "../../modules/module_registry.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "xinput_widget.hpp"
+
+// Libraries <ReShade> / <imgui>
+#include <reshade.hpp>
 
 namespace display_commander::input_remapping {
 

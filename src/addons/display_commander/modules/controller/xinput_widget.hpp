@@ -1,14 +1,21 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
+// Libraries <ReShade> / <imgui>
 #include <imgui.h>
-#include <windows.h>
-#include <xinput.h>
 
+// Libraries <standard C++>
 #include <array>
 #include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows> — XInput API
+#include <XInput.h>
 
 namespace display_commander {
 namespace ui {
@@ -226,6 +233,9 @@ class XInputWidget {
     // Get the shared state (thread-safe)
     static std::shared_ptr<XInputSharedState> GetSharedState();
 
+    /** Draw the XInput settings panel if `InitializeXInputWidget` has run; no-op otherwise. */
+    static void DrawIfReady(display_commander::ui::IImGuiWrapper& imgui);
+
    private:
     // UI state
     bool is_initialized_ = false;
@@ -275,16 +285,8 @@ class XInputWidget {
     static std::shared_ptr<XInputSharedState> g_shared_state;
 };
 
-// Global widget instance
-extern std::unique_ptr<XInputWidget> g_xinput_widget;
-
 // Global functions for integration
 void InitializeXInputWidget();
-void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
-/** Draw GetState(0) polling rates for Controller tab. */
-void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui);
-/** Draw full Controller tab (all sections in order). Call this from both UIs so widgets stay in sync. */
-void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);

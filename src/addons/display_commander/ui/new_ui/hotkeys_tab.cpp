@@ -6,7 +6,6 @@
 #include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
-#include "../../input_remapping/input_remapping.hpp"
 #include "../../modules/module_registry.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"

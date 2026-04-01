@@ -157,7 +157,7 @@ static HRESULT WINAPI D3D11CreateDeviceAndSwapChain_TestingDetour(
     return hr;
 }
 
-static void InstallD3D11CreateDeviceAndSwapChainHookTesting() {
+void InstallD3D11CreateDeviceAndSwapChainHookTesting() {
     if (g_d3d11_module == nullptr || g_d3d11_create_device_and_swap_chain_hook_installed) {
         return;
     }

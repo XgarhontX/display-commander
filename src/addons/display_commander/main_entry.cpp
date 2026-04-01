@@ -6,7 +6,6 @@
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "hooks/dbghelp/dbghelp_private_loader.hpp"
-#include "hooks/input/xinput_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "hooks/vulkan/vulkan_loader_hooks.hpp"
@@ -14,7 +13,6 @@
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "imgui.h"
-#include "input_remapping/input_remapping.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
@@ -1243,10 +1241,9 @@ void DoInitializationWithoutHwndSafe_Late() {
     if (!IsDisplayCommanderHookingInstance()) return;
     // Log all ETW sessions once at addon init for diagnostics (e.g. why DC_ list may be empty in Advanced tab)
 
-    display_commanderhooks::InstallXInputHooks(nullptr);
+    //modules::controller::RetryInstallXInputHooksIfEnabled();
     display_cache::g_displayCache.Initialize();
     display_initial_state::g_initialDisplayState.CaptureInitialState();
-    display_commander::input_remapping::initialize_input_remapping();
     ui::new_ui::InitializeNewUISystem();
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
