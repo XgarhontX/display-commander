@@ -2434,6 +2434,10 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
                 break;
         }
     }
+
+    // Give enabled modules a chance to draw additional control sections
+    // after fixed optional panels (e.g. below DXGI Control).
+    modules::DrawEnabledModulesMainTabInline(imgui, runtime);
 }
 
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
