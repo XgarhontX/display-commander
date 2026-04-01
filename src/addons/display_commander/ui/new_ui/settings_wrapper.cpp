@@ -27,17 +27,25 @@ SettingBase::SettingBase(const std::string& key, const std::string& section) : k
 
 // FloatSetting implementation
 FloatSetting::FloatSetting(const std::string& key, float default_value, float min, float max,
-                           const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {}
+                           const std::string& section, bool preserve_over_max_on_load)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max),
+      preserve_over_max_on_load_(preserve_over_max_on_load) {}
 
 void FloatSetting::Load() {
     float loaded_value;
     if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
-        // If loaded value is invalid (NaN/Inf or out of range), fall back to default
-        if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
+        if (!std::isfinite(loaded_value) || loaded_value < min_) {
             const float safe_default = std::max(min_, std::min(max_, default_value_));
             value_.store(safe_default);
             Save();
+        } else if (loaded_value > max_) {
+            if (preserve_over_max_on_load_) {
+                value_.store(loaded_value);
+            } else {
+                const float safe_default = std::max(min_, std::min(max_, default_value_));
+                value_.store(safe_default);
+                Save();
+            }
         } else {
             value_.store(loaded_value);
         }

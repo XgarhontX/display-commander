@@ -54,7 +54,7 @@ class SettingBase {
 class FloatSetting : public SettingBase {
    public:
     FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f,
-                 const std::string& section = DEFAULT_SECTION);
+                 const std::string& section = DEFAULT_SECTION, bool preserve_over_max_on_load = false);
 
     void Load() override;
     void Save() override;
@@ -76,6 +76,8 @@ class FloatSetting : public SettingBase {
     float default_value_;
     float min_;
     float max_;
+    /** When true, Load() keeps finite values above max_ instead of resetting to default (FPS limit sliders). */
+    bool preserve_over_max_on_load_;
 };
 
 // Integer setting wrapper

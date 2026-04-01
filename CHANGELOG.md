@@ -16,6 +16,10 @@ Feature protosal:
 - [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
 - [ui] [experimental] **Reflex last-10-frames debug table** - Added a Debug-subtab view that shows up to 10 recent NVAPI Reflex latency frame reports with a manual **Refresh** button. Timestamp columns are displayed relative to the smallest non-zero timestamp, and zero values show as `N/A` for easier comparison.
 
+## v0.13.66 (2026-03-31)
+- [bugfix] [settings] **FPS limit load vs slider max** - If your saved **FPS Limit** or **Background FPS Limit** is higher than the current slider maximum (from monitor refresh), it is no longer reset to the default on load; the saved value is kept. Sliders still cap edits to the current max.
+  Details: `FloatSetting::preserve_over_max_on_load` in `settings_wrapper.*`; enabled for `fps_limit` and `fps_limit_background` in `main_tab_settings.cpp`.
+
 ## v0.13.65 (2026-03-31)
 
 - [bugfix] [compatibility] **ReShade .addon64 / .addon32 load** - Fixed Display Commander not loading when ReShade loads it from the Addons folder as `zzz_display_commander.addon64` or `zzz_display_commander.addon32`.
