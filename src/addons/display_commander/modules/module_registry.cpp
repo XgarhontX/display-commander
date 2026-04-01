@@ -3,6 +3,7 @@
 
 // Source Code <Display Commander>
 #include "../config/display_commander_config.hpp"
+#include "audio/audio_module.hpp"
 #include "example_dummy/example_dummy_module.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
@@ -28,6 +29,7 @@ struct ModuleEntry {
     void (*draw_overlay_fn)(display_commander::ui::IImGuiWrapper&) = nullptr;
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
+    std::vector<ModuleHotkeySpec> hotkeys;
     std::unique_ptr<ModuleConfigApi> config_api;
 };
 
@@ -83,6 +85,37 @@ void AddModuleEntry(ModuleEntry&& entry) {
 }
 
 void RegisterPublicModules() {
+    {
+        ModuleRegistrationSpec spec{};
+        spec.descriptor.id = "audio";
+        spec.descriptor.display_name = "Audio";
+        spec.descriptor.description = "Audio controls, VU overlay, and audio hotkeys.";
+        spec.descriptor.has_tab = true;
+        spec.descriptor.tab_name = "Audio";
+        spec.descriptor.tab_id = "audio";
+        spec.descriptor.is_advanced_tab = false;
+        spec.default_enabled = true;
+        spec.default_show_in_overlay = false;
+        spec.initialize_fn = &audio::Initialize;
+        spec.draw_tab_fn = &audio::DrawTab;
+        spec.draw_overlay_fn = &audio::DrawOverlay;
+        audio::FillHotkeys(&spec.hotkeys);
+
+        ModuleEntry entry{};
+        entry.descriptor = spec.descriptor;
+        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.initialize_fn = spec.initialize_fn;
+        entry.tick_fn = spec.tick_fn;
+        entry.draw_tab_fn = spec.draw_tab_fn;
+        entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.on_enabled_fn = spec.on_enabled_fn;
+        entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.hotkeys = spec.hotkeys;
+        AddModuleEntry(std::move(entry));
+    }
+
     // Public modules are registered here (always compiled in public builds).
     ModuleRegistrationSpec spec{};
     spec.descriptor.id = "example_dummy";
@@ -110,6 +143,7 @@ void RegisterPublicModules() {
     entry.draw_overlay_fn = spec.draw_overlay_fn;
     entry.on_enabled_fn = spec.on_enabled_fn;
     entry.on_disabled_fn = spec.on_disabled_fn;
+    entry.hotkeys = spec.hotkeys;
     AddModuleEntry(std::move(entry));
 }
 
@@ -133,6 +167,7 @@ void RegisterPrivateModules() {
         entry.draw_overlay_fn = spec.draw_overlay_fn;
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.hotkeys = spec.hotkeys;
         AddModuleEntry(std::move(entry));
     }
 #endif
@@ -279,6 +314,33 @@ void DrawEnabledModulesInOverlay(display_commander::ui::IImGuiWrapper& imgui) {
         }
         entry.draw_overlay_fn(imgui);
     }
+}
+
+std::vector<RegisteredModuleHotkey> GetEnabledModuleHotkeys() {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+
+    std::vector<RegisteredModuleHotkey> hotkeys;
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.enabled || entry.hotkeys.empty()) {
+            continue;
+        }
+
+        hotkeys.reserve(hotkeys.size() + entry.hotkeys.size());
+        for (const ModuleHotkeySpec& spec : entry.hotkeys) {
+            if (spec.id.empty() || spec.on_trigger_fn == nullptr) {
+                continue;
+            }
+
+            RegisteredModuleHotkey hotkey{};
+            hotkey.module_id = entry.descriptor.id;
+            hotkey.module_display_name = entry.descriptor.display_name;
+            hotkey.spec = spec;
+            hotkeys.push_back(std::move(hotkey));
+        }
+    }
+
+    return hotkeys;
 }
 
 }  // namespace modules

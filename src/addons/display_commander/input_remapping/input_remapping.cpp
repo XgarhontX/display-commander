@@ -6,7 +6,7 @@
 #include "input_remapping.hpp"
 #include <reshade.hpp>
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../audio/audio_management.hpp"
+#include "../modules/audio/backend/audio_backend.hpp"
 #include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
 #include "../hooks/windows_hooks/api_hooks.hpp"

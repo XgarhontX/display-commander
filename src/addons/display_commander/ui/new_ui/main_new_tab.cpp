@@ -1,7 +1,7 @@
 #include "main_new_tab.hpp"
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../../audio/audio_management.hpp"
+#include "../../modules/audio/backend/audio_backend.hpp"
 #include "../../config/default_overrides.hpp"
 #include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
@@ -1936,7 +1936,7 @@ static void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWr
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (audio_control_open) {
         imgui.Indent();
-        DrawAudioSettings(imgui);
+        modules::DrawModuleTabById("audio", imgui, nullptr);
         imgui.Unindent();
     }
 }

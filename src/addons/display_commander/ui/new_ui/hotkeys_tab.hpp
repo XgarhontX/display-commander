@@ -21,16 +21,12 @@ using HotkeyAction = std::function<void()>;
 
 // Hotkey index enum; must match g_hotkey_definitions order in InitializeHotkeyDefinitions.
 enum class HotkeyId : int {
-    MuteUnmute = 0,
-    BackgroundToggle,
-    TimeSlowdown,
+    BackgroundToggle = 0,
     AdhdToggle,
     InputBlocking,
     DisplayCommanderUi,
     PerformanceOverlay,
     Stopwatch,
-    VolumeUp,
-    VolumeDown,
     SystemVolumeUp,
     SystemVolumeDown,
     WinDown,

@@ -2,8 +2,8 @@
 // Implemented in a separate translation unit to avoid Windows SDK include order issues
 // (audioclient.h vs Functiondiscoverykeys_devpkey.h) in audio_management.cpp.
 
-#include "audio_management.hpp"
-#include "../utils/logging.hpp"
+#include "audio_backend.hpp"
+#include "utils/logging.hpp"
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>

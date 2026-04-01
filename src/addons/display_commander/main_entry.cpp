@@ -1,6 +1,5 @@
 // Source Code <Display Commander>
 #include "addon.hpp"
-#include "audio/audio_management.hpp"
 #include "config/display_commander_config.hpp"
 #include "display/display_initial_state.hpp"
 #include "display/dpi_management.hpp"
@@ -1252,7 +1251,6 @@ void DoInitializationWithoutHwndSafe_Late() {
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-    std::thread(RunBackgroundAudioMonitor).detach();
     ui::new_ui::InitExperimentalTab();
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");

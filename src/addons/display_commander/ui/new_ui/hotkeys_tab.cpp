@@ -1,12 +1,14 @@
 #include "hotkeys_tab.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../../audio/audio_management.hpp"
+#include "../../modules/audio/backend/audio_backend.hpp"
+#include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
+#include "../../modules/module_registry.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
@@ -176,6 +178,29 @@ ParsedHotkey DeserializeHotkeyFromConfigString(const std::string& value) {
 
 // Hotkey definitions array (data-driven approach)
 std::vector<HotkeyDefinition> g_hotkey_definitions;
+struct ModuleHotkeyBinding {
+    size_t definition_index = 0;
+    std::string config_key;
+    std::string module_id;
+};
+std::vector<ModuleHotkeyBinding> g_module_hotkey_bindings;
+
+std::string NormalizeModuleHotkeyKeyPart(std::string_view text) {
+    std::string out;
+    out.reserve(text.size());
+    for (const char c : text) {
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+            out.push_back(c);
+        } else {
+            out.push_back('_');
+        }
+    }
+    return out;
+}
+
+std::string BuildModuleHotkeyConfigKey(std::string_view module_id, std::string_view hotkey_id) {
+    return "ModuleHotkey_" + NormalizeModuleHotkeyKeyPart(module_id) + "_" + NormalizeModuleHotkeyKeyPart(hotkey_id);
+}
 
 // Debug tracking for ProcessHotkeys
 struct HotkeyDebugInfo {
@@ -219,7 +244,7 @@ static bool HotkeyMatchesCurrentState(const ParsedHotkey& p) {
 
 // Draw a single hotkey entry in the table. Display string is derived from def.parsed (no parsing).
 void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefinition& def,
-                     ui::new_ui::StringSetting& setting, int index) {
+                     const std::function<void(const std::string&)>& save_value, int index) {
     imgui.TableNextRow();
 
     // Source of truth is def.parsed (numeric); display from formatted string
@@ -237,7 +262,7 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
     imgui.TableNextColumn();
     // Apply pending capture from ProcessHotkeys (runs in same thread as keyboard_tracker::Update)
     if (s_capture_pending && s_captured_for_index == index) {
-        setting.SetValue(SerializeHotkeyToConfigString(s_captured_parsed));
+        save_value(SerializeHotkeyToConfigString(s_captured_parsed));
         def.parsed = s_captured_parsed;
         def.parsed.original_string = FormatHotkeyString(s_captured_parsed);
         s_capture_pending = false;
@@ -253,7 +278,7 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
         imgui.SetNextItemWidth(-1);
         if (imgui.InputText(("##HotkeyInput" + std::to_string(index)).c_str(), buffer, sizeof(buffer))) {
             std::string new_value(buffer);
-            setting.SetValue(new_value);
+            save_value(new_value);
             def.parsed = DeserializeHotkeyFromConfigString(new_value);
         }
     }
@@ -293,7 +318,7 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
         }
         imgui.SameLine();
         if (imgui.Button(("Reset##" + def.id).c_str())) {
-            setting.SetValue(def.default_shortcut);
+            save_value(def.default_shortcut);
             def.parsed = DeserializeHotkeyFromConfigString(def.default_shortcut);
         }
     }
@@ -305,17 +330,6 @@ std::string GetHotkeyDisplayString(const HotkeyDefinition& def) { return FormatH
 // Initialize hotkey definitions with default values
 void InitializeHotkeyDefinitions() {
     g_hotkey_definitions = {
-        {"mute_unmute", "Mute/Unmute Audio", "ctrl shift m", "Toggle audio mute state",
-         []() {
-             bool new_mute_state = !settings::g_mainTabSettings.audio_mute.GetValue();
-             settings::g_mainTabSettings.audio_mute.SetValue(new_mute_state);
-             if (SetMuteForCurrentProcess(new_mute_state)) {
-                 g_muted_applied.store(new_mute_state);
-                 std::ostringstream oss;
-                 oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via hotkey";
-                 LogInfo(oss.str().c_str());
-             }
-         }},
         {"background_toggle", "Background Toggle", "",
          "Toggle both 'No Render in Background' and 'No Present in Background' settings",
          []() {
@@ -326,19 +340,6 @@ void InitializeHotkeyDefinitions() {
              std::ostringstream oss;
              oss << "Background settings toggled via hotkey - Both Render and Present: "
                  << (new_render_state ? "disabled" : "enabled");
-             LogInfo(oss.str().c_str());
-         }},
-        {"timeslowdown", "Time Slowdown Toggle", "", "Toggle Time Slowdown feature",
-         []() {
-             if (!enabled_experimental_features) return;
-#if !defined(DC_EXTERNAL_MODULES)
-             return;
-#endif
-             bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
-             bool new_state = !current_state;
-             settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
-             std::ostringstream oss;
-             oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
         {"adhd_toggle", "Black curtain (other displays)", "ctrl shift d",
@@ -382,55 +383,6 @@ void InitializeHotkeyDefinitions() {
          }},
         {"stopwatch", "Stopwatch Start/Pause", "ctrl shift s", "Start or pause the stopwatch (2-state toggle)",
          []() { display_commander::input_remapping::ToggleStopwatch(); }},
-        {"volume_up", "Volume Up", "ctrl shift up", "Increase audio volume (percentage-based, min 1%)",
-         []() {
-             float current_volume = 0.0f;
-             if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = s_game_volume_percent.load();
-             }
-
-             // Calculate percentage-based step: 20% of current volume, minimum 1%
-             float step = 0.0f;
-             if (current_volume <= 0.0f) {
-                 // Special case: if at 0%, jump to 1%
-                 step = 1.0f;
-             } else {
-                 // 20% of current volume, with minimum of 1%
-                 step = (std::max)(1.0f, current_volume * 0.20f);
-             }
-
-             if (AdjustVolumeForCurrentProcess(step)) {
-                 std::ostringstream oss;
-                 oss << "Volume increased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
-                 LogInfo(oss.str().c_str());
-             } else {
-                 LogWarn("Failed to increase volume via hotkey");
-             }
-         }},
-        {"volume_down", "Volume Down", "ctrl shift down", "Decrease audio volume (percentage-based, min 1%)",
-         []() {
-             float current_volume = 0.0f;
-             if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = s_game_volume_percent.load();
-             }
-
-             // Calculate percentage-based step: 20% of current volume, minimum 1%
-             if (current_volume <= 0.0f) {
-                 // Already at 0%, can't go lower
-                 return;
-             }
-
-             // 20% of current volume, with minimum of 1%
-             float step = (std::max)(1.0f, current_volume * 0.20f);
-
-             if (AdjustVolumeForCurrentProcess(-step)) {
-                 std::ostringstream oss;
-                 oss << "Volume decreased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
-                 LogInfo(oss.str().c_str());
-             } else {
-                 LogWarn("Failed to decrease volume via hotkey");
-             }
-         }},
         {"system_volume_up", "System Volume Up", "ctrl alt up",
          "Increase system master volume (percentage-based, min 1%)",
          []() {
@@ -622,16 +574,8 @@ void InitializeHotkeyDefinitions() {
     auto& settings = settings::g_hotkeysTabSettings;
     if (g_hotkey_definitions.size() >= kHotkeyDefinitionCount) {
         // Load from config: "0x11;0x10;0x65" or legacy "ctrl+shift+m"
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::MuteUnmute)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
-        if (enabled_experimental_features) {
-#if defined(DC_EXTERNAL_MODULES)
-            g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed =
-                DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
-#endif
-        }
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::InputBlocking)].parsed =
@@ -642,10 +586,6 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeUp)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeDown)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed =
@@ -662,6 +602,27 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToSecondary)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
+    }
+
+    g_module_hotkey_bindings.clear();
+    const std::vector<modules::RegisteredModuleHotkey> module_hotkeys = modules::GetEnabledModuleHotkeys();
+    g_hotkey_definitions.reserve(g_hotkey_definitions.size() + module_hotkeys.size());
+    for (const modules::RegisteredModuleHotkey& module_hotkey : module_hotkeys) {
+        HotkeyDefinition definition{};
+        definition.id = "module_" + module_hotkey.module_id + "_" + module_hotkey.spec.id;
+        definition.name = module_hotkey.module_display_name + ": " + module_hotkey.spec.display_name;
+        definition.default_shortcut = module_hotkey.spec.default_shortcut;
+        definition.description = module_hotkey.spec.description;
+        definition.action = module_hotkey.spec.on_trigger_fn;
+
+        std::string value = definition.default_shortcut;
+        const std::string config_key = BuildModuleHotkeyConfigKey(module_hotkey.module_id, module_hotkey.spec.id);
+        display_commander::config::get_config_value("DisplayCommander", config_key.c_str(), value);
+        definition.parsed = DeserializeHotkeyFromConfigString(value);
+
+        const size_t index = g_hotkey_definitions.size();
+        g_hotkey_definitions.push_back(std::move(definition));
+        g_module_hotkey_bindings.push_back(ModuleHotkeyBinding{index, config_key, module_hotkey.module_id});
     }
 }
 
@@ -796,16 +757,8 @@ void SyncHotkeySettingsFromParsed() {
     }
     auto& s = settings::g_hotkeysTabSettings;
     // Store in config as "0x11;0x10;0x65" (VK list: modifiers then key)
-    s.hotkey_mute_unmute.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MuteUnmute)].parsed));
     s.hotkey_background_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed));
-    if (enabled_experimental_features) {
-#if defined(DC_EXTERNAL_MODULES)
-        s.hotkey_timeslowdown.SetValue(
-            SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed));
-#endif
-    }
     s.hotkey_adhd_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed));
     s.hotkey_input_blocking.SetValue(
@@ -816,10 +769,6 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed));
     s.hotkey_stopwatch.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed));
-    s.hotkey_volume_up.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeUp)].parsed));
-    s.hotkey_volume_down.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::VolumeDown)].parsed));
     s.hotkey_system_volume_up.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed));
     s.hotkey_system_volume_down.SetValue(
@@ -836,9 +785,20 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToPrimary)].parsed));
     s.hotkey_move_to_secondary.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::MoveToSecondary)].parsed));
+
+    for (const ModuleHotkeyBinding& binding : g_module_hotkey_bindings) {
+        if (binding.definition_index >= g_hotkey_definitions.size()) {
+            continue;
+        }
+
+        display_commander::config::set_config_value(
+            "DisplayCommander", binding.config_key.c_str(),
+            SerializeHotkeyToConfigString(g_hotkey_definitions[binding.definition_index].parsed));
+    }
 }
 
 void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
+    InitializeHotkeyDefinitions();
     auto& settings = settings::g_hotkeysTabSettings;
 
     // Enable Hotkeys Master Toggle
@@ -870,25 +830,16 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                 auto& def = g_hotkey_definitions[i];
 
                 // Get corresponding setting
-                settings::StringSetting* setting_ptr = nullptr;
+                const auto save_value = [&](const std::string& value) {
+                    settings::StringSetting* setting_ptr = nullptr;
                 const auto id = static_cast<HotkeyId>(i);
                 switch (id) {
-                    case HotkeyId::MuteUnmute: setting_ptr = &settings.hotkey_mute_unmute; break;
                     case HotkeyId::BackgroundToggle: setting_ptr = &settings.hotkey_background_toggle; break;
-                    case HotkeyId::TimeSlowdown:
-                        if (enabled_experimental_features) {
-#if defined(DC_EXTERNAL_MODULES)
-                            setting_ptr = &settings.hotkey_timeslowdown;
-#endif
-                        }
-                        break;
                     case HotkeyId::AdhdToggle: setting_ptr = &settings.hotkey_adhd_toggle; break;
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
                     case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
                     case HotkeyId::Stopwatch: setting_ptr = &settings.hotkey_stopwatch; break;
-                    case HotkeyId::VolumeUp: setting_ptr = &settings.hotkey_volume_up; break;
-                    case HotkeyId::VolumeDown: setting_ptr = &settings.hotkey_volume_down; break;
                     case HotkeyId::SystemVolumeUp: setting_ptr = &settings.hotkey_system_volume_up; break;
                     case HotkeyId::SystemVolumeDown: setting_ptr = &settings.hotkey_system_volume_down; break;
                     case HotkeyId::WinDown: setting_ptr = &settings.hotkey_win_down; break;
@@ -899,11 +850,21 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case HotkeyId::MoveToSecondary: setting_ptr = &settings.hotkey_move_to_secondary; break;
                     default: setting_ptr = nullptr; break;
                 }
+                    if (setting_ptr != nullptr) {
+                        setting_ptr->SetValue(value);
+                        return;
+                    }
 
-                if (setting_ptr == nullptr) continue;
+                    for (const ModuleHotkeyBinding& binding : g_module_hotkey_bindings) {
+                        if (binding.definition_index == i) {
+                            display_commander::config::set_config_value("DisplayCommander", binding.config_key.c_str(),
+                                                                        value);
+                            return;
+                        }
+                    }
+                };
 
-                ui::new_ui::StringSetting& setting = *setting_ptr;
-                DrawHotkeyEntry(imgui, def, setting, static_cast<int>(i));
+                DrawHotkeyEntry(imgui, def, save_value, static_cast<int>(i));
             }
 
             imgui.EndTable();
@@ -1292,6 +1253,13 @@ void ProcessHotkeys() {
         return;
     }
 
+    static LONGLONG last_dynamic_refresh_ns = 0;
+    const LONGLONG now_for_refresh = utils::get_now_ns();
+    if (last_dynamic_refresh_ns == 0 || now_for_refresh - last_dynamic_refresh_ns > utils::SEC_TO_NS) {
+        InitializeHotkeyDefinitions();
+        last_dynamic_refresh_ns = now_for_refresh;
+    }
+
     // Update debug info - always track when this function is called
     LONGLONG now_ns = utils::get_now_ns();
     g_hotkey_debug_info.last_call_time_ns = now_ns;
@@ -1371,7 +1339,19 @@ void ProcessHotkeys() {
     }
 
     // Process each hotkey definition
-    for (auto& def : g_hotkey_definitions) {
+    for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
+        auto& def = g_hotkey_definitions[i];
+        bool skip_module_hotkey = false;
+        for (const ModuleHotkeyBinding& binding : g_module_hotkey_bindings) {
+            if (binding.definition_index == i && !modules::IsModuleEnabled(binding.module_id)) {
+                skip_module_hotkey = true;
+                break;
+            }
+        }
+        if (skip_module_hotkey) {
+            continue;
+        }
+
         if (!def.parsed.IsValid() || def.parsed.IsEmpty()) {
             continue;
         }

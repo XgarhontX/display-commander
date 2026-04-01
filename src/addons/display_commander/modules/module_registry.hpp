@@ -38,6 +38,21 @@ using ModuleInitializeCallback = void (*)(ModuleConfigApi* config_api);
 using ModuleTickCallback = void (*)();
 using ModuleDrawTabCallback = void (*)(display_commander::ui::IImGuiWrapper&, reshade::api::effect_runtime*);
 using ModuleDrawOverlayCallback = void (*)(display_commander::ui::IImGuiWrapper&);
+using ModuleHotkeyCallback = void (*)();
+
+struct ModuleHotkeySpec {
+    std::string id;
+    std::string display_name;
+    std::string default_shortcut;
+    std::string description;
+    ModuleHotkeyCallback on_trigger_fn = nullptr;
+};
+
+struct RegisteredModuleHotkey {
+    std::string module_id;
+    std::string module_display_name;
+    ModuleHotkeySpec spec;
+};
 
 struct ModuleRegistrationSpec {
     ModuleDescriptor descriptor;
@@ -49,6 +64,7 @@ struct ModuleRegistrationSpec {
     ModuleDrawOverlayCallback draw_overlay_fn = nullptr;
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
+    std::vector<ModuleHotkeySpec> hotkeys;
 };
 
 void InitializeModuleRegistry();
@@ -62,5 +78,6 @@ void TickEnabledModules();
 void DrawModuleTabById(std::string_view module_id, display_commander::ui::IImGuiWrapper& imgui,
                        reshade::api::effect_runtime* runtime);
 void DrawEnabledModulesInOverlay(display_commander::ui::IImGuiWrapper& imgui);
+std::vector<RegisteredModuleHotkey> GetEnabledModuleHotkeys();
 
 }  // namespace modules

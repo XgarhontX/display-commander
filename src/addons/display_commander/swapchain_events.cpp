@@ -1,5 +1,5 @@
 #include "addon.hpp"
-#include "audio/audio_management.hpp"
+#include "modules/audio/backend/audio_backend.hpp"
 #include "display/display_initial_state.hpp"
 #include "display/hdr_control.hpp"
 #include "globals.hpp"

@@ -11,8 +11,14 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
-## v0.13.69 (2026-04-01)
+## v0.13.70 (2026-04-01)
+- [new feature] [settings] [ui] **Module hotkeys can self-register via module registry** - External modules can now provide their own hotkeys (name, default binding, callback) without adding per-hotkey wiring in the main repo, so module hotkey integration is easier to maintain.
+  Details: `module_registry` now supports hotkey specs; Hotkeys tab/runtime consumes enabled-module hotkeys dynamically; dynamic `ModuleHotkey_*` keys are persisted in shared `hotkeys.toml`.
 - [bugfix] [settings] [ui] **Fixed DLSS quality preset override with Frame Generation** - Fixed a case where changing DLSS quality preset in-game could fail when Frame Generation was active, so preset changes now apply correctly during gameplay.
+- [cleanup] [ui] [settings] **Audio backend physically relocated under module path** - Internal audio backend files are now stored under the Audio module tree, making module ownership clearer while preserving existing audio behavior and settings.
+  Details: moved backend sources from `src/addons/display_commander/audio/` to `src/addons/display_commander/modules/audio/backend/` and updated all include sites to `audio_backend.hpp`.
+- [new feature] [ui] [settings] **Audio moved into the module system** - Audio controls now run as a dedicated `Audio` module, so tab visibility, overlay rendering, and audio hotkeys follow the module enable/disable path consistently.
+  Details: added `modules/audio/audio_module.*`, registered in `module_registry`; Main tab optional Audio panel now delegates through module draw path; `mute_unmute` / `volume_up` / `volume_down` moved from core hotkeys to module hotkeys.
 
 ## v0.13.68 (2026-03-31)
 - [bugfix] [critical] **Fixed crash when unloading modules** - Display Commander now shuts down module instances more safely during unload, preventing rare crashes when modules are being removed or the addon is exiting.

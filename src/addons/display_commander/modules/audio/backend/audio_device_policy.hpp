@@ -1,8 +1,12 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
+// Libraries <Windows.h>
 #include <windows.h>
-#include <mmdeviceapi.h>
+
+// Libraries <Windows>
 #include <audiopolicy.h>
+#include <mmdeviceapi.h>
 #include <roapi.h>
 #include <winstring.h>
 
@@ -12,9 +16,8 @@
 // to keep the vtable layout compatible.
 interface DECLSPEC_UUID("ab3d4648-e242-459f-b02f-541c70306324") IAudioPolicyConfigFactory;
 
-interface IAudioPolicyConfigFactory
-{
-public:
+interface IAudioPolicyConfigFactory {
+   public:
     // IInspectable (placeholders)
     virtual HRESULT STDMETHODCALLTYPE __incomplete__QueryInterface() = 0;
     virtual HRESULT STDMETHODCALLTYPE __incomplete__AddRef() = 0;
@@ -23,7 +26,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE __incomplete__GetRuntimeClassName() = 0;
     virtual HRESULT STDMETHODCALLTYPE __incomplete__GetTrustLevel() = 0;
 
-    // Unused members (placeholder only – keep order/slots)
+    // Unused members (placeholder only - keep order/slots)
     virtual HRESULT STDMETHODCALLTYPE __incomplete__add_CtxVolumeChange() = 0;
     virtual HRESULT STDMETHODCALLTYPE __incomplete__remove_CtxVolumeChanged() = 0;
     virtual HRESULT STDMETHODCALLTYPE __incomplete__add_RingerVibrateStateChanged() = 0;
@@ -45,19 +48,12 @@ public:
     virtual HRESULT STDMETHODCALLTYPE __incomplete__remove_ChatContextChanged() = 0;
 
     // Methods we actually use
-    virtual HRESULT STDMETHODCALLTYPE SetPersistedDefaultAudioEndpoint(
-        UINT      processId,
-        EDataFlow flow,
-        ERole     role,
-        HSTRING   deviceId) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetPersistedDefaultAudioEndpoint(UINT processId, EDataFlow flow, ERole role,
+                                                                       HSTRING deviceId) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetPersistedDefaultAudioEndpoint(
-        UINT       processId,
-        EDataFlow  flow,
-        int        roleMask,
-        _Outptr_result_maybenull_ _Result_nullonfailure_ HSTRING *deviceId) = 0;
+        UINT processId, EDataFlow flow, int roleMask,
+        _Outptr_result_maybenull_ _Result_nullonfailure_ HSTRING* deviceId) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE ClearAllPersistedApplicationDefaultEndpoints() = 0;
 };
-
-

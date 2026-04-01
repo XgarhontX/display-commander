@@ -176,6 +176,10 @@ std::string GetHotkeysFilePath() {
 
 bool IsHotkeyConfigKey(const char* key) {
     if (!key) return false;
+    constexpr const char* kModuleHotkeyPrefix = "ModuleHotkey_";
+    if (strncmp(key, kModuleHotkeyPrefix, strlen(kModuleHotkeyPrefix)) == 0) {
+        return true;
+    }
     for (size_t i = 0; i < NUM_HOTKEY_KEYS; ++i) {
         if (strcmp(key, HOTKEY_KEYS[i]) == 0) return true;
     }

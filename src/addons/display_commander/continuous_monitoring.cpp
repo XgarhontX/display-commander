@@ -1,6 +1,6 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
-#include "audio/audio_management.hpp"
+#include "modules/audio/backend/audio_backend.hpp"
 #include "display/display_cache.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"

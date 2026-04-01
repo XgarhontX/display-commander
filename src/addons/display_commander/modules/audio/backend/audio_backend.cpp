@@ -1,4 +1,4 @@
-#include "audio_management.hpp"
+#include "audio_backend.hpp"
 #include <audioclient.h>
 #include <endpointvolume.h>
 #include <mmdeviceapi.h>
@@ -6,12 +6,12 @@
 #include <propvarutil.h>
 #include <sstream>
 #include <thread>
-#include "../addon.hpp"
-#include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
+#include "addon.hpp"
+#include "globals.hpp"
+#include "settings/main_tab_settings.hpp"
+#include "utils.hpp"
+#include "utils/logging.hpp"
+#include "utils/timing.hpp"
 #include "audio_device_policy.hpp"
 
 #include <windows.h>
