@@ -1,7 +1,6 @@
 #include "main_new_tab.hpp"
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../../modules/audio/backend/audio_backend.hpp"
 #include "../../config/default_overrides.hpp"
 #include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
@@ -37,7 +36,6 @@
 #include "../../utils.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
-#include "../../utils/exponential_smooth.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
@@ -1613,14 +1611,14 @@ void InitMainNewTab() {
 
         // Apply loaded mute state immediately if manual mute is enabled
         // Apply mute setting to the audio system
-        if (settings::g_mainTabSettings.audio_mute.GetValue()) {
+     /*   if (settings::g_mainTabSettings.audio_mute.GetValue()) {
             if (::SetMuteForCurrentProcess(true)) {
                 ::g_muted_applied.store(true);
                 LogInfo("Audio mute state loaded and applied from settings");
             } else {
                 LogWarn("Failed to apply loaded mute state");
             }
-        }
+        }*/
 
         // Update input blocking system with loaded settings
         // Input blocking is now handled by Windows message hooks
@@ -5050,105 +5048,6 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_VSyncAndTearing(imgui);
 }
 
-// Returns a short label for an audio channel (L, R, C, LFE, etc.) for display in per-channel volume/VU UI.
-static const char* GetAudioChannelLabel(unsigned int channel_index, unsigned int channel_count) {
-    static const char* stereo[] = {"L", "R"};
-    static const char* five_one[] = {"L", "R", "C", "LFE", "RL", "RR"};
-    static const char* seven_one[] = {"L", "R", "C", "LFE", "RL", "RR", "SL", "SR"};
-    static char generic_buf[16];
-    if (channel_count == 1 && channel_index == 0) return "M";
-    if (channel_count == 2 && channel_index < 2) return stereo[channel_index];
-    if (channel_count == 6 && channel_index < 6) return five_one[channel_index];
-    if (channel_count == 8 && channel_index < 8) return seven_one[channel_index];
-    (void)std::snprintf(generic_buf, sizeof(generic_buf), "Ch%u", channel_index);
-    return generic_buf;
-}
-
-void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    unsigned int meter_count = 0;
-    if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {
-        return;
-    }
-    static std::vector<float> s_overlay_vu_peaks;
-    static std::vector<float> s_overlay_vu_smoothed;
-    if (s_overlay_vu_peaks.size() < meter_count) {
-        s_overlay_vu_peaks.resize(meter_count);
-        s_overlay_vu_smoothed.resize(meter_count, 0.0f);
-    }
-    unsigned int effective_meter_count = meter_count;
-    if (::GetAudioMeterPeakValues(meter_count, s_overlay_vu_peaks.data())) {
-        // use meter_count as-is
-    } else if (meter_count > 6 && ::GetAudioMeterPeakValues(6, s_overlay_vu_peaks.data())) {
-        effective_meter_count = 6;
-    } else if (meter_count > 2 && ::GetAudioMeterPeakValues(2, s_overlay_vu_peaks.data())) {
-        effective_meter_count = 2;
-    } else {
-        return;
-    }
-    // Wall-clock first-order smoothing (same feel as α=0.05 per step at 60 Hz); see utils/exponential_smooth.hpp.
-    static uint64_t s_overlay_vu_last_smooth_ns = 0;
-    const uint64_t now_ns = utils::get_now_ns();
-    float dt_sec = (1.0f / 60.0f);
-    if (s_overlay_vu_last_smooth_ns != 0ULL) {
-        dt_sec = static_cast<float>(static_cast<double>(now_ns - s_overlay_vu_last_smooth_ns) * 1e-9);
-        dt_sec = (std::min)((std::max)(dt_sec, 1.0e-4f), 0.25f);
-    }
-    s_overlay_vu_last_smooth_ns = now_ns;
-    const float k_vu_tau_sec = utils::first_order_tau_for_step_alpha(0.1f, 60.0f);
-    for (unsigned int i = 0; i < effective_meter_count; ++i) {
-        const float p = (std::min)(1.0f, s_overlay_vu_peaks[i]);
-        const float s = s_overlay_vu_smoothed[i];
-        s_overlay_vu_smoothed[i] = utils::exponential_smooth_toward(s, p, dt_sec, k_vu_tau_sec);
-    }
-    const float bar_height = 96.0f;
-    const float bar_width = 20.0f;
-    // Column width from widest channel label (L, LFE, Ch0, …) so labels do not overlap.
-    const float col_pad_x = 6.0f;
-    float column_width = bar_width + (col_pad_x * 2.0f);
-    for (unsigned int i = 0; i < effective_meter_count; ++i) {
-        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
-        const float tw = imgui.CalcTextSize(ch_label).x;
-        column_width = (std::max)(column_width, tw + (col_pad_x * 2.0f));
-    }
-    const float total_width = static_cast<float>(effective_meter_count) * column_width;
-    auto draw_list = imgui.GetWindowDrawList();
-    const ImVec2 cursor = imgui.GetCursorScreenPos();
-    if (draw_list != nullptr) {
-        for (unsigned int i = 0; i < effective_meter_count; ++i) {
-            const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
-            const float col_x = cursor.x + static_cast<float>(i) * column_width;
-            const float x = col_x + ((column_width - bar_width) * 0.5f);
-            const ImVec2 bg_min(x, cursor.y);
-            const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
-            const float fill_h = level * bar_height;
-            const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
-            const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
-            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
-            draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
-            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
-        }
-    }
-    imgui.Dummy(ImVec2(total_width, bar_height));
-    const float label_y = cursor.y + bar_height + 2.0f;
-    const float line_height = imgui.GetTextLineHeightWithSpacing();
-    for (unsigned int i = 0; i < effective_meter_count; ++i) {
-        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
-        const float col_x = cursor.x + static_cast<float>(i) * column_width;
-        const float text_w = imgui.CalcTextSize(ch_label).x;
-        imgui.SetCursorScreenPos(ImVec2(col_x + ((column_width - text_w) * 0.5f), label_y));
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
-    }
-    if (show_tooltips && imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Per-channel level (default output device). Smoothed with ~0.32 s time constant (exp decay by "
-            "wall time, not raw frame count).");
-    }
-    imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
-    imgui.Dummy(ImVec2(total_width, line_height));
-}
-
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                    display_commander::ui::GraphicsApi device_api, bool show_tooltips) {
     CALL_GUARD_NO_TS();;
@@ -5746,10 +5645,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
             }
         }
-    }
-
-    if (show_overlay_vu_bars) {
-        ui::new_ui::DrawOverlayVUBars(imgui, show_tooltips);
     }
 
     if (show_gpu_measurement) {
@@ -6609,6 +6504,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.TextUnformatted("Misc");
         imgui.Columns(4, "overlay_checkboxes", false);
 
+        /*
         bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
         if (imgui.Checkbox("VU bars", &show_overlay_vu_bars)) {
             settings::g_mainTabSettings.show_overlay_vu_bars.SetValue(show_overlay_vu_bars);
@@ -6617,7 +6513,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx("Shows per-channel audio level (VU) bars in the performance overlay.");
         }
         imgui.NextColumn();
-
+*/
         bool show_clock = settings::g_mainTabSettings.show_clock.GetValue();
         if (imgui.Checkbox("Show clock", &show_clock)) {
             settings::g_mainTabSettings.show_clock.SetValue(show_clock);

@@ -504,6 +504,15 @@ void HotkeySystemVolumeDown() {
 
 void Initialize(ModuleConfigApi* config_api) {
     (void)config_api;
+    // Restore persisted manual mute after main tab settings load (InitMainNewTab runs before module registry init).
+    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
+        if (::SetMuteForCurrentProcess(true)) {
+            ::g_muted_applied.store(true);
+            LogInfo("Audio mute state loaded and applied from settings");
+        } else {
+            LogWarn("Failed to apply loaded mute state");
+        }
+    }
 }
 
 void OnEnabled() {
@@ -529,7 +538,6 @@ void DrawTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_r
 
 
 void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
     CALL_GUARD_NO_TS();;
     unsigned int meter_count = 0;
     if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {

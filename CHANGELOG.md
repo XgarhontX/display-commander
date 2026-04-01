@@ -17,6 +17,10 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.84 (2026-04-01)
+- [cleanup] **Persisted audio mute restore** - Applying the saved **Mute** checkbox to the OS session now runs in **Audio module `Initialize`** (right after **`InitMainNewTab`** loads main tab settings via **`InitializeNewUI`**), instead of **`InitMainNewTab`** itself.
+- [cleanup] [ui] **Overlay VU bars in Audio module** - **`DrawOverlayVUBars`** (and the duplicate **`GetAudioChannelLabel`**) removed from **`main_new_tab.cpp`**; the performance overlay calls **`modules::audio::DrawOverlayVUBars`** (single implementation used by **`DrawOverlay`** and **Main** overlay). Dropped unused **`audio_backend`** / **`exponential_smooth`** includes from **`main_new_tab.cpp`**.
+
 ## v0.13.83 (2026-04-01)
 - [cleanup] [compatibility] **Present-before module notification** - **`swapchain_events`** no longer calls **`xinput_widget::CheckAndHandleScreenshot()`** directly. Modules may register **`reshade_present_before_fn`**; **`NotifyEnabledModulesReshadePresentBefore()`** runs from the ReShade **`present`** path (before present). Controller registers **`OnReshadePresentBefore`** for the screenshot check. ReShade does not expose **`invoke_addon_event`** to add-ons, so this is an in-DC broadcast (same timing as the prior call; avoids re-dispatching **`present`**, which would recurse).
 
