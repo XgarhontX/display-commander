@@ -35,6 +35,7 @@ endif()
 # Build options
 option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
 option(EXPERIMENTAL_FEATURES "Enable experimental features (e.g., autofire)" OFF)
+option(DC_EXTERNAL_MODULES "Enable private external modules from external/display-commander2-modules" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

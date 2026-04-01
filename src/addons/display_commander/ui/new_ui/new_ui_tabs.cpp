@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "new_ui_tabs.hpp"
 #include "../../globals.hpp"
+#include "../../modules/module_registry.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../ui/imgui_wrapper_reshade.hpp"
 #include "../../ui/ui_scale.hpp"
@@ -155,6 +156,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
             should_show =
                 should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
         }
+        should_show = should_show && modules::IsModuleTabVisible((*current_tabs)[i].id);
 
         if (should_show) {
             visible_tab_count++;
@@ -212,6 +214,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                     should_show =
                         should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
                 }
+                should_show = should_show && modules::IsModuleTabVisible((*current_tabs)[i].id);
 
                 if (!should_show) {
                     continue;
@@ -256,6 +259,7 @@ void InitializeNewUI() {
 
     // Initialize remapping widget
     display_commander::widgets::remapping_widget::InitializeRemappingWidget();
+    modules::InitializeModuleRegistry();
 
     g_tab_manager.AddTab(
         "Main", "main_new",
@@ -349,6 +353,29 @@ void InitializeNewUI() {
                 }
             },
             true);  // Debug tab is advanced
+    }
+
+    const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
+    for (const modules::ModuleDescriptor& module : modules_list) {
+        if (!module.has_tab || module.tab_id.empty()) {
+            continue;
+        }
+        if (g_tab_manager.HasTab(module.tab_id)) {
+            continue;
+        }
+        g_tab_manager.AddTab(
+            module.tab_name, module.tab_id,
+            [module_id = module.id](reshade::api::effect_runtime* runtime) {
+                try {
+                    display_commander::ui::ImGuiWrapperReshade wrapper;
+                    modules::DrawModuleTabById(module_id, wrapper, runtime);
+                } catch (const std::exception& e) {
+                    LogError("Error drawing module tab '%s': %s", module_id.c_str(), e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing module tab '%s'", module_id.c_str());
+                }
+            },
+            module.is_advanced_tab);
     }
 }
 

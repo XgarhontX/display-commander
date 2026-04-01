@@ -1,10 +1,11 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 66)
+set(DISPLAY_COMMANDER_VERSION_PATCH 67)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
+set(_dc_external_modules_root "${_dc_repo_root}/external-private/display-commander2-modules")
 
 # All addon .cpp under this directory (recursive).
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
@@ -16,6 +17,22 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
+
+if(DC_EXTERNAL_MODULES)
+  set(_dc_external_modules_src_dir "${_dc_external_modules_root}/src/nmodules")
+  if(NOT EXISTS "${_dc_external_modules_src_dir}")
+    message(FATAL_ERROR "DC_EXTERNAL_MODULES=ON but external modules directory was not found: ${_dc_external_modules_src_dir}")
+  endif()
+
+  file(GLOB_RECURSE DISPLAY_COMMANDER_EXTERNAL_MODULE_SOURCES
+    CONFIGURE_DEPENDS
+    "${_dc_external_modules_src_dir}/*.cpp"
+  )
+  if(NOT DISPLAY_COMMANDER_EXTERNAL_MODULE_SOURCES)
+    message(FATAL_ERROR "DC_EXTERNAL_MODULES=ON but no module sources were found under: ${_dc_external_modules_src_dir}")
+  endif()
+  list(APPEND DISPLAY_COMMANDER_SOURCES ${DISPLAY_COMMANDER_EXTERNAL_MODULE_SOURCES})
+endif()
 
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -46,11 +63,20 @@ endif()
 if(EXPERIMENTAL_FEATURES)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_FEATURES=1)
 endif()
+if(DC_EXTERNAL_MODULES)
+  target_compile_definitions(zzz_display_commander PRIVATE DC_EXTERNAL_MODULES=1)
+endif()
 # Includes: repo include/ first; third-party as SYSTEM (never put bare SYSTEM on its own line — MSVC can emit -I.../SYSTEM).
 target_include_directories(zzz_display_commander PRIVATE
   "${_dc_repo_root}/include"
+  "${_dc_repo_root}/src/addons/display_commander"
   "${CMAKE_CURRENT_BINARY_DIR}"
 )
+if(DC_EXTERNAL_MODULES)
+  target_include_directories(zzz_display_commander PRIVATE
+    "${_dc_external_modules_root}/src/nmodules"
+  )
+endif()
 target_include_directories(zzz_display_commander SYSTEM PRIVATE
   $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/include>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/deps/imgui>

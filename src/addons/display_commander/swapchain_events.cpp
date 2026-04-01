@@ -16,6 +16,7 @@
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
+#include "modules/module_registry.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "performance_types.hpp"
 #include "reshade_api_device.hpp"
@@ -1242,6 +1243,7 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
         }
     }
 
+    modules::TickEnabledModules();
     HandleOnPresentEnd();
 
     RecordFrameTime(FrameTimeMode::kFrameBegin);

@@ -211,20 +211,21 @@ bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_
         }
 
         NvapiLatencyFrame frame{};
+        constexpr uint64_t us_to_ns = 1000ULL;
         frame.frame_id = static_cast<uint64_t>(fr.frameID);
-        frame.input_sample_time_ns = static_cast<uint64_t>(fr.inputSampleTime);
-        frame.sim_start_time_ns = static_cast<uint64_t>(fr.simStartTime);
-        frame.sim_end_time_ns = static_cast<uint64_t>(fr.simEndTime);
-        frame.render_submit_start_time_ns = static_cast<uint64_t>(fr.renderSubmitStartTime);
-        frame.render_submit_end_time_ns = static_cast<uint64_t>(fr.renderSubmitEndTime);
-        frame.present_start_time_ns = static_cast<uint64_t>(fr.presentStartTime);
-        frame.present_end_time_ns = static_cast<uint64_t>(fr.presentEndTime);
-        frame.driver_start_time_ns = static_cast<uint64_t>(fr.driverStartTime);
-        frame.driver_end_time_ns = static_cast<uint64_t>(fr.driverEndTime);
-        frame.os_render_queue_start_time_ns = static_cast<uint64_t>(fr.osRenderQueueStartTime);
-        frame.os_render_queue_end_time_ns = static_cast<uint64_t>(fr.osRenderQueueEndTime);
-        frame.gpu_render_start_time_ns = static_cast<uint64_t>(fr.gpuRenderStartTime);
-        frame.gpu_render_end_time_ns = static_cast<uint64_t>(fr.gpuRenderEndTime);
+        frame.input_sample_time_ns = static_cast<uint64_t>(fr.inputSampleTime) * us_to_ns;
+        frame.sim_start_time_ns = static_cast<uint64_t>(fr.simStartTime) * us_to_ns;
+        frame.sim_end_time_ns = static_cast<uint64_t>(fr.simEndTime) * us_to_ns;
+        frame.render_submit_start_time_ns = static_cast<uint64_t>(fr.renderSubmitStartTime) * us_to_ns;
+        frame.render_submit_end_time_ns = static_cast<uint64_t>(fr.renderSubmitEndTime) * us_to_ns;
+        frame.present_start_time_ns = static_cast<uint64_t>(fr.presentStartTime) * us_to_ns;
+        frame.present_end_time_ns = static_cast<uint64_t>(fr.presentEndTime) * us_to_ns;
+        frame.driver_start_time_ns = static_cast<uint64_t>(fr.driverStartTime) * us_to_ns;
+        frame.driver_end_time_ns = static_cast<uint64_t>(fr.driverEndTime) * us_to_ns;
+        frame.os_render_queue_start_time_ns = static_cast<uint64_t>(fr.osRenderQueueStartTime) * us_to_ns;
+        frame.os_render_queue_end_time_ns = static_cast<uint64_t>(fr.osRenderQueueEndTime) * us_to_ns;
+        frame.gpu_render_start_time_ns = static_cast<uint64_t>(fr.gpuRenderStartTime) * us_to_ns;
+        frame.gpu_render_end_time_ns = static_cast<uint64_t>(fr.gpuRenderEndTime) * us_to_ns;
         frame.gpu_frame_time_us = static_cast<uint32_t>(fr.gpuFrameTimeUs);
         out_frames.push_back(frame);
     }

@@ -24,6 +24,7 @@
 #include "../../latency/reflex_provider.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
+#include "../../modules/module_registry.hpp"
 #include "../../nvapi/gpu_dynamic_utilization.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/nvapi_init.hpp"
@@ -1797,6 +1798,35 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Shows the ReShade/Addons tab even when 'Show All Tabs' is disabled.");
         }
+    }
+
+    const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
+    if (!modules_list.empty()) {
+        imgui.Spacing();
+        imgui.Text("Module Features:");
+        imgui.Indent();
+        for (const modules::ModuleDescriptor& module : modules_list) {
+            bool enabled = module.enabled;
+            const std::string checkbox_label = "Enable " + module.display_name;
+            if (imgui.Checkbox(checkbox_label.c_str(), &enabled)) {
+                modules::SetModuleEnabled(module.id, enabled);
+                LogInfo("Module '%s' %s", module.id.c_str(), enabled ? "enabled" : "disabled");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("%s", module.description.c_str());
+            }
+
+            if (enabled) {
+                imgui.SameLine();
+                bool show_overlay = module.show_in_overlay;
+                const std::string overlay_label = "Overlay##" + module.id;
+                if (imgui.Checkbox(overlay_label.c_str(), &show_overlay)) {
+                    modules::SetModuleOverlayEnabled(module.id, show_overlay);
+                    LogInfo("Module '%s' overlay %s", module.id.c_str(), show_overlay ? "enabled" : "disabled");
+                }
+            }
+        }
+        imgui.Unindent();
     }
 
     imgui.Unindent();
@@ -6089,6 +6119,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
         ui::new_ui::DrawRefreshRateFrameTimesGraph(imgui, show_tooltips);
     }
+
+    modules::DrawEnabledModulesInOverlay(imgui);
 }
 
 void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {

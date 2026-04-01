@@ -13,6 +13,15 @@ Feature protosal:
 
 ## Unreleased
 
+## v0.13.67 (2026-03-31)
+- [settings] [cleanup] **Optional private external modules build flag (`-MODULES`)** - Added a new opt-in build switch so private/internal modules can stay outside the public source tree and only compile when explicitly requested.
+  Details: `bd.ps1`, `bd_core.ps1`, and `build_display_commander.ps1` now support `-MODULES`; CMake option `DC_EXTERNAL_MODULES` controls private module compilation from `external/display-commander2-modules/src/nmodules`.
+- [settings] [ui] **Public-by-default module loading** - Default builds now load only public in-repo modules; private modules are registered only in `-MODULES` builds.
+  Details: `module_registry.cpp` now splits registration into public and private paths, with duplicate module-id guard and conditional private registration when `DC_EXTERNAL_MODULES=1`.
+- [bugfix] [ui] **NVAPI latency timestamp unit fix** - Fixed NVAPI Reflex debug/report timestamps being interpreted as nanoseconds even though NVAPI reports microseconds, so timing graphs and relative values are now scaled correctly.
+  Details: `src/addons/display_commander/latency/reflex_provider.cpp` now converts `NvAPI_D3D_GetLatency` frame-report timestamps from `us` to `ns` before storing them in `NvapiLatencyFrame` `*_time_ns` fields.
+- [new feature] [ui] [settings] **Module registry with NVAPI Latency tab** - Added a new module system entry point so Features can list modules dynamically, and introduced an NVAPI Latency module with its own tab and on/off toggle.
+  Details: new module registry and NVAPI latency module under `src/addons/display_commander/modules/`; Main tab Features now iterates module entries; per-frame tick hooks call module updates and the NVAPI Latency tab graphs Simulation Start, Present Start, and Render End using a 1024-sample cyclic buffer.
 - [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
 - [ui] [experimental] **Reflex last-10-frames debug table** - Added a Debug-subtab view that shows up to 10 recent NVAPI Reflex latency frame reports with a manual **Refresh** button. Timestamp columns are displayed relative to the smallest non-zero timestamp, and zero values show as `N/A` for easier comparison.
 
