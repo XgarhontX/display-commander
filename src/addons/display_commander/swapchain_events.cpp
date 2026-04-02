@@ -5,7 +5,6 @@
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
-#include "hooks/system/timeslowdown_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
