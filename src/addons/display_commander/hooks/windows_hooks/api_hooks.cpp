@@ -9,7 +9,6 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../system/display_settings_hooks.hpp"
-#include "dpi_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../modules/module_registry.hpp"
 #include "../hook_suppression_manager.hpp"
@@ -629,9 +628,6 @@ bool InstallApiHooks() {
     // Install display settings hooks
     InstallDisplaySettingsHooks();
 
-    // Install DPI hooks
-    display_commanderhooks::dpi::InstallDpiHooks();
-
     // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
     g_api_hooks_installed.store(true);
@@ -664,9 +660,6 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     process_exit_hooks::Shutdown();
-
-    // Uninstall DPI hooks
-    display_commanderhooks::dpi::UninstallDpiHooks();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 

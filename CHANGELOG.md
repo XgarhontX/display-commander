@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.91 (2026-04-01)
+- [removal] [hooks] **DPI API detours removed** - Deleted **`dpi_hooks.cpp` / `dpi_hooks.hpp`** (MinHook on **`GetDpiForSystem`**, **`GetDpiForWindow`**, **`GetSystemDpiForProcess`**, thread/process DPI awareness context). **Advanced → Disable DPI scaling** still uses **`display/dpi_management`** (AppCompat + **`SetProcessDpiAwareness`** / per-monitor context) without intercepting those APIs for the whole process.
+
 ## v0.13.90 (2026-04-01)
 - [cleanup] [hooks] [experimental] **Time Slowdown declarations in private header** - Public **`hooks/system/timeslowdown_hooks.hpp`** keeps only QPC **`_Original`** pointers and **`LoadQPCEnabledModulesFromSettings`** (main addon). Extended timer typedefs, **`TimerHookType` / `TimerHookIdentifier`**, remaining **`_Original`** pointers, and module entry points live in **`external-private/.../timeslowdown/timeslowdown_hooks_private.hpp`**, included by the private **`timeslowdown_hooks.cpp`** / **`timeslowdown_module.cpp`**.
 - [cleanup] [hooks] [experimental] **Controller monotonic time via QPC** - Controller tab polling-rate timing, XInput widget **last update** / battery refresh intervals, and input-remap **last press** timestamps use **`utils::get_time_ns()`** (same implementation as **`get_now_ns()`**: **`QueryPerformanceCounter_Original`** when time-slowdown is active, else plain QPC) instead of **`GetTickCount64_Original`**. **`get_time_ns()`** is documented as an inline alias in **`utils/timing.hpp`**.
