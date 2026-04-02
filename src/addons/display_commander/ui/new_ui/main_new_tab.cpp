@@ -440,407 +440,8 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
 
 }  // anonymous namespace
 
-void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;  // Phase 1: unused; for future standalone migration
-    CALL_GUARD_NO_TS();;
-    // Snapshot head so Reset() running on another thread cannot cause wrong reads (GetSample underflow).
-    const uint32_t head = ::g_perf_ring.GetHead();
-    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-
-    if (count == 0) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
-        return;
-    }
-
-    // Collect frame times for the graph (last 300 samples for smooth display)
-    static std::vector<float> frame_times;
-    frame_times.clear();
-    const uint32_t samples_to_collect = min(count, 300u);
-    frame_times.reserve(samples_to_collect);
-
-    for (uint32_t i = 0; i < samples_to_collect; ++i) {
-        const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-        if (sample.dt > 0.0f) {
-            frame_times.push_back(sample.dt);  // Convert FPS to frame time in ms
-        }
-    }
-
-    if (frame_times.empty()) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "No valid frame time data available...");
-        return;
-    }
-
-    // Calculate statistics for the graph
-    float min_frame_time = *std::ranges::min_element(frame_times);
-    float max_frame_time = *std::ranges::max_element(frame_times);
-    float avg_frame_time = 0.0f;
-    for (float ft : frame_times) {
-        avg_frame_time += ft;
-    }
-    avg_frame_time /= static_cast<float>(frame_times.size());
-
-    // Calculate average FPS from average frame time
-    float avg_fps = (avg_frame_time > 0.0f) ? (1.0f / avg_frame_time) : 0.0f;
-
-    // Display statistics
-    imgui.Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
-               avg_frame_time, avg_fps);
-
-    // Create overlay text with current frame time
-    std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
-
-    // Add sim-to-display latency if GPU measurement is enabled and we have valid data
-    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0
-        && ::g_sim_to_display_latency_ns.load() > 0) {
-        double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 4) + " ms";
-
-        // Add GPU late time (how much later GPU finishes compared to Present)
-        double gpu_late_ms = (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | GPU Late: " + std::to_string(gpu_late_ms).substr(0, 4) + " ms";
-    }
-
-    // Set graph size and scale
-    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);  // Full width, 200px height
-    float scale_min = 0.0f;                     // Always start from 0ms
-    float scale_max = avg_frame_time * 4.f;     // Add some padding
-
-    // Draw the frame time graph
-    imgui.PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
-                    0,  // values_offset
-                    overlay_text.c_str(), scale_min, scale_max, graph_size);
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Frame time graph showing recent frame times in milliseconds.\n"
-            "Lower values = higher FPS, smoother gameplay.\n"
-            "Spikes indicate frame drops or stuttering.");
-    }
-
-    // Frame Time Mode Selector
-    imgui.Spacing();
-    imgui.Text("Frame Time Mode:");
-    imgui.SameLine();
-
-    int current_mode = static_cast<int>(settings::g_mainTabSettings.frame_time_mode.GetValue());
-    const char* mode_items[] = {"Present-to-Present", "Frame Begin-to-Frame Begin", "Display Timing (GPU Completion)"};
-
-    if (imgui.Combo("##frame_time_mode", &current_mode, mode_items, 3)) {
-        settings::g_mainTabSettings.frame_time_mode.SetValue(current_mode);
-        LogInfo("Frame time mode changed to: %s", mode_items[current_mode]);
-    }
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Select which timing events to record for the frame time graph:\n"
-            "- Present-to-Present: Records time between Present calls\n"
-            "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
-            "- Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
-            "  Note: Display Timing requires GPU measurement to be enabled");
-    }
-}
-
-// Cached data for frame timeline; updated at most once per second to reduce flicker.
-struct CachedTimelinePhase {
-    const char* label;
-    double start_ms;
-    double end_ms;
-    ImVec4 color;
-};
-static std::vector<CachedTimelinePhase> s_timeline_phases;
-// Set when user changes any NVIDIA profile setting (NVIDIA Control); show restart
-// warning.
-static bool s_nvidiaProfileChangeRestartNeeded = false;
-static double s_timeline_t_min = 0.0;
-static double s_timeline_t_max = 1.0;
-static double s_timeline_time_range = 1.0;
-static LONGLONG s_timeline_last_update_ns = 0;
-
-// Updates timeline cache from g_frame_data (last completed frame). All phase times are computed
-// relative to sim_start_ns. Refreshes at most once per second.
-static void UpdateFrameTimelineCache() {
-    CALL_GUARD_NO_TS();;
-    const uint64_t last_completed_frame_id = (g_global_frame_id.load() > 0) ? (g_global_frame_id.load() - 1) : 0;
-    if (last_completed_frame_id == 0) {
-        s_timeline_phases.clear();
-        return;
-    }
-    const size_t slot = static_cast<size_t>(last_completed_frame_id % kFrameDataBufferSize);
-    const FrameData& fd = g_frame_data[slot];
-    if (fd.frame_id.load() != last_completed_frame_id || fd.sim_start_ns.load() <= 0
-        || fd.present_end_time_ns.load() <= 0) {
-        s_timeline_phases.clear();
-        return;
-    }
-
-    const LONGLONG now_ns = utils::get_now_ns();
-    const bool should_update =
-        (s_timeline_phases.empty()) || (now_ns - s_timeline_last_update_ns >= static_cast<LONGLONG>(utils::SEC_TO_NS));
-    if (!should_update) {
-        return;
-    }
-    s_timeline_last_update_ns = now_ns;
-
-    const LONGLONG base_ns = fd.sim_start_ns.load();
-    const double to_ms = 1.0 / static_cast<double>(utils::NS_TO_MS);
-
-    // All times relative to sim_start (base_ns) in milliseconds
-    const double sim_start_ms = 0.0;
-    const double sim_end_ms = (fd.submit_start_time_ns.load() > base_ns)
-                                  ? (static_cast<double>(fd.submit_start_time_ns.load() - base_ns) * to_ms)
-                                  : sim_start_ms;
-    const double render_end_ms = (fd.render_submit_end_time_ns.load() > base_ns)
-                                     ? (static_cast<double>(fd.render_submit_end_time_ns.load() - base_ns) * to_ms)
-                                     : sim_end_ms;
-    const double present_start_ms = (fd.present_start_time_ns.load() > base_ns)
-                                        ? (static_cast<double>(fd.present_start_time_ns.load() - base_ns) * to_ms)
-                                        : render_end_ms;
-    const double present_end_ms = (fd.present_end_time_ns.load() > base_ns)
-                                      ? (static_cast<double>(fd.present_end_time_ns.load() - base_ns) * to_ms)
-                                      : present_start_ms;
-    const double sleep_pre_start_ms =
-        (fd.sleep_pre_present_start_time_ns.load() > base_ns)
-            ? (static_cast<double>(fd.sleep_pre_present_start_time_ns.load() - base_ns) * to_ms)
-            : render_end_ms;
-    const double sleep_pre_end_ms =
-        (fd.sleep_pre_present_end_time_ns.load() > base_ns)
-            ? (static_cast<double>(fd.sleep_pre_present_end_time_ns.load() - base_ns) * to_ms)
-            : present_start_ms;
-    const double sleep_post_start_ms =
-        (fd.sleep_post_present_start_time_ns.load() > base_ns)
-            ? (static_cast<double>(fd.sleep_post_present_start_time_ns.load() - base_ns) * to_ms)
-            : present_end_ms;
-    const double sleep_post_end_ms =
-        (fd.sleep_post_present_end_time_ns.load() > base_ns)
-            ? (static_cast<double>(fd.sleep_post_present_end_time_ns.load() - base_ns) * to_ms)
-            : present_end_ms;
-    const bool has_gpu =
-        (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && fd.gpu_completion_time_ns.load() > 0);
-    const double gpu_end_ms = has_gpu && fd.gpu_completion_time_ns.load() > base_ns
-                                  ? (static_cast<double>(fd.gpu_completion_time_ns.load() - base_ns) * to_ms)
-                                  : present_end_ms;
-
-    const ImVec4 col_sim(0.2f, 0.75f, 0.35f, 1.0f);
-    const ImVec4 col_render(0.35f, 0.55f, 1.0f, 1.0f);
-    const ImVec4 col_reshade(0.75f, 0.4f, 1.0f, 1.0f);
-    const ImVec4 col_sleep(0.5f, 0.5f, 0.55f, 1.0f);
-    const ImVec4 col_present(1.0f, 0.55f, 0.2f, 1.0f);
-    const ImVec4 col_gpu(0.95f, 0.35f, 0.35f, 1.0f);
-
-    s_timeline_phases.clear();
-    if (sim_end_ms > sim_start_ms) {
-        s_timeline_phases.push_back({"Simulation", sim_start_ms, sim_end_ms, col_sim});
-    }
-    if (render_end_ms > sim_end_ms) {
-        s_timeline_phases.push_back({"Render Submit", sim_end_ms, render_end_ms, col_render});
-    }
-    // ReShade: render_end up to sleep-pre start (or present_start if no sleep-pre)
-    const double reshade_end_ms =
-        (fd.sleep_pre_present_start_time_ns.load() > 0) ? sleep_pre_start_ms : present_start_ms;
-    if (reshade_end_ms > render_end_ms) {
-        s_timeline_phases.push_back({"ReShade", render_end_ms, reshade_end_ms, col_reshade});
-    }
-    if (sleep_pre_end_ms > sleep_pre_start_ms) {
-        s_timeline_phases.push_back({"FPS Sleep (before)", sleep_pre_start_ms, sleep_pre_end_ms, col_sleep});
-    }
-    if (present_end_ms > present_start_ms) {
-        s_timeline_phases.push_back({"Present", present_start_ms, present_end_ms, col_present});
-    }
-    if (sleep_post_end_ms > sleep_post_start_ms) {
-        s_timeline_phases.push_back({"FPS Sleep (after)", sleep_post_start_ms, sleep_post_end_ms, col_sleep});
-    }
-    if (has_gpu && gpu_end_ms > present_start_ms) {
-        s_timeline_phases.push_back({"GPU", present_start_ms, gpu_end_ms, col_gpu});
-    }
-
-    const double frame_ms = (sleep_post_end_ms > present_end_ms) ? sleep_post_end_ms : present_end_ms;
-    s_timeline_t_min = 0.0;
-    s_timeline_t_max = frame_ms;
-    for (const auto& p : s_timeline_phases) {
-        if (p.end_ms > s_timeline_t_max) {
-            s_timeline_t_max = p.end_ms;
-        }
-    }
-    if (s_timeline_t_max <= s_timeline_t_min) {
-        s_timeline_t_max = s_timeline_t_min + 1.0;
-    }
-    s_timeline_time_range = s_timeline_t_max - s_timeline_t_min;
-}
-
-// Draw a single-frame timeline: one horizontal bar per phase, each on its own row.
-// Uses start/end times (relative to frame start) so bars show when each phase began and ended.
-// Data is cached and refreshed at most once per second to avoid flicker.
-void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
-    if (IsNativeReflexActive()) {
-        // Not implemented yet
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: not implemented yet for Reflex path.");
-        return;
-    }
-    (void)imgui;
-    UpdateFrameTimelineCache();
-    if (s_timeline_phases.empty()) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
-        return;
-    }
-
-    const std::vector<CachedTimelinePhase>& phases = s_timeline_phases;
-    const double t_min = s_timeline_t_min;
-    const double t_max = s_timeline_t_max;
-    const double time_range = s_timeline_time_range;
-
-    imgui.Text("Frame timeline (start to end, relative to sim start, updates every 1 s)");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Each row = one phase. Bar shows when it started and ended (0 = sim start). "
-            "Times from last completed frame (g_frame_data).");
-    }
-    imgui.Spacing();
-
-    const float row_height = 18.0f;
-    const float bar_rounding = 2.0f;
-    const float label_width = 150.0f;
-
-    if (!imgui.BeginTable("##FrameTimeline", 2, ImGuiTableFlags_None, ImVec2(-1.0f, 0.0f))) {
-        return;
-    }
-    imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
-    imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
-
-    auto draw_list = imgui.GetWindowDrawList();
-    if (draw_list == nullptr) {
-        imgui.EndTable();
-        return;
-    }
-
-    for (const auto& p : phases) {
-        const double duration = p.end_ms - p.start_ms;
-        if (duration <= 0.0) {
-            continue;
-        }
-
-        imgui.TableNextColumn();
-        imgui.TextUnformatted(p.label);
-
-        imgui.TableNextColumn();
-        const ImVec2 bar_pos = imgui.GetCursorScreenPos();
-        const float bar_width = imgui.GetContentRegionAvail().x;
-        const ImVec2 bar_size(bar_width, row_height);
-
-        // Bar in time range: start_ms -> end_ms maps to bar_pos.x -> bar_pos.x + bar_width
-        const double frac_start = (p.start_ms - t_min) / time_range;
-        const double frac_end = (p.end_ms - t_min) / time_range;
-        float x0 = bar_pos.x + static_cast<float>(frac_start * static_cast<double>(bar_width));
-        float x1 = bar_pos.x + static_cast<float>(frac_end * static_cast<double>(bar_width));
-        if (x1 - x0 < 1.0f) {
-            x1 = x0 + 1.0f;
-        }
-        if (x1 > bar_pos.x + bar_width) {
-            x1 = bar_pos.x + bar_width;
-        }
-        if (x0 < bar_pos.x) {
-            x0 = bar_pos.x;
-        }
-
-        draw_list->AddRectFilled(ImVec2(bar_pos.x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_size.y),
-                                 imgui.GetColorU32(ImGuiCol_FrameBg), bar_rounding);
-        draw_list->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_size.y),
-                                 imgui.ColorConvertFloat4ToU32(p.color), bar_rounding);
-
-        imgui.Dummy(bar_size);
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
-        }
-    }
-
-    // Time axis row: empty label column, then "0 ms" and "t_max ms" in bar column
-    imgui.TableNextColumn();
-    imgui.TextUnformatted("");
-    imgui.TableNextColumn();
-    const float axis_bar_width = imgui.GetContentRegionAvail().x;
-    const float axis_cell_x = imgui.GetCursorPosX();
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "0 ms");
-    imgui.SameLine(axis_cell_x + axis_bar_width - 50.0f);
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "%.1f ms", t_max);
-
-    imgui.EndTable();
-}
-
-// Compact frame timeline bar for performance overlay (smaller rows, fixed width).
-void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    UpdateFrameTimelineCache();
-    if (s_timeline_phases.empty()) {
-        return;
-    }
-    const std::vector<CachedTimelinePhase>& phases = s_timeline_phases;
-    const double t_min = s_timeline_t_min;
-    const double t_max = s_timeline_t_max;
-    const double time_range = s_timeline_time_range;
-
-    const float row_height = 10.0f;
-    const float bar_rounding = 1.0f;
-    const float label_width = 88.0f;
-    const float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
-    const float total_width = 280.0f * graph_scale;
-
-    if (!imgui.BeginTable("##FrameTimelineOverlay", 2, ImGuiTableFlags_None, ImVec2(total_width, 0.0f))) {
-        return;
-    }
-    imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
-    imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
-    auto draw_list = imgui.GetWindowDrawList();
-    if (draw_list == nullptr) {
-        imgui.EndTable();
-        return;
-    }
-
-    for (const auto& p : phases) {
-        const double duration = p.end_ms - p.start_ms;
-        if (duration <= 0.0) {
-            continue;
-        }
-        imgui.TableNextColumn();
-        imgui.TextUnformatted(p.label);
-        imgui.TableNextColumn();
-        const ImVec2 bar_pos = imgui.GetCursorScreenPos();
-        const float bar_width = imgui.GetContentRegionAvail().x;
-        const ImVec2 bar_size(bar_width, row_height);
-
-        const double frac_start = (p.start_ms - t_min) / time_range;
-        const double frac_end = (p.end_ms - t_min) / time_range;
-        float x0 = bar_pos.x + static_cast<float>(frac_start * static_cast<double>(bar_width));
-        float x1 = bar_pos.x + static_cast<float>(frac_end * static_cast<double>(bar_width));
-        if (x1 - x0 < 1.0f) {
-            x1 = x0 + 1.0f;
-        }
-        if (x1 > bar_pos.x + bar_width) {
-            x1 = bar_pos.x + bar_width;
-        }
-        if (x0 < bar_pos.x) {
-            x0 = bar_pos.x;
-        }
-        draw_list->AddRectFilled(ImVec2(bar_pos.x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_size.y),
-                                 imgui.GetColorU32(ImGuiCol_FrameBg), bar_rounding);
-        draw_list->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_size.y),
-                                 imgui.ColorConvertFloat4ToU32(p.color), bar_rounding);
-        imgui.Dummy(bar_size);
-        if (show_tooltips && imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("%s: %.2f - %.2f ms", p.label, p.start_ms, p.end_ms);
-        }
-    }
-    imgui.TableNextColumn();
-    imgui.TextUnformatted("");
-    imgui.TableNextColumn();
-    const float axis_bar_width = imgui.GetContentRegionAvail().x;
-    const float axis_cell_x = imgui.GetCursorPosX();
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "0");
-    imgui.SameLine(axis_cell_x + axis_bar_width - 28.0f);
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "%.0f ms", t_max);
-    imgui.EndTable();
-}
+// Performance overlay / graphs / timeline implementations were extracted into:
+// `ui/new_ui/controls/performance_overlay/*.cpp`
 
 // Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Control when active.
 static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
@@ -889,7 +490,7 @@ static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& 
 // Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
 void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
@@ -1273,331 +874,11 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
     }
 }
 
-// Draw native frame time graph (for frames shown to display via native swapchain Present)
-void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    // Check if limit real frames is enabled (effective: config or preset override when native Reflex active)
-    if (!GetEffectiveLimitRealFrames()) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
-        return;
-    }
-
-    // Snapshot head so Reset() (or any future reset) cannot cause wrong reads mid-iteration.
-    const uint32_t head = ::g_native_frame_time_ring.GetHead();
-    const uint32_t count = ::g_native_frame_time_ring.GetCountFromHead(head);
-
-    if (count == 0) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "No native frame time data available yet...");
-        return;
-    }
-
-    // Collect frame times for the graph (last 300 samples for smooth display)
-    static std::vector<float> frame_times;
-    frame_times.clear();
-    const uint32_t samples_to_collect = min(count, 300u);
-    frame_times.reserve(samples_to_collect);
-
-    for (uint32_t i = 0; i < samples_to_collect; ++i) {
-        const ::PerfSample sample = ::g_native_frame_time_ring.GetSampleWithHead(i, head);
-        if (sample.dt > 0.0f) {
-            frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
-        }
-    }
-
-    if (frame_times.empty()) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "No valid native frame time data available...");
-        return;
-    }
-
-    // Calculate statistics for the graph
-    float min_frame_time = *std::ranges::min_element(frame_times);
-    float max_frame_time = *std::ranges::max_element(frame_times);
-    float avg_frame_time = 0.0f;
-    for (float ft : frame_times) {
-        avg_frame_time += ft;
-    }
-    avg_frame_time /= static_cast<float>(frame_times.size());
-
-    // Calculate average FPS from average frame time
-    float avg_fps = (avg_frame_time > 0.0f) ? (1000.0f / avg_frame_time) : 0.0f;
-
-    // Display statistics
-    imgui.Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
-               avg_frame_time, avg_fps);
-
-    // Create overlay text with current frame time
-    std::string overlay_text = "Native Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
-
-    // Set graph size and scale
-    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);  // Full width, 200px height
-    float scale_min = 0.0f;                     // Always start from 0ms
-    float scale_max = avg_frame_time * 4.f;     // Add some padding
-
-    // Draw the native frame time graph
-    imgui.PlotLines("Native Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
-                    0,  // values_offset
-                    overlay_text.c_str(), scale_min, scale_max, graph_size);
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
-            "This tracks frames when limit real frames is enabled.\n"
-            "Lower values = higher FPS, smoother gameplay.\n"
-            "Spikes indicate frame drops or stuttering.");
-    }
-}
-
-// Draw refresh rate frame times graph (actual refresh rate from NVAPI Adaptive Sync)
-void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    // Use actual refresh rate samples (NVAPI) - lock-free iteration
-    static std::vector<float> frame_times;
-    frame_times.clear();
-    frame_times.reserve(256);  // Reserve for max samples
-
-    display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate) {
-        if (rate > 0.0) {
-            // Convert Hz to frame time in milliseconds
-            frame_times.push_back(static_cast<float>(1000.0 / rate));
-        }
-    });
-
-    if (frame_times.empty()) {
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
-            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            imgui.TextColored(ui::colors::TEXT_WARNING,
-                              "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
-        }
-        return;  // Don't show anything if no valid data (monitor not active or no samples yet)
-    }
-
-    // PlotLines draws index 0 on the left: reverse so newest (present) is on the left, oldest (past) on the right
-    std::reverse(frame_times.begin(), frame_times.end());
-
-    // Calculate statistics for the graph
-    float min_frame_time = *std::ranges::min_element(frame_times);
-    float max_frame_time = *std::ranges::max_element(frame_times);
-    float avg_frame_time = 0.0f;
-    for (float ft : frame_times) {
-        avg_frame_time += ft;
-    }
-    avg_frame_time /= static_cast<float>(frame_times.size());
-
-    // Calculate standard deviation
-    float variance = 0.0f;
-    for (float ft : frame_times) {
-        float diff = ft - avg_frame_time;
-        variance += diff * diff;
-    }
-    variance /= static_cast<float>(frame_times.size());
-    float std_deviation = std::sqrt(variance);
-
-    // Fixed width for overlay (compact) - apply user scale
-    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
-    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
-    float scale_min = 0.0f;
-    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
-    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
-
-    // Draw chart background with transparency
-    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
-    bg_color.w *= chart_alpha;  // Apply transparency to background
-
-    // Push style color so PlotLines uses the transparent background
-    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
-
-    // Draw compact refresh rate frame time graph (line stays fully opaque)
-    imgui.PlotLines("##RefreshRateFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                    0,        // values_offset
-                    nullptr,  // overlay_text - no text for compact version
-                    scale_min, scale_max, graph_size);
-
-    // Restore original style color
-    imgui.PopStyleColor();
-
-    // Display refresh rate time statistics if enabled
-    bool show_refresh_rate_frame_time_stats = settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
-    if (show_refresh_rate_frame_time_stats) {
-        imgui.Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
-                   min_frame_time, max_frame_time);
-    }
-
-    if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltipEx(
-            "Actual refresh rate frame time graph (NvAPI_DISP_GetAdaptiveSyncData) in milliseconds.\n"
-            "Lower values = higher refresh rate.\n"
-            "Spikes indicate refresh rate variations (VRR, power management, etc.).");
-    }
-}
-
-// Compact overlay version with fixed width
-void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    if (perf_measurement::IsSuppressionEnabled()
-        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
-        return;
-    }
-
-    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
-
-    // Snapshot head so Reset() running on another thread cannot cause wrong reads (GetSample underflow).
-    const uint32_t head = ::g_perf_ring.GetHead();
-    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-
-    if (count == 0) {
-        return;  // Don't show anything if no data
-    }
-    const uint32_t samples_to_display = min(count, 256u);
-
-    // Collect frame times for the graph (last 256 samples for compact display)
-    static std::vector<float> frame_times;
-    frame_times.clear();
-    frame_times.reserve(samples_to_display);
-
-    for (uint32_t i = 0; i < samples_to_display; ++i) {
-        const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-        frame_times.push_back(1000.0 * sample.dt);  // Convert FPS to frame time in ms
-    }
-
-    if (frame_times.empty()) {
-        return;  // Don't show anything if no valid data
-    }
-
-    // Calculate statistics for the graph
-    float min_frame_time = *std::ranges::min_element(frame_times);
-    float max_frame_time = *std::ranges::max_element(frame_times);
-    float avg_frame_time = 0.0f;
-    for (float ft : frame_times) {
-        avg_frame_time += ft;
-    }
-    avg_frame_time /= static_cast<float>(frame_times.size());
-
-    // Calculate standard deviation
-    float variance = 0.0f;
-    for (float ft : frame_times) {
-        float diff = ft - avg_frame_time;
-        variance += diff * diff;
-    }
-    variance /= static_cast<float>(frame_times.size());
-    float std_deviation = std::sqrt(variance);
-
-    // Fixed width for overlay (compact) - apply user scale
-    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
-    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
-    float scale_min = 0.0f;
-    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
-    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
-
-    // Draw chart background with transparency
-    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
-    bg_color.w *= chart_alpha;  // Apply transparency to background
-
-    // Push style color so PlotLines uses the transparent background
-    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
-
-    // Draw compact frame time graph (line stays fully opaque)
-    imgui.PlotLines("##FrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                    0,        // values_offset
-                    nullptr,  // overlay_text - no text for compact version
-                    scale_min, scale_max, graph_size);
-
-    // Restore original style color
-    imgui.PopStyleColor();
-
-    // Display frame time statistics if enabled
-    bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
-    if (show_frame_time_stats) {
-        imgui.Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
-                   min_frame_time, max_frame_time);
-    }
-
-    if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltipEx("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                           max_frame_time);
-    }
-}
-
-// Compact overlay version for native frame times (frames shown to display via native swapchain Present)
-void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    if (perf_measurement::IsSuppressionEnabled()
-        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
-        return;
-    }
-
-    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
-
-    // Snapshot head so Reset() (or any future reset) cannot cause wrong reads mid-iteration.
-    const uint32_t head = ::g_native_frame_time_ring.GetHead();
-    const uint32_t count = ::g_native_frame_time_ring.GetCountFromHead(head);
-
-    if (count == 0) {
-        return;  // Don't show anything if no data
-    }
-    const uint32_t samples_to_display = min(count, 256u);
-
-    // Collect frame times for the graph (last 256 samples for compact display)
-    static std::vector<float> frame_times;
-    frame_times.clear();
-    frame_times.reserve(samples_to_display);
-
-    for (uint32_t i = 0; i < samples_to_display; ++i) {
-        const ::PerfSample sample = ::g_native_frame_time_ring.GetSampleWithHead(i, head);
-        if (sample.dt > 0.0f) {
-            frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
-        }
-    }
-
-    if (frame_times.empty()) {
-        return;  // Don't show anything if no valid data
-    }
-
-    // Calculate statistics for the graph
-    float max_frame_time = *std::ranges::max_element(frame_times);
-    float avg_frame_time = 0.0f;
-    for (float ft : frame_times) {
-        avg_frame_time += ft;
-    }
-    avg_frame_time /= static_cast<float>(frame_times.size());
-
-    // Fixed width for overlay (compact) - apply user scale
-    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
-    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
-    float scale_min = 0.0f;
-    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
-    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
-
-    // Draw chart background with transparency
-    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
-    bg_color.w *= chart_alpha;  // Apply transparency to background
-
-    // Push style color so PlotLines uses the transparent background
-    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
-
-    // Draw compact native frame time graph (line stays fully opaque)
-    imgui.PlotLines("##NativeFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                    0,        // values_offset
-                    nullptr,  // overlay_text - no text for compact version
-                    scale_min, scale_max, graph_size);
-
-    // Restore original style color
-    imgui.PopStyleColor();
-
-    if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltipEx("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                           max_frame_time);
-    }
-}
+// Performance overlay / graphs implementations were extracted into:
+// `ui/new_ui/controls/performance_overlay/*.cpp`
 
 void InitMainNewTab() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
         // Settings already loaded at startup
@@ -1645,7 +926,7 @@ void InitMainNewTab() {
 
 void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Advanced Settings Control
     {
         bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
@@ -1804,7 +1085,7 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
 
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
                     reshade::api::effect_runtime* runtime) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     RefreshReShadeModuleIfNeeded();
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
@@ -2100,7 +1381,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const float selected_epsilon = 0.002f;
     auto window_state = ::g_window_state.load();
     double refresh_hz = window_state ? window_state->current_monitor_refresh_rate.ToHz() : 0.0;
@@ -2216,7 +1497,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui,
                                           reshade::api::effect_runtime* runtime) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     {
         // Refresh target display from config so hotkey changes (Win+Left/Win+Right) are visible on the UI thread
         settings::g_mainTabSettings.selected_extended_display_device_id.Load();
@@ -2456,7 +1737,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
 
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Window Mode dropdown (with persistent setting)
     static bool was_ever_in_no_changes_mode = false;
     if (static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue()) == WindowMode::kNoChanges) {
@@ -2540,7 +1821,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
 
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     imgui.Spacing();
 
     const char* mode_items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)",
@@ -3266,7 +2547,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
 static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui,
                                                  float fps_limiter_checkbox_column_gutter) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
     if (current_item < 0 || current_item > 2) {
@@ -3437,7 +2718,7 @@ static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t pres
 }
 
 static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const reshade::api::device_api current_api_pt = g_last_reshade_device_api.load();
     const bool is_dxgi_pt =
         (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
@@ -3566,7 +2847,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
 static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_commander::ui::IImGuiWrapper& imgui,
                                                                  const VSyncTearingTooltipContext& ctx) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (ctx.desc == nullptr) return;
     const auto& desc = *ctx.desc;
     const reshade::api::device_api api_val = g_last_reshade_device_api.load();
@@ -3710,12 +2991,12 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
 
 static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commander::ui::IImGuiWrapper& imgui,
                                                                 VSyncTearingTooltipContext* out_ctx) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     auto desc_ptr = g_last_swapchain_desc_post.load();
     if (!desc_ptr) {
         return false;
     }
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const auto& desc = *desc_ptr;
     const reshade::api::device_api current_api = g_last_reshade_device_api.load();
     const bool is_d3d9 = current_api == reshade::api::device_api::d3d9;
@@ -3730,7 +3011,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     std::string present_mode_name = "Unknown";
 
     if (is_d3d9) {
-        CALL_GUARD_NO_TS();;
+        CALL_GUARD_NO_TS();
         if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
             present_mode_name = "FLIPEX (Flip Model)";
             present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -3755,7 +3036,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         }
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         bool status_hovered = imgui.IsItemHovered();
-        CALL_GUARD_NO_TS();;
+        CALL_GUARD_NO_TS();
         if (out_ctx) {
             out_ctx->desc_holder = desc_ptr;
             out_ctx->desc = desc_ptr.get();
@@ -3765,7 +3046,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     }
 
     if (is_dxgi) {
-        CALL_GUARD_NO_TS();;
+        CALL_GUARD_NO_TS();
         if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
             present_mode_name = "FLIP_DISCARD (Flip Model)";
             present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -3793,7 +3074,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     }
 
     // Vulkan, OpenGL, etc.: show present mode (ReShade: VkPresentModeKHR or WGL)
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     present_mode_name = GetPresentModeNameNonDxgi(static_cast<int>(current_api), desc.present_mode);
     present_mode_color = ui::colors::TEXT_DIMMED;
     imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
@@ -3807,7 +3088,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
 }
 
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     ui::colors::PushHeader2Colors(&imgui);
@@ -3848,7 +3129,7 @@ void MarkRestartNeededVsyncTearing() {
 void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
                          reshade::api::effect_runtime* runtime) {
     (void)api;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     DrawDisplaySettings_DisplayAndTarget(imgui, runtime);
     DrawDisplaySettings_WindowModeAndApply(imgui);
     DrawDisplaySettings_FpsLimiter(imgui);
@@ -3886,871 +3167,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_VSyncAndTearing(imgui);
 }
 
-void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
-                                   display_commander::ui::GraphicsApi device_api, bool show_tooltips) {
-    CALL_GUARD_NO_TS();;
-    reshade::api::device_api current_api = static_cast<reshade::api::device_api>(0);
-    switch (device_api) {
-        case display_commander::ui::GraphicsApi::D3D9:   current_api = reshade::api::device_api::d3d9; break;
-        case display_commander::ui::GraphicsApi::D3D10:  current_api = reshade::api::device_api::d3d10; break;
-        case display_commander::ui::GraphicsApi::D3D11:  current_api = reshade::api::device_api::d3d11; break;
-        case display_commander::ui::GraphicsApi::D3D12:  current_api = reshade::api::device_api::d3d12; break;
-        case display_commander::ui::GraphicsApi::OpenGL: current_api = reshade::api::device_api::opengl; break;
-        case display_commander::ui::GraphicsApi::Vulkan: current_api = reshade::api::device_api::vulkan; break;
-        default:                                         break;
-    }
-    bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
-    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
-    bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
-    bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
-    bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
-    bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
-    bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
-    bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-    bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
-    bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
-    bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
-    bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-    bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-    bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
-    bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-    bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
-    bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
-    bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
-    bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
-    bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
-
-    if (settings::g_mainTabSettings.show_clock.GetValue()) {
-        // Display current time
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        imgui.Text("%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
-    }
-
-    // Show playtime (time from game start)
-    if (settings::g_mainTabSettings.show_playtime.GetValue()) {
-        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
-        if (game_start_time_ns > 0) {
-            LONGLONG now_ns = utils::get_now_ns();
-            LONGLONG playtime_ns = now_ns - game_start_time_ns;
-            double playtime_seconds = static_cast<double>(playtime_ns) / static_cast<double>(utils::SEC_TO_NS);
-
-            // Format as HH:MM:SS.mmm
-            int hours = static_cast<int>(playtime_seconds / 3600.0);
-            int minutes = static_cast<int>((playtime_seconds - (hours * 3600.0)) / 60.0);
-            int seconds = static_cast<int>(playtime_seconds - (hours * 3600.0) - (minutes * 60.0));
-            int milliseconds = static_cast<int>((playtime_seconds - static_cast<int>(playtime_seconds)) * 1000.0);
-
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("%02d:%02d:%02d", hours, minutes, seconds);
-            } else {
-                imgui.Text("%02d:%02d:%02d", hours, minutes, seconds);
-            }
-
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("Playtime: Time elapsed since game start");
-            }
-        }
-    }
-
-    if (show_fps_counter) {
-        const uint32_t head = ::g_perf_ring.GetHead();
-        const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-        double total_time = 0.0;
-
-        // Iterate through samples from the last second (snapshot head avoids race with Reset Stats).
-        uint32_t sample_count = 0;
-
-        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-            const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-
-            // not enough data yet
-            if (sample.dt == 0.0f || total_time >= 1.0) break;
-
-            sample_count++;
-            total_time += sample.dt;
-        }
-
-        // Calculate average
-        if (sample_count > 0 && total_time >= 1.0) {
-            auto average_fps = sample_count / total_time;
-
-            // Check if native FPS should be shown
-            bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
-            if (show_native_fps) {
-                // Check if native Reflex was updated within the last 5 seconds
-                uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
-                uint64_t current_time = utils::get_now_ns();
-                bool is_recent =
-                    (last_sleep_timestamp > 0) && (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
-
-                // Calculate native FPS from native Reflex sleep interval
-                LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
-                double native_fps = 0.0;
-
-                // Only calculate if we have valid native sleep data (> 0 and reasonable) and it's recent
-                if (is_recent && native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
-                    native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
-                }
-
-                // Display dual format: native FPS / regular FPS
-                if (native_fps > 0.0) {
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        imgui.Text("%.1f / %.1f fps", native_fps, average_fps);
-                    } else {
-                        imgui.Text("%.1f / %.1f", native_fps, average_fps);
-                    }
-                } else {
-                    // No valid native FPS data, show regular FPS only
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        imgui.Text("%.1f fps", average_fps);
-                    } else {
-                        imgui.Text("%.1f", average_fps);
-                    }
-                }
-            } else {
-                // Regular FPS display
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("%.1f fps", average_fps);
-                } else {
-                    imgui.Text("%.1f", average_fps);
-                }
-            }
-        }
-    }
-
-    // Actual refresh rate (NVAPI Adaptive Sync flip data) - smoothed for display (alpha 0.02)
-    if (show_actual_refresh_rate) {
-        static double s_smoothed_actual_hz = 0.0;
-        constexpr double k_alpha = 0.02;
-        double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-        if (actual_hz > 0.0) {
-            s_smoothed_actual_hz = k_alpha * actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
-            imgui.Text("%.1f Hz", s_smoothed_actual_hz);
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
-            }
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("Waiting for NVAPI display or samples.");
-            }
-        }
-    }
-
-    {
-        bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-
-        if (show_vrr_status || show_vrr_debug_mode) {
-            perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
-            static bool cached_vrr_active = false;
-            static LONGLONG last_update_ns = 0;
-            static LONGLONG last_valid_sample_ns = 0;
-            static dxgi::fps_limiter::RefreshRateStats cached_stats{};
-            const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
-            const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
-
-            // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
-            // with direct swapchain access, so we just read the cached values here.
-            bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
-            std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
-
-            LONGLONG now_ns = utils::get_now_ns();
-
-            // Get refresh rate stats from continuous monitoring thread cache
-            auto shared_stats = g_cached_refresh_rate_stats.load();
-            if (shared_stats && shared_stats->is_valid && shared_stats->sample_count > 0) {
-                // Update cached values from shared stats
-                cached_vrr_active = (shared_stats->max_rate > shared_stats->min_rate + 2.0);
-                cached_stats = *shared_stats;
-                last_valid_sample_ns = now_ns;
-            }
-
-            // Check if we got a sample within the last 1 second
-            bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
-
-            // Display VRR status (only if show_vrr_status is enabled)
-            if (show_vrr_status) {
-                // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
-                if (cached_nvapi_ok && cached_nvapi_vrr) {
-                    if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-
-                    } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
-                    } else if (cached_nvapi_vrr->is_vrr_requested) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
-                    }
-                } else {
-                    if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: NO NVAPI");
-                    }
-                }
-            }
-
-            // Display debugging parameters below VRR status (only if vrr_debug_mode is enabled)
-            if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
-                                  cached_stats.total_samples_last_10s);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
-                                  cached_stats.samples_below_threshold_last_10s);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
-                                  cached_stats.all_last_20_within_1s ? "Yes" : "No");
-            }
-
-            // NVAPI debug info (optional, shown only in VRR debug mode)
-            if (show_vrr_debug_mode && cached_nvapi_vrr) {
-                if (!cached_nvapi_vrr->nvapi_initialized) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
-                } else if (!cached_nvapi_vrr->display_id_resolved) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
-                                      (int)cached_nvapi_vrr->resolve_status);
-                    if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
-                                          cached_nvapi_vrr->nvapi_display_name.c_str());
-                    }
-                } else if (!cached_nvapi_ok) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
-                                      (int)cached_nvapi_vrr->query_status);
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
-                } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                      (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
-                                      (int)cached_nvapi_vrr->is_vrr_possible,
-                                      (int)cached_nvapi_vrr->is_display_in_vrr_mode);
-                    // Show which field is causing "VRR: On" to display
-                    if (cached_nvapi_vrr->is_display_in_vrr_mode) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
-                    } else if (cached_nvapi_vrr->is_vrr_enabled) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
-                    }
-                }
-            }
-        }
-    }
-
-    // DXGI overlay: VRR status and refresh rate from RefreshRateMonitor (requires
-    // enable_dxgi_refresh_rate_vrr_detection)
-    if (show_dxgi_vrr_status || show_dxgi_refresh_rate) {
-        dxgi::fps_limiter::RefreshRateStats dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
-        if (show_dxgi_vrr_status) {
-            if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s
-                && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
-            } else if (dxgi_stats.is_valid) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: --");
-            }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx(
-                    "DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in "
-                    "Advanced tab.");
-            }
-        }
-        if (show_dxgi_refresh_rate) {
-            double dxgi_hz = dxgi::fps_limiter::GetSmoothedRefreshRate();
-            if (dxgi_hz > 0.0) {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("DXGI refresh rate: %.1f Hz", dxgi_hz);
-                } else {
-                    imgui.Text("%.1f Hz", dxgi_hz);
-                }
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI refresh rate: -- Hz");
-            }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx(
-                    "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
-                    "in Advanced tab.");
-            }
-        }
-    }
-
-    if (show_overlay_vram) {
-        uint64_t vram_used = 0;
-        uint64_t vram_total = 0;
-        if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
-            const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
-            const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("VRAM: %llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                           static_cast<unsigned long long>(total_mib));
-            } else {
-                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                           static_cast<unsigned long long>(total_mib));
-            }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("GPU video memory used / budget (DXGI adapter memory budget).");
-            }
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("VRAM unavailable (DXGI adapter or budget query failed).");
-            }
-        }
-
-        // RAM (system memory) on the same line: X(Y)/Z = system used (current process used) / total
-        imgui.SameLine();
-        MEMORYSTATUSEX mem_status = {};
-        mem_status.dwLength = sizeof(mem_status);
-        if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
-            const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
-            const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
-            const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
-            PROCESS_MEMORY_COUNTERS pmc = {};
-            pmc.cb = sizeof(pmc);
-            const bool have_process = (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
-            const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                if (have_process) {
-                    imgui.Text("RAM: %llu (%llu) / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                               static_cast<unsigned long long>(process_mib),
-                               static_cast<unsigned long long>(ram_total_mib));
-                } else {
-                    imgui.Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                               static_cast<unsigned long long>(ram_total_mib));
-                }
-            } else {
-                if (have_process) {
-                    imgui.Text("%llu (%llu) / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                               static_cast<unsigned long long>(process_mib),
-                               static_cast<unsigned long long>(ram_total_mib));
-                } else {
-                    imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                               static_cast<unsigned long long>(ram_total_mib));
-                }
-            }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx(
-                    "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
-            }
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("System memory info unavailable.");
-            }
-        }
-    }
-
-    if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
-        || show_dlss_render_preset) {
-        const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
-        const bool any_dlss_active = dlss_lite.any_dlss_active;
-
-        // Get fg_mode if needed
-        int fg_mode = 0;
-
-        int dllssg_mode = -1;
-        int enable_interp = -1;
-        g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
-        g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
-
-        bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode >= 1 : enable_interp == 1);
-
-
-        if (show_fg_mode) {
-            int num_frames_actually_presented;
-            // 2026-03-26 fix for Death Stranding 2 - On the Beach
-            // Uses DLLSG.MODE 0/1
-            // Uses DLSSG.MultiFrameCount 1/2
-            if (is_fg_enabled) {
-                unsigned int multi_frame_count;
-                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                    fg_mode = multi_frame_count + 1;
-                }
-            }
-        }
-
-        // Get resolutions if needed
-        std::string internal_resolution = "N/A";
-        std::string output_resolution = "N/A";
-        if (show_dlss_internal_resolution) {
-            unsigned int internal_width, internal_height, output_width, output_height;
-            bool has_internal_width =
-                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
-            bool has_internal_height =
-                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
-            bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
-            bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
-
-            if (has_internal_width && has_internal_height && internal_width > 0 && internal_height > 0) {
-                internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
-            }
-            if (has_output_width && has_output_height) {
-                output_resolution = std::to_string(output_width) + "x" + std::to_string(output_height);
-            }
-        }
-
-        // Get quality preset if needed
-        std::string quality_preset = "N/A";
-        if (show_dlss_quality_preset || show_dlss_render_preset) {
-            unsigned int perf_quality;
-            if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
-                switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {
-                    case NVSDK_NGX_PerfQuality_Value_MaxPerf:          quality_preset = "Performance"; break;
-                    case NVSDK_NGX_PerfQuality_Value_Balanced:         quality_preset = "Balanced"; break;
-                    case NVSDK_NGX_PerfQuality_Value_MaxQuality:       quality_preset = "Quality"; break;
-                    case NVSDK_NGX_PerfQuality_Value_UltraPerformance: quality_preset = "Ultra Performance"; break;
-                    case NVSDK_NGX_PerfQuality_Value_UltraQuality:     quality_preset = "Ultra Quality"; break;
-                    case NVSDK_NGX_PerfQuality_Value_DLAA:             quality_preset = "DLAA"; break;
-                    default:                                           quality_preset = "Unknown"; break;
-                }
-            }
-        }
-
-        if (show_fg_mode) {
-            // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-            if (any_dlss_active && fg_mode >= 2) {
-                imgui.Text("FG: %sx", fg_mode);
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
-            }
-        }
-
-        if (show_dlss_internal_resolution) {
-            // Show internal resolution -> output resolution -> backbuffer if DLSS is active and we have valid data
-            if (any_dlss_active && internal_resolution != "N/A") {
-                std::string res_text = internal_resolution;
-                const int bb_w = g_game_render_width.load();
-                const int bb_h = g_game_render_height.load();
-                if (bb_w > 0 && bb_h > 0) {
-                    res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
-                }
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("DLSS Internal->Output: %s", res_text.c_str());
-                } else {
-                    imgui.Text("%s", res_text.c_str());
-                }
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Internal->Output: N/A");
-            }
-        }
-
-        if (show_dlss_status) {
-            // Show DLSS on/off status with details (Ray Reconstruction, etc.)
-            if (any_dlss_active) {
-                std::string status_text;
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    status_text = "DLSS: On";
-                } else {
-                    status_text = "DLSS On";
-                }
-
-                // Add details about which DLSS feature is active
-                if (dlss_lite.ray_reconstruction_active) {
-                    status_text += " (RR)";
-                } else if (dlss_lite.dlss_g_active) {
-                    status_text += " (DLSS-G)";
-                } else if (dlss_lite.dlss_active) {
-                    // Regular DLSS Super Resolution is active (no suffix needed)
-                }
-
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
-            } else {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
-                } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Off");
-                }
-            }
-        }
-
-        if (show_dlss_quality_preset) {
-            // Show quality preset (Performance, Balanced, Quality, etc.) if DLSS is active and we have valid data
-            if (any_dlss_active && quality_preset != "N/A") {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("DLSS Quality: %s", quality_preset.c_str());
-                } else {
-                    imgui.Text("%s", quality_preset.c_str());
-                }
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
-            }
-        }
-
-        if (show_dlss_render_preset) {
-            // Show render preset (A, B, C, D, E, etc.) if DLSS is active and we have valid data
-            if (any_dlss_active) {
-                DLSSModelProfile model_profile = GetDLSSModelProfile();
-                if (model_profile.is_valid) {
-                    // Get current quality preset to determine which render preset value to show
-                    std::string current_quality = quality_preset;
-                    int render_preset_value = 0;
-
-                    // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
-                    if (dlss_lite.ray_reconstruction_active) {
-                        // Determine which Ray Reconstruction render preset value to display based on current quality
-                        // preset
-                        if (current_quality == "Quality") {
-                            render_preset_value = model_profile.rr_quality_preset;
-                        } else if (current_quality == "Balanced") {
-                            render_preset_value = model_profile.rr_balanced_preset;
-                        } else if (current_quality == "Performance") {
-                            render_preset_value = model_profile.rr_performance_preset;
-                        } else if (current_quality == "Ultra Performance") {
-                            render_preset_value = model_profile.rr_ultra_performance_preset;
-                        } else if (current_quality == "Ultra Quality") {
-                            render_preset_value = model_profile.rr_ultra_quality_preset;
-                        } else {
-                            // Default to Quality if unknown
-                            render_preset_value = model_profile.rr_quality_preset;
-                        }
-                    } else {
-                        // Determine which Super Resolution render preset value to display based on current quality
-                        // preset
-                        if (current_quality == "Quality") {
-                            render_preset_value = model_profile.sr_quality_preset;
-                        } else if (current_quality == "Balanced") {
-                            render_preset_value = model_profile.sr_balanced_preset;
-                        } else if (current_quality == "Performance") {
-                            render_preset_value = model_profile.sr_performance_preset;
-                        } else if (current_quality == "Ultra Performance") {
-                            render_preset_value = model_profile.sr_ultra_performance_preset;
-                        } else if (current_quality == "Ultra Quality") {
-                            render_preset_value = model_profile.sr_ultra_quality_preset;
-                        } else if (current_quality == "DLAA") {
-                            render_preset_value = model_profile.sr_dlaa_preset;
-                        } else {
-                            // Default to Quality if unknown
-                            render_preset_value = model_profile.sr_quality_preset;
-                        }
-                    }
-
-                    // Convert render preset number to letter string
-                    std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
-
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        imgui.Text("DLSS Render: %s", render_preset_letter.c_str());
-                    } else {
-                        imgui.Text("%s", render_preset_letter.c_str());
-                    }
-                } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
-                }
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
-            }
-        }
-    }
-
-    if (show_volume) {
-        perf_measurement::ScopedTimer overlay_show_volume_timer(perf_measurement::Metric::OverlayShowVolume);
-        // Get volume values from atomic variables (updated by continuous monitoring thread)
-        float current_volume = s_game_volume_percent.load();
-        float system_volume = s_system_volume_percent.load();
-
-        // Check if audio is muted
-        bool is_muted = g_muted_applied.load();
-
-        // Display game volume and system volume
-        if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            if (is_muted) {
-                imgui.Text("%.0f%% vol / %.0f%% sys muted", current_volume, system_volume);
-            } else {
-                imgui.Text("%.0f%% vol / %.0f%% sys", current_volume, system_volume);
-            }
-        } else {
-            if (is_muted) {
-                imgui.Text("%.0f%% / %.0f%% muted", current_volume, system_volume);
-            } else {
-                imgui.Text("%.0f%% / %.0f%%", current_volume, system_volume);
-            }
-        }
-        if (imgui.IsItemHovered() && show_tooltips) {
-            if (is_muted) {
-                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume,
-                                   system_volume);
-            } else {
-                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
-            }
-        }
-    }
-
-    if (show_gpu_measurement) {
-        // Display sim-to-display latency
-        LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
-        if (latency_ns > 0) {
-            double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("%.1f ms lat", latency_ms);
-            } else {
-                imgui.Text("%.1f", latency_ms);
-            }
-        }
-    }
-
-    if (show_cpu_usage) {
-        // Calculate CPU usage: (cpu_time / frame_time) * 100%. Note: missing time in onpresent, native reflex.
-        LONGLONG cpu_time_ns =
-            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
-
-        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
-
-        if (cpu_time_ns > 0 && frame_time_ns > 0) {
-            // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
-            double cpu_usage_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
-
-            // Clamp to 0-100%
-            if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
-            if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
-
-            // Smoothed CPU busy: updated every frame (EMA alpha 0.05), displayed every 0.2s to prevent flickering
-            static double smoothed_cpu_usage = cpu_usage_percent;
-            static double displayed_cpu_usage = cpu_usage_percent;
-            static LONGLONG s_cpu_busy_last_display_ns = 0;
-            const double alpha = 0.05;
-            smoothed_cpu_usage = (1.0 - alpha) * smoothed_cpu_usage + alpha * cpu_usage_percent;
-            LONGLONG now_ns = utils::get_now_ns();
-            const LONGLONG k_cpu_busy_display_interval_ns =
-                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-            if (now_ns - s_cpu_busy_last_display_ns >= k_cpu_busy_display_interval_ns) {
-                s_cpu_busy_last_display_ns = now_ns;
-                displayed_cpu_usage = smoothed_cpu_usage;
-            }
-
-            // Track last 32 CPU usage values for max calculation
-            static constexpr size_t kCpuUsageHistorySize = 64;
-            static double cpu_usage_history[kCpuUsageHistorySize] = {};
-            static size_t cpu_usage_history_index = 0;
-            static size_t cpu_usage_history_count = 0;
-
-            // Add current value to history
-            cpu_usage_history[cpu_usage_history_index] = cpu_usage_percent;
-            cpu_usage_history_index = (cpu_usage_history_index + 1) % kCpuUsageHistorySize;
-            if (cpu_usage_history_count < kCpuUsageHistorySize) {
-                cpu_usage_history_count++;
-            }
-
-            // Find maximum from last 32 frames
-            double max_cpu_usage = cpu_usage_percent;
-            for (size_t i = 0; i < cpu_usage_history_count; ++i) {
-                max_cpu_usage = (std::max)(max_cpu_usage, cpu_usage_history[i]);
-            }
-
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("%.1f%% cpu busy (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
-            } else {
-                imgui.Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
-            }
-        }
-    }
-
-    if (show_overlay_nvapi_gpu_util) {
-        nvapi::RequestGpuDynamicUtilizationFromOverlay(true);
-        unsigned gpu_pct = 0;
-        if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
-            const double raw = static_cast<double>(gpu_pct);
-            static double smoothed_nv_gpu_util = 0.0;
-            static double displayed_nv_gpu_util = 0.0;
-            static LONGLONG s_nv_gpu_util_last_display_ns = 0;
-            constexpr double k_nv_gpu_alpha = 0.1;
-            smoothed_nv_gpu_util =
-                (1.0 - k_nv_gpu_alpha) * smoothed_nv_gpu_util + k_nv_gpu_alpha * raw;
-            const LONGLONG now_ns_nv = utils::get_now_ns();
-            constexpr LONGLONG k_nv_gpu_display_interval_ns =
-                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-            if (now_ns_nv - s_nv_gpu_util_last_display_ns >= k_nv_gpu_display_interval_ns) {
-                s_nv_gpu_util_last_display_ns = now_ns_nv;
-                displayed_nv_gpu_util = smoothed_nv_gpu_util;
-            }
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("%.1f%% GPU (NV)", displayed_nv_gpu_util);
-            } else {
-                imgui.Text("%.1f%%", displayed_nv_gpu_util);
-            }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx(
-                    "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
-                    "first physical GPU).");
-            }
-        }
-    }
-
-    if (show_nvapi_latency_stats) {
-        if (g_reflexProvider) {
-            ReflexProvider::NvapiLatencyMetrics metrics{};
-            if (g_reflexProvider->GetLatencyMetrics(metrics)) {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("PCL (NVAPI): %.1f ms", metrics.pc_latency_ms +
-                               metrics.gpu_frame_time_ms / 2.0);
-                } else {
-                    imgui.Text("%.1f ms / %.1f ms", metrics.pc_latency_ms, metrics.gpu_frame_time_ms);
-                }
-                if (imgui.IsItemHovered() && show_tooltips) {
-                    imgui.SetTooltipEx(
-                        "PC latency from NVAPI Reflex (input sample to GPU render end) and GPU frame time.\n"
-                        "FrameID: %llu",
-                        static_cast<unsigned long long>(metrics.frame_id));
-                }
-            }
-        }
-    }
-
-    if (show_fps_limiter_src) {
-        const char* src_name = GetChosenFpsLimiterSiteName();
-        if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.Text("FPS limiter source: %s", src_name);
-        } else {
-            imgui.Text("%s", src_name);
-        }
-    }
-
-    // Show Cpu FPS: current FPS / (cpu busy %)
-    if (show_cpu_fps) {
-        LONGLONG cpu_time_ns =
-            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
-        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
-
-        // Current FPS from perf ring (last second); snapshot head avoids race with Reset Stats.
-        double current_fps = 0.0;
-        const uint32_t head = ::g_perf_ring.GetHead();
-        const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-        double total_time = 0.0;
-        uint32_t sample_count = 0;
-        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-            const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-            if (sample.dt == 0.0f || total_time >= 1.0) break;
-            sample_count++;
-            total_time += sample.dt;
-        }
-        if (sample_count > 0 && total_time >= 1.0) {
-            current_fps = sample_count / total_time;
-        }
-
-        if (current_fps > 0.0 && cpu_time_ns > 0 && frame_time_ns > 0) {
-            double cpu_busy_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
-            if (cpu_busy_percent < 0.0) cpu_busy_percent = 0.0;
-            if (cpu_busy_percent > 100.0) cpu_busy_percent = 100.0;
-
-            if (cpu_busy_percent > 0.0) {
-                double cpu_fps_raw = current_fps / (cpu_busy_percent / 100.0);
-                if (cpu_fps_raw > 9999.0) cpu_fps_raw = 9999.0;
-                // Smoothed CPU FPS: updated every frame (EMA alpha 0.01), displayed every 0.2s to prevent flickering
-                static double s_smoothed_cpu_fps = 0.0;
-                static double s_displayed_cpu_fps = 0.0;
-                static LONGLONG s_cpu_fps_last_display_ns = 0;
-                constexpr double k_cpu_fps_alpha = 0.01;
-                s_smoothed_cpu_fps = k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
-                LONGLONG now_ns = utils::get_now_ns();
-                const LONGLONG k_cpu_fps_display_interval_ns =
-                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-                if (now_ns - s_cpu_fps_last_display_ns >= k_cpu_fps_display_interval_ns) {
-                    s_cpu_fps_last_display_ns = now_ns;
-                    s_displayed_cpu_fps = s_smoothed_cpu_fps;
-                }
-                double cpu_fps = s_displayed_cpu_fps;
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("%.1f cpu fps", cpu_fps);
-                } else {
-                    imgui.Text("%.1f", cpu_fps);
-                }
-            }
-        }
-    }
-
-    // Show action notifications (volume, mute, etc.) for 10 seconds
-    ActionNotification notification = g_action_notification.load();
-    if (notification.type != ActionNotificationType::None) {
-        LONGLONG now_ns = utils::get_now_ns();
-        LONGLONG elapsed_ns = now_ns - notification.timestamp_ns;
-        const LONGLONG display_duration_ns = 10 * utils::SEC_TO_NS;  // 10 seconds
-
-        if (elapsed_ns < display_duration_ns) {
-            // Display based on notification type
-            switch (notification.type) {
-                case ActionNotificationType::Volume: {
-                    float volume_value = notification.float_value;
-                    bool is_muted = g_muted_applied.load();
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        if (is_muted) {
-                            imgui.Text("%.0f%% vol muted", volume_value);
-                        } else {
-                            imgui.Text("%.0f%% vol", volume_value);
-                        }
-                    } else {
-                        if (is_muted) {
-                            imgui.Text("%.0f%% muted", volume_value);
-                        } else {
-                            imgui.Text("%.0f%%", volume_value);
-                        }
-                    }
-                    if (imgui.IsItemHovered() && show_tooltips) {
-                        if (is_muted) {
-                            imgui.SetTooltipEx("Audio Volume: %.0f%% (Muted)", volume_value);
-                        } else {
-                            imgui.SetTooltipEx("Audio Volume: %.0f%%", volume_value);
-                        }
-                    }
-                    break;
-                }
-                case ActionNotificationType::Mute: {
-                    bool mute_state = notification.bool_value;
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        imgui.Text("%s", mute_state ? "Muted" : "Unmuted");
-                    } else {
-                        imgui.Text("%s", mute_state ? "Muted" : "Unmuted");
-                    }
-                    if (imgui.IsItemHovered() && show_tooltips) {
-                        imgui.SetTooltipEx("Audio: %s", mute_state ? "Muted" : "Unmuted");
-                    }
-                    break;
-                }
-                case ActionNotificationType::GenericAction: {
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        imgui.Text("%s", notification.action_name);
-                    } else {
-                        imgui.Text("%s", notification.action_name);
-                    }
-                    if (imgui.IsItemHovered() && show_tooltips) {
-                        imgui.SetTooltipEx("Gamepad Action: %s", notification.action_name);
-                    }
-                    break;
-                }
-                default: break;
-            }
-        } else {
-            // Clear the notification after display duration expires
-            ActionNotification clear_notification;
-            clear_notification.type = ActionNotificationType::None;
-            clear_notification.timestamp_ns = 0;
-            clear_notification.float_value = 0.0f;
-            clear_notification.bool_value = false;
-            clear_notification.action_name[0] = '\0';
-            g_action_notification.store(clear_notification);
-        }
-    }
-
-    if (show_frame_time_graph) {
-        ui::new_ui::DrawFrameTimeGraphOverlay(imgui, show_tooltips);
-    }
-
-    if (show_native_frame_time_graph) {
-        ui::new_ui::DrawNativeFrameTimeGraphOverlay(imgui, show_tooltips);
-    }
-
-    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
-        ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
-    }
-
-    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        ui::new_ui::DrawRefreshRateFrameTimesGraph(imgui, show_tooltips);
-    }
-
-    modules::DrawEnabledModulesInOverlay(imgui);
-}
-
 void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
         LogWarn("Maximize Window: no window handle available");
@@ -5435,38 +3854,6 @@ static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWr
 static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui);
 static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui);
 
-void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    CALL_GUARD_NO_TS();;
-    DrawImportantInfo_OverlayControls(imgui);
-    imgui.Spacing();
-    DrawImportantInfo_FpsCounterAndReset(imgui);
-    imgui.Spacing();
-
-    // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
-    imgui.Indent();
-    g_rendering_ui_section.store("ui:tab:main_new:frame_time_graph", std::memory_order_release);
-    ui::colors::PushHeader2Colors(&imgui);
-    const bool frame_time_graph_open = imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None);
-    ui::colors::PopCollapsingHeaderColors(&imgui);
-    if (frame_time_graph_open) {
-        imgui.Indent();
-        DrawImportantInfo_FrameTimeGraphContent(imgui);
-        imgui.Unindent();
-        imgui.Spacing();
-
-        g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
-        ui::colors::PushHeader3Colors(&imgui);
-        const bool refresh_rate_monitor_open =
-            imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None);
-        ui::colors::PopCollapsingHeaderColors(&imgui);
-        if (refresh_rate_monitor_open) {
-            DrawImportantInfo_RefreshRateMonitorContent(imgui);
-        }
-    }
-    imgui.Unindent();
-}
-
 static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui) {
     // Display GPU fence status/failure reason
     if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
@@ -5757,7 +4144,7 @@ static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::I
 }
 
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Black curtain (game display) is shown even with one monitor; other displays only when multiple monitors
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 

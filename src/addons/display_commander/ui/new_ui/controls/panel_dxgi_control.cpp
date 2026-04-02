@@ -1,4 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+// Headers <Display Commander>
 #include "panels_internal.hpp"
 #include "../../../globals.hpp"
 #include "../../../hooks/present_traffic_tracking.hpp"
@@ -9,10 +10,14 @@
 #include "../../ui_colors.hpp"
 #include "../settings_wrapper.hpp"
 
+// Libraries <C++>
 #include <sstream>
 #include <string>
 
+// Libraries <Windows.h>
 #include <Windows.h>
+
+// Libraries <Windows>
 #include <shellapi.h>
 
 namespace ui::new_ui {
@@ -20,7 +25,7 @@ namespace ui::new_ui {
 namespace {
 
 void DrawDxgiControl_SwapchainTweaks(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     auto desc_ptr = g_last_swapchain_desc_post.load();
     const reshade::api::device_api ra = g_last_reshade_device_api.load();
     const bool is_dxgi_reshade =
