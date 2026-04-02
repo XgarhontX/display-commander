@@ -15,7 +15,12 @@ Note: Applying window operations from the main thread can crash some apps. This 
 | **x64 (64-bit)** | [zzz_display_commander.addon64](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon64) |
 | **x86 (32-bit)** | [zzz_display_commander.addon32](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon32) |
 
-**🔄 Latest Build (bleeding edge)**: Build from the latest main branch, updated on every push: [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build).
+**🔄 Latest Build (bleeding edge)**: Build from the latest main branch, updated on every push: [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build). Includes **Display Commander Lite** (`zzz_display_commander_lite.addon64` / `.addon32`): built with **`DC_NO_MODULES`** (no built-in Audio or Controller modules) but the same rename-as-system-DLL proxy exports as the full build.
+
+| Lite (NoModules) | Download |
+|------------------|----------|
+| **x64** | [zzz_display_commander_lite.addon64](https://github.com/pmnoxx/display-commander/releases/download/latest_build/zzz_display_commander_lite.addon64) |
+| **x86** | [zzz_display_commander_lite.addon32](https://github.com/pmnoxx/display-commander/releases/download/latest_build/zzz_display_commander_lite.addon32) |
 
 **🐛 Latest Debug Build**: Debug build with PDB symbols for debugging and crash analysis: [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug).
 

@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 102)
+set(DISPLAY_COMMANDER_VERSION_PATCH 103)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -15,12 +15,12 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 )
 
 
-# DC_NO_MODULES=ON: omit in-repo module implementations; module_registry.cpp remains (empty registry + stubs via DC_INTERNAL_MODULES=0).
-# Omit proxy_dll/*.cpp (API rename forwarders); main_entry still calls InstallRealDXGIMinHookHooks via inline stub in dxgi_proxy_init.hpp.
+# DC_NO_MODULES=ON: omit in-repo module implementations (audio/controller); module_registry.cpp remains (empty registry + stubs
+# via DC_INTERNAL_MODULES=0). proxy_dll/*.cpp stay in the build so the same binary works as a renamed d3d11/dxgi/etc. proxy
+# (full exports.def). For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
 if(DC_NO_MODULES)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
-  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/proxy_dll/.*\\.cpp$")
 endif()
 
 if(DC_EXTERNAL_MODULES)
@@ -66,13 +66,11 @@ add_library(zzz_display_commander MODULE
   ${DISPLAY_COMMANDER_SOURCES}
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
-if(DC_NO_MODULES)
-  set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports_addon_only.def")
-  message(STATUS "Display Commander: DC_NO_MODULES=ON — linking ${_dc_link_exports_def} (no API proxy export table)")
-else()
-  set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def")
-endif()
+set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def")
 target_sources(zzz_display_commander PRIVATE ${_dc_link_exports_def})
+if(DC_NO_MODULES)
+  message(STATUS "Display Commander: DC_NO_MODULES=ON — built-in modules omitted; full API proxy exports (exports.def)")
+endif()
 
 if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
@@ -132,8 +130,8 @@ if(MSVC)
 endif()
 
 # System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/user32/winhttp: device/setup,
-# ETW (PresentMon-style), Win32. version: GetFileVersionInfo*/VerQueryValueW (main_entry ReShade detection; was implicit via
-# version_proxy.cpp before DC_NO_MODULES omits proxy_dll). No opengl32.lib (proxy exports; standalone UI loads GL at runtime).
+# ETW (PresentMon-style), Win32. version: GetFileVersionInfo*/VerQueryValueW (main_entry ReShade detection). No opengl32.lib
+# (proxy exports; standalone UI loads GL at runtime).
 target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 user32 winhttp version)
 
 # MinHook (static); NVAPI is loaded at runtime (nvapi_loader), headers only from external/nvapi.

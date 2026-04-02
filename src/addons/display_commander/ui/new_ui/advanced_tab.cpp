@@ -43,9 +43,12 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
         DrawGlobalSettingsSection(imgui);
     }
 
+    // Don't show Features Enabled By Default section in Lite builds
+    #if (!defined(DC_NO_MODULES))
     if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault(imgui);
     }
+    #endif
 
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {

@@ -7,7 +7,9 @@
 #include "../../ui/ui_scale.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
+#if !defined(DC_NO_MODULES)
 #include "addons_tab.hpp"
+#endif
 #include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/dxgi_refresh_rate_tab.hpp"
@@ -251,7 +253,9 @@ void InitializeNewUI() {
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitAdvancedTab();
     ui::new_ui::InitHotkeysTab();
+#if !defined(DC_NO_MODULES)
     ui::new_ui::InitAddonsTab();
+#endif
 
     modules::InitializeModuleRegistry();
 
@@ -303,7 +307,8 @@ void InitializeNewUI() {
         },
         true);  // Hotkeys tab: visibility gated by show_hotkeys_tab (default on)
 
-    // Add reshade tab
+#if !defined(DC_NO_MODULES)
+    // ReShade add-ons UI omitted in DC_NO_MODULES (Display Commander Lite) builds.
     g_tab_manager.AddTab(
         "ReShade", "reshade",
         [](reshade::api::effect_runtime* runtime) {
@@ -317,6 +322,7 @@ void InitializeNewUI() {
             }
         },
         true);  // ReShade tab is advanced
+#endif
 
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
     g_tab_manager.AddTab(
