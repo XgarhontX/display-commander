@@ -66,14 +66,9 @@ class AdvancedTabSettings {
     BoolSetting reflex_logging;
     //   BoolSetting reflex_supress_native;
 
-    // Safemode setting
-    BoolSetting safemode;
-
     // Fake NVAPI setting
     BoolSetting fake_nvapi_enabled;
 
-    /** When true, ReShade config backup is effectively enabled for all games (global_overrides.toml). Default false. */
-    OverrideBoolSetting auto_enable_reshade_config_backup;
     /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false.
      */
     OverrideBoolSetting suppress_wgi_globally;

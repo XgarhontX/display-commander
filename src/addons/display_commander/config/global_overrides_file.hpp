@@ -17,7 +17,7 @@ bool SaveGlobalOverridesFile();
 // Get value from cache (loads file on first use). Returns true if key exists in override file.
 bool GetGlobalOverrideValue(const char* key, std::string& value);
 
-// Set value in cache and save to file. Use for keys that should override the same key in game config (e.g. auto_reshade_config_backup, SuppressWgiEnabled).
+// Set value in cache and save to file. Use for keys that should override the same key in game config (e.g. SuppressWgiEnabled).
 void SetGlobalOverrideValue(const char* key, const std::string& value);
 
 }  // namespace display_commander::config

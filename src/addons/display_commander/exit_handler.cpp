@@ -6,7 +6,6 @@
 #include <vector>
 #include "config/display_commander_config.hpp"
 #include "display/display_restore.hpp"
-#include "settings/advanced_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -72,9 +71,8 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     display_restore::RestoreAllIfEnabled();
 
 
-    // ReShade config backup on exit when enabled (global or per-game)
-    if (settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()
-        || settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {
+    // ReShade config backup on exit when enabled (per-game Main tab setting)
+    if (settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {
         CopyGameIniFilesToReshadeConfigBackupFolder();
     }
 

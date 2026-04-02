@@ -24,7 +24,6 @@ const char* const GLOBAL_OVERRIDES_TEMPLATE = R"(# Display Commander — Global 
 # even when the game config already has the key. Use keys that match what they override.
 #
 # [DisplayCommander]
-# auto_reshade_config_backup = true
 # SuppressWgiEnabled = false
 )";
 
@@ -40,7 +39,6 @@ void MigrateFromGlobalSettingsIfNeeded(const std::string& overrides_path) {
 
     std::string line;
     bool in_display_commander = false;
-    std::string legacy_auto_backup;
     std::string legacy_suppress_wgi;
 
     while (std::getline(file, line)) {
@@ -58,12 +56,11 @@ void MigrateFromGlobalSettingsIfNeeded(const std::string& overrides_path) {
         std::string k;
         std::string v;
         if (ParseTomlLine(line, k, v)) {
-            if (k == "AutoEnableReshadeConfigBackup") legacy_auto_backup = v;
             if (k == "SuppressWgiGlobally") legacy_suppress_wgi = v;
         }
     }
 
-    if (legacy_auto_backup.empty() && legacy_suppress_wgi.empty()) return;
+    if (legacy_suppress_wgi.empty()) return;
 
     std::map<std::string, std::string> current;
     if (std::filesystem::exists(overrides_path)) {
@@ -88,16 +85,8 @@ void MigrateFromGlobalSettingsIfNeeded(const std::string& overrides_path) {
         }
     }
 
-    bool changed = false;
-    if (!legacy_auto_backup.empty() && current.find("auto_reshade_config_backup") == current.end()) {
-        current["auto_reshade_config_backup"] = legacy_auto_backup;
-        changed = true;
-    }
-    if (!legacy_suppress_wgi.empty() && current.find("SuppressWgiEnabled") == current.end()) {
-        current["SuppressWgiEnabled"] = legacy_suppress_wgi;
-        changed = true;
-    }
-    if (!changed) return;
+    if (current.find("SuppressWgiEnabled") != current.end()) return;
+    current["SuppressWgiEnabled"] = legacy_suppress_wgi;
 
     std::ofstream out(overrides_path);
     if (!out.is_open()) return;

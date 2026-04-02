@@ -11,7 +11,6 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
-#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
@@ -633,22 +632,6 @@ void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    // Auto-enable ReShade config backup for all games (stored in global_overrides.toml; overrides per-game value)
-    if (CheckboxSetting(settings::g_advancedTabSettings.auto_enable_reshade_config_backup,
-                        "Auto-enable ReShade config backup", imgui)) {
-        if (settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()) {
-            CopyGameIniFilesToReshadeConfigBackupFolder();
-        }
-        LogInfo("Auto-enable ReShade config backup changed to: %s",
-                settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "When enabled, ReShade config backup is effectively on for all games (same as the per-game "
-            "\"Auto ReShade config backup\" on the Main tab, but applied globally). Stored in the Display Commander "
-            "folder (global_overrides.toml). Overrides the per-game value even when the game config has it.");
-    }
-
     // Windows Gaming Input suppression globally (stored in global_overrides.toml; overrides per-game value)
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_wgi_globally,
                         "Enable Windows Gaming Input suppression globally", imgui)) {
@@ -674,24 +657,6 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
                                     display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
-
-    // Safemode setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)", imgui)) {
-        LogInfo("Safemode setting changed to: %s",
-                settings::g_advancedTabSettings.safemode.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
-            "When enabled, it will automatically set itself to 0 and disable:\n"
-            "- Auto-apply resolution changes\n"
-            "- Auto-apply refresh rate changes\n"
-            "- Apply display settings at start\n"
-            "- FPS limiter mode (set to disabled)\n\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    imgui.Spacing();
 
     // Suppress Window Changes setting
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", imgui)) {
@@ -968,7 +933,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent); only when Reflex is available (64-bit + native or
     // NVAPI init)
-    if (IsReflexAvailable() && imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
+    if (imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive();

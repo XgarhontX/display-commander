@@ -241,8 +241,9 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
         return GetHotkeyValue(key, value);
     }
     // Global overrides: values in global_overrides.toml override game config even when it exists
-    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr &&
-        GetGlobalOverrideValue(key, value)) {
+    // (auto_reshade_config_backup is not overridden globally anymore; ignore stale key in global_overrides.toml)
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr
+        && strcmp(key, "auto_reshade_config_backup") != 0 && GetGlobalOverrideValue(key, value)) {
         return true;
     }
     // Chords / gamepad remap settings are stored in chords.toml for sharing across games

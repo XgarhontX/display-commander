@@ -21,7 +21,6 @@
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "settings/advanced_tab_settings.hpp"
-#include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "settings/reshade_tab_settings.hpp"
@@ -92,9 +91,6 @@ bool CheckReShadeVersionCompatibility();
 
 // Forward declaration for multiple ReShade detection
 void DetectMultipleReShadeVersions();
-
-// Forward declaration for safemode function
-void HandleSafemode();
 
 // Forward declaration for loading addons from Plugins directory
 void LoadAddonsFromPluginsDirectory();
@@ -1095,50 +1091,6 @@ bool CheckReShadeVersionCompatibility() {
 }
 
 namespace {
-void HandleSafemode_ApplySafemodeSettings() {
-    LogInfo(
-        "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, and "
-        "Streamline loading");
-    settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
-    settings::g_advancedTabSettings.continue_rendering.SetValue(false);
-    settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
-    s_fps_limiter_enabled.store(false);
-    ui::monitor_settings::g_setting_auto_apply_resolution.SetValue(false);
-    ui::monitor_settings::g_setting_auto_apply_refresh.SetValue(false);
-    ui::monitor_settings::g_setting_apply_display_settings_at_start.SetValue(false);
-    settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(true);
-    settings::g_advancedTabSettings.SaveAll();
-    LogInfo(
-        "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
-        "(checkbox off), XInput hooks disabled, Streamline loading disabled, "
-        "_nvngx loading disabled, nvapi64 loading disabled, XInput loading disabled");
-}
-
-void HandleSafemode_ApplyNonSafemodeSettings() {
-    settings::g_advancedTabSettings.safemode.SetValue(false);
-    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-        settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(false);
-    }
-    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
-        settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(false);
-    }
-    settings::g_advancedTabSettings.SaveAll();
-    LogInfo("Safemode not enabled - setting to 0 for config visibility");
-}
-}  // namespace
-
-// Safemode function - handles safemode logic
-void HandleSafemode() {
-    bool safemode_enabled = settings::g_advancedTabSettings.safemode.GetValue();
-
-    if (safemode_enabled) {
-        HandleSafemode_ApplySafemodeSettings();
-    } else {
-        HandleSafemode_ApplyNonSafemodeSettings();
-    }
-}
-
-namespace {
 void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     if (!IsDisplayCommanderHookingInstance()) return;
     if (utils::setup_high_resolution_timer()) {
@@ -1155,7 +1107,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
         display_commander::display::dpi::DisableDPIScaling();
         LogInfo("DPI scaling disabled - process is now DPI-aware");
     }
-    HandleSafemode();
 
     bool suppress_pin_module = true;
     display_commander::config::get_config_value_ensure_exists("DisplayCommander.Safemode", "SuppressPinModule",

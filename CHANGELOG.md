@@ -17,6 +17,12 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.98 (2026-04-01)
+- [removal] [settings] [ui] **Safemode removed** - Advanced tab **Safemode (requires restart)** and **`DisplayCommander.Safemode.Safemode`** are removed. Startup no longer runs **`HandleSafemode`** (no automatic disabling of auto-apply, continue rendering, FPS limiter, XInput suppression, or the former non-safemode **`SaveAll`** / D3D9 flipex writes). **`SuppressPinModule`** and **`SuppressWindowChanges`** still use the **`[DisplayCommander.Safemode]`** config section where applicable.
+
+## v0.13.97 (2026-04-01)
+- [removal] [settings] [ui] **Global auto-enable ReShade config backup removed** - Advanced → Global **Auto-enable ReShade config backup** and **`auto_enable_reshade_config_backup`** (**`OverrideBoolSetting`**) are removed. Exit backup runs only when the per-game **Main** tab **`auto_reshade_config_backup`** is on. **`global_overrides.toml`** / **`GetConfigValue`** no longer apply **`auto_reshade_config_backup`** as a global override (stale keys are ignored). Legacy **`global_settings.toml`** migration no longer copies **`AutoEnableReshadeConfigBackup`**.
+
 ## v0.13.96 (2026-04-01)
 - [removal] [settings] [ui] [hooks] **`SuppressMinhook` removed** - Advanced tab **Suppress MinHook Initialization** and **`DisplayCommander.Safemode.SuppressMinhook`** are gone; **`SafeInitializeMinHook`** always runs normal **`MH_Initialize`** (still once per process). Old config keys are ignored. Safemode log text no longer claims MinHook suppression (safemode did not set this flag).
 
