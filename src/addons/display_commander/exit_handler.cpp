@@ -4,7 +4,6 @@
 #include <reshade.hpp>
 #include <sstream>
 #include <vector>
-#include "config/display_commander_config.hpp"
 #include "display/display_restore.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"

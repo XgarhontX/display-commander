@@ -5047,7 +5047,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         const bool any_dlss_active = dlss_lite.any_dlss_active;
 
         // Get fg_mode if needed
-        std::string fg_mode = "N/A";
+        int fg_mode = 0;
 
         int dllssg_mode = -1;
         int enable_interp = -1;
@@ -5065,17 +5065,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             if (is_fg_enabled) {
                 unsigned int multi_frame_count;
                 if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                    if (multi_frame_count == 1) {
-                        fg_mode = "2x";
-                    } else if (multi_frame_count == 2) {
-                        fg_mode = "3x";
-                    } else if (multi_frame_count == 3) {
-                        fg_mode = "4x";
-                    } else {
-                        char buffer[16];
-                        snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
-                        fg_mode = std::string(buffer);
-                    }
+                    fg_mode = multi_frame_count + 1;
                 }
             }
         }
@@ -5119,8 +5109,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
         if (show_fg_mode) {
             // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-            if (any_dlss_active && (fg_mode == "2x" || fg_mode == "3x" || fg_mode == "4x")) {
-                imgui.Text("FG: %s", fg_mode.c_str());
+            if (any_dlss_active && fg_mode >= 2) {
+                imgui.Text("FG: %sx", fg_mode);
             } else {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
             }
