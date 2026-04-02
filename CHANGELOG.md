@@ -18,6 +18,8 @@ Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
 ## Unreleased
+- [removal] [cleanup] **Example Dummy module removed** - The in-repo **Example Dummy** module and its **Enable Example Dummy** Main tab checkbox are removed. Built-in modules are **Audio** and **Controller** only when **`DC_INTERNAL_MODULES`** is on.
+- [cleanup] [ui] **DXGI refresh rate / VRR debug UI** - The DXGI refresh rate checkbox and monitor debug stats moved from the Advanced tab to a dedicated **Debug DXGI refresh** tab. That tab is only present in builds created with `bd.ps1 -DebugTabs` (`DEBUG_TABS` / `DISPLAY_COMMANDER_DEBUG_TABS`), same as the other debug tabs. The setting remains in advanced tab settings (`enable_dxgi_refresh_rate_vrr_detection`).
 - [new feature] [ui] [hooks] **Debug Window Messages tab (build-gated)** - Added a new `Debug Messages` tab that shows the latest 50 message types seen by `ProcessWindowMessage`, including message name and numeric ID, so you can quickly inspect recent Win32 message traffic while troubleshooting focus/input behavior. Enabled only in builds created with `bd.ps1 -DebugTabs`.
 - [new feature] [ui] [hooks] **Debug Vulkan tab (build-gated)** - Added a `Debug Vulkan` tab (enabled only with `bd.ps1 -DebugTabs`) that shows Vulkan loader-hook install status, per-hook call counts, and captured enabled device extensions to help troubleshoot Vulkan hook and HDR/FSE-related behavior.
 - [new feature] [hooks] [experimental] **Vulkan fullscreen-exclusive acquire tracking** - Added Vulkan loader detours for `vkAcquireFullScreenExclusiveModeEXT` so calls are intercepted for diagnostics while preserving native behavior (no forced success spoofing).

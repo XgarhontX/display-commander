@@ -37,7 +37,7 @@ option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
 option(EXPERIMENTAL_FEATURES "Enable experimental features (e.g., autofire)" OFF)
 option(DEBUG_TABS "Enable debug-only UI tabs" OFF)
 option(DC_EXTERNAL_MODULES "Enable private external modules from external/display-commander2-modules" OFF)
-option(DC_INTERNAL_MODULES "Register built-in modules (audio, controller, example_dummy)" ON)
+option(DC_INTERNAL_MODULES "Register built-in modules (audio, controller)" ON)
 option(DC_NO_MODULES "Disable all modules: empty registry, no external modules (forces DC_INTERNAL_MODULES and DC_EXTERNAL_MODULES OFF)" OFF)
 
 if(DC_NO_MODULES)

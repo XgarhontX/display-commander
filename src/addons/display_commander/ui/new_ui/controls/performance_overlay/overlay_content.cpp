@@ -256,8 +256,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             }
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltipEx(
-                    "DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in "
-                    "Advanced tab.");
+                    "DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in the "
+                    "Debug DXGI refresh tab (-DebugTabs build) or via addon config.");
             }
         }
         if (show_dxgi_refresh_rate) {
@@ -274,7 +274,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltipEx(
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
-                    "in Advanced tab.");
+                    "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.");
             }
         }
     }

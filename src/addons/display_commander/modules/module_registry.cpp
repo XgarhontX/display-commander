@@ -6,7 +6,6 @@
 #if DC_INTERNAL_MODULES
 #include "audio/audio_module.hpp"
 #include "controller/controller_module.hpp"
-#include "example_dummy/example_dummy_module.hpp"
 #endif
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
@@ -173,41 +172,6 @@ void RegisterPublicModules() {
         entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
     }
-
-    // Public modules are registered here (always compiled in public builds).
-    ModuleRegistrationSpec spec{};
-    spec.descriptor.id = "example_dummy";
-    spec.descriptor.display_name = "Example Dummy";
-    spec.descriptor.description = "Minimal in-repo example module with tick, tab, and overlay callbacks.";
-    spec.descriptor.has_tab = true;
-    spec.descriptor.tab_name = "Example Dummy";
-    spec.descriptor.tab_id = "example_dummy";
-    spec.descriptor.is_advanced_tab = true;
-    spec.default_enabled = false;
-    spec.default_show_in_overlay = false;
-    spec.initialize_fn = &example_dummy::Initialize;
-    spec.tick_fn = &example_dummy::Tick;
-    spec.draw_tab_fn = &example_dummy::DrawTab;
-    spec.draw_overlay_fn = &example_dummy::DrawOverlay;
-
-    ModuleEntry entry{};
-    entry.descriptor = spec.descriptor;
-    entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-    entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
-    entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
-    entry.initialize_fn = spec.initialize_fn;
-    entry.tick_fn = spec.tick_fn;
-    entry.reshade_present_before_fn = spec.reshade_present_before_fn;
-    entry.draw_tab_fn = spec.draw_tab_fn;
-    entry.draw_overlay_fn = spec.draw_overlay_fn;
-    entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
-    entry.on_enabled_fn = spec.on_enabled_fn;
-    entry.on_disabled_fn = spec.on_disabled_fn;
-    entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
-    entry.on_library_loaded_fn = spec.on_library_loaded_fn;
-    entry.hotkeys = spec.hotkeys;
-    entry.actions = spec.actions;
-    AddModuleEntry(std::move(entry));
 #endif  // DC_INTERNAL_MODULES
 }
 

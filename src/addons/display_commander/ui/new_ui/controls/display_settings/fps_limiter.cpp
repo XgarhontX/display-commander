@@ -1025,7 +1025,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                     }
                 }
             }
-            imgui.Spacing();
             bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
             if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
                 settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);

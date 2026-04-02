@@ -54,7 +54,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
-      enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection", false, "DisplayCommander"),
+      enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection_default_on", true, "DisplayCommander"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 

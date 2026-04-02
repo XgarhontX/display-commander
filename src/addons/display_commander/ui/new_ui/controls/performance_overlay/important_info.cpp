@@ -16,7 +16,8 @@ namespace {
 
 static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapper& imgui);
 // Draw DXGI overlay subsection (show DXGI VRR status, show DXGI refresh rate). Uses RefreshRateMonitor when
-// enable_dxgi_refresh_rate_vrr_detection is on in Advanced tab. Checkboxes are disabled when that setting is off.
+// enable_dxgi_refresh_rate_vrr_detection is on (Debug DXGI refresh tab in -DebugTabs builds, or config). Checkboxes are
+// disabled when that setting is off.
 static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Columns(1);
     imgui.Separator();
@@ -36,7 +37,8 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Shows DXGI-based VRR status in the performance overlay (RefreshRateMonitor heuristic: rate spread / "
-            "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
+            "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab "
+            "(-DebugTabs build) or via addon config for data.");
     }
     imgui.NextColumn();
 
@@ -47,7 +49,8 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Shows DXGI refresh rate (Hz) in the performance overlay from swap chain GetFrameStatistics. "
-            "Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
+            "Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab (-DebugTabs build) or via addon "
+            "config for data.");
     }
     imgui.NextColumn();
 

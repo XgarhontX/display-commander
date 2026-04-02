@@ -20,7 +20,6 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 if(DC_NO_MODULES)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
-  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/example_dummy/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/proxy_dll/.*\\.cpp$")
 endif()
 
