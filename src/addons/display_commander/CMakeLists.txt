@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 86)
+set(DISPLAY_COMMANDER_VERSION_PATCH 90)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -38,6 +38,12 @@ if(DC_EXTERNAL_MODULES)
     message(FATAL_ERROR "DC_EXTERNAL_MODULES=ON but no module sources were found under: ${_dc_external_modules_src_dir}")
   endif()
   list(APPEND DISPLAY_COMMANDER_SOURCES ${DISPLAY_COMMANDER_EXTERNAL_MODULE_SOURCES})
+endif()
+
+# Full timeslowdown implementation is in external-private when DC_EXTERNAL_MODULES=ON; otherwise link this stub so
+# QueryPerformanceFrequency_Original is defined (timing.cpp, etc.). Exclude stub when external TU is present.
+if(DC_EXTERNAL_MODULES)
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/hooks/system/timeslowdown_hooks_stub\\.cpp$")
 endif()
 
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")

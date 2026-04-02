@@ -9,7 +9,6 @@
 #include <strsafe.h>
 #include <tdh.h>
 #include <algorithm>
-#include <cctype>
 #include <cstdlib>
 #include <exception>
 #include <memory>

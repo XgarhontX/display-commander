@@ -9,7 +9,6 @@
 #include "../../utils/logging.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
-#include "experimental_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
 
@@ -144,8 +143,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                 tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
             } else if (tab_id == "controller") {
                 tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
-            } else if (tab_id == "experimental") {
-                tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
             } else if (tab_id == "reshade") {
                 tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
             }
@@ -202,8 +199,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                         tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
                     } else if (tab_id == "controller") {
                         tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
-                    } else if (tab_id == "experimental") {
-                        tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
                     } else if (tab_id == "reshade") {
                         tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
                     }
@@ -316,23 +311,6 @@ void InitializeNewUI() {
             }
         },
         true);  // ReShade tab is advanced
-
-    // Add Debug tab last (experimental/debug features; id kept as "experimental" for settings)
-    if (enabled_experimental_features) {
-        g_tab_manager.AddTab(
-            "Debug", "experimental",
-            [](reshade::api::effect_runtime* runtime) {
-                try {
-                    display_commander::ui::ImGuiWrapperReshade wrapper;
-                    ui::new_ui::DrawExperimentalTab(wrapper, runtime);
-                } catch (const std::exception& e) {
-                    LogError("Error drawing debug tab: %s", e.what());
-                } catch (...) {
-                    LogError("Unknown error drawing debug tab");
-                }
-            },
-            true);  // Debug tab is advanced
-    }
 
     const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
     for (const modules::ModuleDescriptor& module : modules_list) {

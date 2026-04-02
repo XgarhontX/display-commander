@@ -17,6 +17,19 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.90 (2026-04-01)
+- [cleanup] [settings] [experimental] **Time Slowdown input-remap actions via module registry** - Controller **input remapping** no longer implements time-slowdown toggle / speed actions inline. The **Time Slowdown** private module registers **`FillActions`** (same IDs as before: **`time slowdown toggle`**, **`increase game speed`**, **`decrease game speed`**) so **`TriggerEnabledModuleActionById`** runs the same handlers as the module hotkeys. Actions appear in the remap list only when the **Time Slowdown** module is **enabled** (same pattern as Audio). Speed steps match the module hotkeys (**±0.10x**, not the old **×1.1** remapping behavior).
+
+## v0.13.89 (2026-04-01)
+- [cleanup] [hooks] **Timeslowdown stub without private modules** - When **`DC_EXTERNAL_MODULES`** is off, **`hooks/system/timeslowdown_hooks_stub.cpp`** defines the timer **`_Original`** pointers (including **`QueryPerformanceFrequency_Original`**) as **`nullptr`**, **`LoadQPCEnabledModulesFromSettings`** as a no-op, and **timeslowdown multiplier / enabled** helpers mirroring the real implementation (settings only, no hooks). CMake excludes the stub when external modules are on so it does not duplicate symbols with the full timeslowdown TU.
+
+## v0.13.88 (2026-04-01)
+- [cleanup] [hooks] [experimental] **Time slowdown implementation in private modules** - The timer detour implementation (**`timeslowdown_hooks.cpp`**) now lives under **`external-private/display-commander2-modules/src/nmodules/timeslowdown/`** and is compiled only when **`DC_EXTERNAL_MODULES`** is on. The public tree keeps **`hooks/system/timeslowdown_hooks.hpp`** (API declarations). **`ApplyExperimentalTabHookSettingsFromConfig()`** applies saved per-hook modes and DirectInput suppress from **`modules::timeslowdown::Initialize`** (module registry init). The **Time Slowdown** module installs hooks on enable, uninstalls on disable and on global API-hook teardown, and retries **`timeGetTime`** when **`winmm`** loads late. Removed **`experimental_features_init`** (**`InitExperimentalTab`** / **`CleanupExperimentalTab`**).
+- Details: Builds with **`DC_EXTERNAL_MODULES=OFF`** no longer link the timeslowdown TU (undefined symbols until a stub or conditional compile is added).
+
+## v0.13.87 (2026-04-01)
+- [removal] [ui] **Debug / Experimental tab** - Removed the **Debug** top-level tab (formerly **Experimental**: Features + Reflex last-frames debug UI). **`experimental_tab_settings`** and config keys are unchanged (timer hook + DirectInput suppress application moved in **v0.13.88**; see that entry). Removed **`show_experimental_tab`** from main tab settings.
+
 ## v0.13.86 (2026-04-01)
 - File size reduction for DC Lite build to 1.34mb from 9mb previously.
 - [cleanup] [settings] **`DC_NO_MODULES` linker exports** - When **`DC_NO_MODULES`** is on, the addon links **`proxy_dll/exports_addon_only.def`** ( **`AddonInit`** + **`GetDisplayCommanderState`** only) instead of the full API-proxy **`exports.def`**, reducing DLL size. ReShade addon string exports remain via **`__declspec(dllexport)`** in **`addon.cpp`**. Full proxy rename (d3d11/dxgi/…) still requires the default build without **`DC_NO_MODULES`**.

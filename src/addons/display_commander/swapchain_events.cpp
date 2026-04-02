@@ -23,7 +23,6 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include "swapchain_events.hpp"
-#include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
@@ -245,9 +244,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize refresh rate monitoring
     LogInfo("[DoInitializationWithHwnd] before StartRefreshRateMonitoring");
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-
-    LogInfo("[DoInitializationWithHwnd] before InitExperimentalTab");
-    ui::new_ui::InitExperimentalTab();
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {
@@ -982,10 +978,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         return;
     }
 
-    // Capture the render thread ID when swapchain is created
-    // This is called on the thread that creates the swapchain, which is typically the render thread
-    DWORD current_thread_id = GetCurrentThreadId();
-    display_commanderhooks::SetRenderThreadId(current_thread_id);
 
     // Set game start time on first swapchain initialization (only once)
     LONGLONG expected = 0;

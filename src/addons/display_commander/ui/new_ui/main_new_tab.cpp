@@ -1794,16 +1794,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab", imgui)) {
-            LogInfo("Show Debug tab %s",
-                    settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Debug tab even when 'Show All Tabs' is disabled.");
-        }
-    }
-
     if (ui::new_ui::g_tab_manager.HasTab("reshade")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_reshade_tab, "Show ReShade Tab", imgui)) {
             LogInfo("Show ReShade tab %s",

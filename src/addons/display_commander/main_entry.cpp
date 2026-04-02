@@ -28,7 +28,6 @@
 #include "swapchain_events.hpp"
 #include "ui/imgui_wrapper_reshade.hpp"
 #include "ui/monitor_settings/monitor_settings.hpp"
-#include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
@@ -1248,7 +1247,6 @@ void DoInitializationWithoutHwndSafe_Late() {
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-    ui::new_ui::InitExperimentalTab();
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
 }
@@ -2233,9 +2231,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up NVAPI actual refresh rate monitoring
             display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
-
-            // Clean up experimental tab threads
-            ui::new_ui::CleanupExperimentalTab();
 
             // Clean up NVAPI instances before shutdown
             if (g_reflexProvider) {
