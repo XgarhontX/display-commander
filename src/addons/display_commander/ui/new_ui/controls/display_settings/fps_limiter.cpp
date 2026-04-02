@@ -1031,6 +1031,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                 HWND game_window = display_commanderhooks::GetGameWindow();
                 if (game_window != nullptr && pcl_stats) {
                     display_commanderhooks::InstallWindowProcHooks(game_window);
+                    ReflexProvider::EnsurePCLStatsInitialized();
                 }
             }
         }

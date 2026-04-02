@@ -7,6 +7,7 @@
 #include "dxgi/vram_info.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
+#include "latency/reflex_provider.hpp"
 #include "hooks/present_traffic_tracking.hpp"
 #include "hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"

@@ -1306,6 +1306,13 @@ extern std::atomic<LONGLONG> g_injected_reflex_last_sleep_time_ns;
 // PCLStats ping signal (edge-triggered, cleared after injection on SIMULATION_START)
 extern std::atomic<bool> g_pclstats_ping_signal;
 
+// PCLStats ETW diagnostics (slots index by PCLSTATS_LATENCY_MARKER_TYPE value, clamped)
+constexpr std::size_t kPclStatsEtwMarkerSlotCount = 32;
+extern std::atomic<uint64_t> g_pclstats_init_success_count;
+extern std::atomic<LONGLONG> g_pclstats_last_init_time_ns;
+extern std::atomic<uint64_t> g_pclstats_etw_total_count;
+extern std::atomic<uint64_t> g_pclstats_etw_by_marker[kPclStatsEtwMarkerSlotCount];
+
 // DX11 Proxy HWND for filtering
 extern HWND g_proxy_hwnd;
 

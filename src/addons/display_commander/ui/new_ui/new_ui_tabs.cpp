@@ -11,6 +11,7 @@
 #include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/dxgi_refresh_rate_tab.hpp"
+#include "debug/reflex_pclstats_tab.hpp"
 #include "debug/vulkan_tab.hpp"
 #include "debug/window_messages_tab.hpp"
 #endif
@@ -362,6 +363,21 @@ void InitializeNewUI() {
             }
         },
         false);  // Not an advanced-tab gated tab; only compile-time gated.
+
+    g_tab_manager.AddTab(
+        "Debug Reflex / PCLStats", "debug_reflex_pclstats",
+        [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
+            try {
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::debug::DrawReflexPclstatsTab(wrapper);
+            } catch (const std::exception& e) {
+                LogError("Error drawing debug Reflex / PCLStats tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing debug Reflex / PCLStats tab");
+            }
+        },
+        false);
 #endif
 
     const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();

@@ -23,6 +23,7 @@
 #include "../../utils/timing.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
 
+#include "../../latency/reflex_provider.hpp"
 #include "../../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 
 namespace display_commanderhooks {
@@ -175,7 +176,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         g_pclstats_ping_signal.store(true, std::memory_order_release);
 
         // We assume frame id is equal to frame before simulation_end
-        PCLSTATS_MARKER(PC_LATENCY_PING, g_pclstats_frame_id.load());
+        ReflexProvider::EmitPclStatsMarker(static_cast<uint32_t>(PC_LATENCY_PING), g_pclstats_frame_id.load());
     }
 
     bool continue_rendering_enabled = settings::g_advancedTabSettings.continue_rendering.GetValue();

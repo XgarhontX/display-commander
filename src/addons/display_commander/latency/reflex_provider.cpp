@@ -41,7 +41,20 @@ void ReflexProvider::EnsurePCLStatsInitialized() {
     if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
         PCLSTATS_INIT(0);
         _is_pcl_initialized = true;
+        g_pclstats_init_success_count.fetch_add(1, std::memory_order_relaxed);
+        g_pclstats_last_init_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
     }
+}
+
+void ReflexProvider::EmitPclStatsMarker(uint32_t marker, uint64_t frame_id) {
+    EnsurePCLStatsInitialized();
+    PCLSTATS_MARKER(marker, frame_id);
+    g_pclstats_etw_total_count.fetch_add(1, std::memory_order_relaxed);
+    std::size_t idx = static_cast<std::size_t>(marker);
+    if (idx >= kPclStatsEtwMarkerSlotCount) {
+        idx = kPclStatsEtwMarkerSlotCount - 1;
+    }
+    g_pclstats_etw_by_marker[idx].fetch_add(1, std::memory_order_relaxed);
 }
 
 bool ReflexProvider::IsPCLStatsInitialized() { return _is_pcl_initialized; }
@@ -50,6 +63,9 @@ bool ReflexProvider::IsInitialized() const { return reflex_manager_.IsInitialize
 
 bool ReflexProvider::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!IsInitialized()) return false;
+    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+        EnsurePCLStatsInitialized();
+    }
     static bool first_call = true;
     if (first_call) {
         first_call = false;

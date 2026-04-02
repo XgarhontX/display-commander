@@ -58,6 +58,9 @@ class ReflexProvider {
     static void EnsurePCLStatsInitialized();
     static bool IsPCLStatsInitialized();
 
+    /** Writes PCLStatsEvent (ETW) and bumps g_pclstats_etw_* counters. Safe when PCLStats not yet initialized. */
+    static void EmitPclStatsMarker(uint32_t marker, uint64_t frame_id);
+
    private:
     ReflexManager reflex_manager_;
     static bool _is_pcl_initialized;

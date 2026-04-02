@@ -690,6 +690,11 @@ std::atomic<LONGLONG> g_injected_reflex_last_sleep_time_ns{0};
 // PCLStats ping signal (edge-triggered, cleared after injection on SIMULATION_START)
 std::atomic<bool> g_pclstats_ping_signal{false};
 
+std::atomic<uint64_t> g_pclstats_init_success_count{0};
+std::atomic<LONGLONG> g_pclstats_last_init_time_ns{0};
+std::atomic<uint64_t> g_pclstats_etw_total_count{0};
+std::atomic<uint64_t> g_pclstats_etw_by_marker[kPclStatsEtwMarkerSlotCount]{};
+
 // DX11 Proxy HWND for filtering
 HWND g_proxy_hwnd = nullptr;
 
