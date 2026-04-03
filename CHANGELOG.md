@@ -14,10 +14,26 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
+- Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
+- Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
+
+## v0.13.109 (2026-04-03)
+- [new feature] **`[InitWithoutHwnd]` boot milestones** - `DoInitializationWithoutHwndSafe`, `DoInitializationWithoutHwndSafe_Early`, and `DoInitializationWithoutHwndSafe_Late` append `DisplayCommander.log` lines (settings load, LoadLibrary hooks, exit hooks, API/DXGI hooks, display cache/UI, monitoring, keyboard tracker) so crashes during no-HWND init show the last completed step. Details: `main_entry.cpp` `LogBootInitWithoutHwndStage`.
+
+## v0.13.108 (2026-04-03)
+- [new feature] **`[RegisterAndPostInit]` boot milestones** - `DisplayCommander.log` now records stages inside `ProcessAttach_RegisterAndPostInit` (overlay registration, `DoInitializationWithoutHwndSafe`, local addons, plugin load, API hooks) so crashes after `DllMain`’s “before RegisterAndPostInit” line are easier to localize. Details: `main_entry.cpp` `LogBootRegisterAndPostInitStage`.
+
+## v0.13.107 (2026-04-03)
+- [cleanup] **Boot log bracket tags** - Lines written to `DisplayCommander.log` and DebugView during early load use bracket prefixes (`[DllMain]`, `[DC]`, `[Boot]`, `[Caller]`) instead of `DllMain: ` / `Caller: ` style. Easier to scan and filter. The first **Display Commander** log line after logger init uses `[Logger]`, `[Path]`, and `[Caller]` the same way. Details: `main_entry.cpp` `EnsureDisplayCommanderLogWithModulePath`, `LogBootDllMainStage`, `LogBootDcConfigPath`; `utils/display_commander_logger.cpp` `Initialize`.
+
+## v0.13.106 (2026-04-03)
+- [new feature] **DisplayCommander.log boot diagnostics** - The log next to the addon now records the chosen **DC config path** and **DllMain** progress lines (config manager init, early-exit reasons, ReShade detection, no-ReShade path, registration failure, full attach complete, and **DLL_PROCESS_DETACH**). If the game crashes during load, the **last boot line** shows how far initialization got. Details: `main_entry.cpp` `LogBoot`, `LogBootDcConfigPath`, `LogBootDllMainStage`.
 
 ## v0.13.105 (2026-04-02)
+- [crashfix] **Fix crash while showing fg status in OSD** - Fix crashes caused when adding support for 5+x FG mode.
 - [cleanup] [compatibility] **DLSS-G FG multiplier as integer** - `DLSSGSummaryLite::fg_mode` is an **int**: **0** = off, **-1** = FG on without NGX **MultiFrameCount**, **≥2** = **N** for **Nx** (FPS limiter and Reflex present-delay divide by **N**). Any valid **MultiFrameCount** maps to **multi_frame_count + 1** when ≥2 (2x through 7x+). The old `DLSSGFgMode` enum is removed; overlay **FG** line uses `GetDLSSGSummaryLite()` so it stays in sync.
 
 ## v0.13.104 (2026-04-01)

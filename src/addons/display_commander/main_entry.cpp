@@ -1094,9 +1094,15 @@ bool CheckReShadeVersionCompatibility() {
     return false;
 }
 
+static void LogBootInitWithoutHwndStage(const char* stage_message);
+
 namespace {
 void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
-    if (!IsDisplayCommanderHookingInstance()) return;
+    LogBootInitWithoutHwndStage("Early enter");
+    if (!IsDisplayCommanderHookingInstance()) {
+        LogBootInitWithoutHwndStage("Early return (not hooking instance)");
+        return;
+    }
     if (utils::setup_high_resolution_timer()) {
         LogInfo("High-resolution timer setup successful");
     } else {
@@ -1105,7 +1111,9 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
     settings::LoadAllSettingsAtStartup();
+    LogBootInitWithoutHwndStage("Early after LoadAllSettingsAtStartup");
     display_commanderhooks::InstallLoadLibraryHooks();
+    LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");
     LogCurrentLogLevel();
     if (settings::g_advancedTabSettings.disable_dpi_scaling.GetValue()) {
         display_commander::display::dpi::DisableDPIScaling();
@@ -1134,32 +1142,49 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     }
 
     process_exit_hooks::Initialize();
+    LogBootInitWithoutHwndStage("Early after process_exit_hooks::Initialize");
     LogInfo("DLL initialization complete - DXGI calls now enabled");
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+    LogBootInitWithoutHwndStage("Early before InstallApiHooks");
     display_commanderhooks::InstallApiHooks();
+    LogBootInitWithoutHwndStage("Early after InstallApiHooks");
     InstallRealDXGIMinHookHooks();
+    LogBootInitWithoutHwndStage("Early after InstallRealDXGIMinHookHooks");
     OverrideReShadeSettings(nullptr);
+    LogBootInitWithoutHwndStage("Early after OverrideReShadeSettings");
 }
 
 void DoInitializationWithoutHwndSafe_Late() {
-    if (!IsDisplayCommanderHookingInstance()) return;
+    LogBootInitWithoutHwndStage("Late enter");
+    if (!IsDisplayCommanderHookingInstance()) {
+        LogBootInitWithoutHwndStage("Late return (not hooking instance)");
+        return;
+    }
     // Log all ETW sessions once at addon init for diagnostics (e.g. why DC_ list may be empty in Advanced tab)
 
     //modules::controller::RetryInstallXInputHooksIfEnabled();
     display_cache::g_displayCache.Initialize();
     display_initial_state::g_initialDisplayState.CaptureInitialState();
+    LogBootInitWithoutHwndStage("Late after display cache and initial state");
     ui::new_ui::InitializeNewUISystem();
+    LogBootInitWithoutHwndStage("Late after InitializeNewUISystem");
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
     dxgi::fps_limiter::StartRefreshRateMonitoring();
+    LogBootInitWithoutHwndStage("Late after start monitoring (continuous, GPU, refresh rate)");
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
+    LogBootInitWithoutHwndStage("Late after keyboard_tracker::Initialize");
+    LogBootInitWithoutHwndStage("Late complete");
 }
 }  // namespace
 
 void DoInitializationWithoutHwndSafe(HMODULE h_module) {
+    LogBootInitWithoutHwndStage("enter");
     DoInitializationWithoutHwndSafe_Early(h_module);
+    LogBootInitWithoutHwndStage("after Early");
     DoInitializationWithoutHwndSafe_Late();
+    LogBootInitWithoutHwndStage("complete");
 }
 
 void RegisterReShadeEvents(HMODULE h_module) {
@@ -1213,6 +1238,9 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
 }
+
+// Defined later with other boot helpers; called from ProcessAttach_RegisterAndPostInit below (inside anonymous ns).
+static void LogBootRegisterAndPostInitStage(const char* stage_message);
 
 namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess };
@@ -1658,42 +1686,25 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
 }
 
 void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
+    LogBootRegisterAndPostInitStage("enter");
     DetectMultipleReShadeVersions();
-    wchar_t exe_path_buf[MAX_PATH] = {};
-    const wchar_t* exe_name_display = L"";
-    if (GetModuleFileNameW(nullptr, exe_path_buf, MAX_PATH) > 0) {
-        const wchar_t* last_slash = wcsrchr(exe_path_buf, L'\\');
-        exe_name_display = (last_slash != nullptr) ? (last_slash + 1) : exe_path_buf;
-    }
-    char exe_name_utf8[MAX_PATH] = {};
-    if (exe_name_display[0] != L'\0') {
-        WideCharToMultiByte(CP_UTF8, 0, exe_name_display, -1, exe_name_utf8, static_cast<int>(std::size(exe_name_utf8)),
-                            nullptr, nullptr);
-    }
-    LogInfoDirect(
-        "Display Commander v%s - ReShade addon registration successful (API version 17 supported) g_hmodule: "
-        "0x%p current module: 0x%p exe: %s",
-        DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr),
-        (exe_name_utf8[0] != '\0') ? exe_name_utf8 : "(unknown)");
-    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
-    LogInfoDirect("Display Commander overlay registered");
-    OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
-    std::string entry_point_utf8;
-    int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (utf8_size > 0) {
-        entry_point_utf8.resize(utf8_size - 1);
-        WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr, nullptr);
-    } else {
-        entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
-    }
-    char debug_msg[512];
-    snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s\n", entry_point_utf8.c_str());
-    LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
+    LogBootRegisterAndPostInitStage("after DetectMultipleReShadeVersions");
     utils::initialize_qpc_timing_constants();
+    LogBootRegisterAndPostInitStage("before DoInitializationWithoutHwndSafe");
     DoInitializationWithoutHwndSafe(h_module);
+    LogBootRegisterAndPostInitStage("after DoInitializationWithoutHwndSafe");
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
+    LogBootRegisterAndPostInitStage("after ProcessAttach_LoadLocalAddonDllsAfterReShade");
     LoadAddonsFromPluginsDirectory();
-    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
+    LogBootRegisterAndPostInitStage("after LoadAddonsFromPluginsDirectory");
+    if (IsDisplayCommanderHookingInstance()) {
+        LogBootRegisterAndPostInitStage("before InstallApiHooks");
+        display_commanderhooks::InstallApiHooks();
+        LogBootRegisterAndPostInitStage("after InstallApiHooks");
+    } else {
+        LogBootRegisterAndPostInitStage("skip InstallApiHooks (not hooking instance)");
+    }
+    LogBootRegisterAndPostInitStage("complete");
 }
 
 // Minimum Display Commander version allowed to load (below this we refuse).
@@ -1818,6 +1829,39 @@ static void LogBoot(const std::string& text) {
     }
 }
 
+static std::string WideToNarrowCpAcp(std::wstring_view w) {
+    if (w.empty()) return {};
+    const int len =
+        WideCharToMultiByte(CP_ACP, 0, w.data(), static_cast<int>(w.size()), nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return "(wide path conversion failed)";
+    std::string out(static_cast<size_t>(len), '\0');
+    if (WideCharToMultiByte(CP_ACP, 0, w.data(), static_cast<int>(w.size()), out.data(), len, nullptr, nullptr) == 0) {
+        return "(wide path conversion failed)";
+    }
+    return out;
+}
+
+static void LogBootDllMainStage(const char* stage_message) {
+    LogBoot(std::string("[DllMain] ") + stage_message);
+}
+
+static void LogBootRegisterAndPostInitStage(const char* stage_message) {
+    LogBoot(std::string("[RegisterAndPostInit] ") + stage_message);
+}
+
+static void LogBootInitWithoutHwndStage(const char* stage_message) {
+    LogBoot(std::string("[InitWithoutHwnd] ") + stage_message);
+}
+
+static void LogBootDcConfigPath() {
+    const auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
+    if (!dc_dir || dc_dir->empty()) {
+        LogBoot("[DC] config path: (not set)");
+        return;
+    }
+    LogBoot("[DC] config path: " + WideToNarrowCpAcp(*dc_dir));
+}
+
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
@@ -1829,11 +1873,10 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     }
     // Always emit to DebugView so the message is visible even when the file cannot be written
     char dbg_buf[MAX_PATH + 128];
-    int dbg_len =
-        snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s", module_path_narrow);
+    int dbg_len = snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] [Boot] module path: %s", module_path_narrow);
     if (!g_dll_load_caller_path.empty() && dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf) - 32) {
-        dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), " Caller: %s",
-                            g_dll_load_caller_path.c_str());
+        dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), " [Caller] %s",
+                             g_dll_load_caller_path.c_str());
     }
     if (dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf)) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
@@ -1842,9 +1885,9 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
     g_dll_main_log_path = log_path.string();
 
-    std::string module_path_line = std::string("DisplayCommander module path: ") + module_path_narrow;
+    std::string module_path_line = std::string("[Boot] module path: ") + module_path_narrow;
     if (!g_dll_load_caller_path.empty()) {
-        module_path_line += " Caller: " + g_dll_load_caller_path;
+        module_path_line += " [Caller] " + g_dll_load_caller_path;
     }
 
     LogBoot(module_path_line);
@@ -1857,6 +1900,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ChooseAndSetDcConfigPath(h_module);
             CaptureDllLoadCallerPath(h_module);
             EnsureDisplayCommanderLogWithModulePath(h_module);
+            LogBootDcConfigPath();
+            LogBootDllMainStage("PROCESS_ATTACH: start (after module path log)");
             static const char* reason = "";
             auto set_process_attached_on_exit = [h_module]() {
                 // log current
@@ -1881,6 +1926,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
                 (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
+            LogBootDllMainStage("PROCESS_ATTACH: after DisplayCommanderConfigManager::Initialize");
             //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
             // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
@@ -1891,14 +1937,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
                 reason = "RefuseLoad";
+                LogBootDllMainStage("PROCESS_ATTACH: return TRUE (RefuseLoad)");
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::EarlySuccess) {
                 reason = "EarlySuccess";
+                LogBootDllMainStage("PROCESS_ATTACH: return TRUE (EarlySuccess)");
                 return TRUE;
             }
+            LogBootDllMainStage("PROCESS_ATTACH: after ProcessAttach_EarlyChecksAndInit (continue)");
             ProcessAttach_DetectReShadeInModules();
             ProcessAttach_LoadLocalAddonDlls(h_module);
+            LogBootDllMainStage("PROCESS_ATTACH: after ReShade module detect and local addon DLL load");
 
             std::wstring entry_point;
             ProcessAttach_DetectEntryPoint(h_module, entry_point);
@@ -1917,13 +1967,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             if (g_no_reshade_mode.load()) {
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: No ReShade mode");
+                LogBootDllMainStage("PROCESS_ATTACH: entering no-ReShade mode init");
                 ProcessAttach_NoReShadeModeInit(h_module);
                 g_dll_initialization_complete.store(true);
                 reason = "NoReShadeMode: ReShade not loaded";
+                LogBootDllMainStage("PROCESS_ATTACH: no-ReShade path complete");
                 break;
             }
 
             if (!FinishAddonRegistration(h_module, nullptr, false)) {
+                LogBootDllMainStage("PROCESS_ATTACH: FinishAddonRegistration failed (return TRUE)");
                 {
                     char msg[512];
                     snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
@@ -1949,11 +2002,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 return TRUE;
             }
             LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit");
+            LogBootDllMainStage("PROCESS_ATTACH: before RegisterAndPostInit");
 
             ProcessAttach_RegisterAndPostInit(h_module, entry_point);
             LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit complete");
             g_dll_initialization_complete.store(true);
             reason = "RegisterAndPostInit complete";
+            LogBootDllMainStage("PROCESS_ATTACH: complete (ReShade addon registered)");
 
             // RegisterReShadeEvents(h_module);
             break;
@@ -1972,7 +2027,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
 
         case DLL_PROCESS_DETACH:
+            LogBootDllMainStage("DLL_PROCESS_DETACH: entered");
             if (g_reshade_module == nullptr) {
+                LogBootDllMainStage("DLL_PROCESS_DETACH: early return (ReShade module was never set)");
                 return TRUE;
             }
             LogInfo("DLL_PROCESS_DETACH: DLL process detach");
@@ -2031,6 +2088,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 
             reshade::unregister_addon(h_module);
+            LogBootDllMainStage("DLL_PROCESS_DETACH: before logger shutdown");
             // Shutdown DisplayCommander logger (must be last to capture all cleanup messages)
             display_commander::logger::Shutdown();
 

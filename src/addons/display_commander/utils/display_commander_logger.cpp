@@ -71,9 +71,9 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
             dc_path_str = std::filesystem::path(path_buf).string();
         }
     }
-    std::string msg = "DisplayCommander Logger initialized. Path: " + dc_path_str;
+    std::string msg = "[Logger] initialized [Path] " + dc_path_str;
     if (!g_dll_load_caller_path.empty()) {
-        msg += ". Caller: ";
+        msg += " [Caller] ";
         msg += g_dll_load_caller_path;
     }
     Log(LogLevel::Info, msg);
