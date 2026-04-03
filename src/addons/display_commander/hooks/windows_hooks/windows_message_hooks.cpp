@@ -2015,7 +2015,7 @@ bool InstallWindowsMessageHooks() {
                              "GetAsyncKeyState")) {
         LogError("Failed to create and enable GetAsyncKeyState hook");
     }
-
+/*
     // Hook SetWindowsHookExA
     if (!CreateAndEnableHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID*)&SetWindowsHookExA_Original,
                              "SetWindowsHookExA")) {
@@ -2166,6 +2166,8 @@ bool InstallWindowsMessageHooks() {
                              "IsDebuggerPresent")) {
         LogError("Failed to create and enable IsDebuggerPresent hook");
     }
+
+    */
 
     g_message_hooks_installed.store(true);
     LogInfo("Windows message hooks installed successfully");
