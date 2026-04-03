@@ -12,6 +12,7 @@
 #include "version.hpp"
 
 #include <atomic>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
@@ -248,12 +249,15 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line,
     if (log_section_context) {
         const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
         const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
+        const uint64_t frame_id = g_global_frame_id.load(std::memory_order_acquire);
         std::ostringstream section_msg;
         section_msg << "g_continuous_monitoring_section: "
-                    << (monitoring_section != nullptr ? monitoring_section : "(null)");
+                    << (monitoring_section != nullptr ? monitoring_section : "(null)")
+                    << " g_global_frame_id=" << frame_id;
         LogInfo("%s", section_msg.str().c_str());
         section_msg.str("");
-        section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)");
+        section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)")
+                    << " g_global_frame_id=" << frame_id;
         LogInfo("%s", section_msg.str().c_str());
     }
 

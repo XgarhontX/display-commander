@@ -44,26 +44,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_process_exit_hooks;
     BoolSetting suppress_vulkan_loader_hooks;
 
-    // Auto-detection settings (set to 1 when hooks are successfully installed)
-    BoolSetting dxgi_factory_hooks_installed;
-    BoolSetting dxgi_swapchain_hooks_installed;
-    BoolSetting sl_proxy_dxgi_swapchain_hooks_installed;
-    BoolSetting xinput_hooks_installed;
-    BoolSetting streamline_hooks_installed;
-    BoolSetting ngx_hooks_installed;
-    BoolSetting windows_gaming_input_hooks_installed;
-    BoolSetting api_hooks_installed;
-    BoolSetting window_api_hooks_installed;
-    BoolSetting timeslowdown_hooks_installed;
-    BoolSetting debug_output_hooks_installed;
-    BoolSetting loadlibrary_hooks_installed;
-    BoolSetting display_settings_hooks_installed;
-    BoolSetting windows_message_hooks_installed;
-    BoolSetting opengl_hooks_installed;
-    BoolSetting nvapi_hooks_installed;
-    BoolSetting process_exit_hooks_installed;
-    BoolSetting vulkan_loader_hooks_installed;
-
    private:
     std::vector<SettingBase*> all_settings_;
 };

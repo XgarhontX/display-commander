@@ -372,9 +372,9 @@ void InitializeHotkeyDefinitions() {
          }},
         {"performance_overlay", "Performance Overlay Toggle", "ctrl shift o", "Toggle the performance overlay",
          []() {
-             bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
+             bool current_state = settings::g_mainTabSettings.show_performance_overlay.GetValue();
              bool new_state = !current_state;
-             settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+             settings::g_mainTabSettings.show_performance_overlay.SetValue(new_state);
              std::ostringstream oss;
              oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());

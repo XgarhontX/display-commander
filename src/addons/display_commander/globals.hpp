@@ -290,10 +290,7 @@ extern std::string g_dll_load_caller_path;
 // List of module paths seen in load backtrace, outer first, consecutive duplicates merged (newline-separated).
 extern std::string g_dll_load_call_stack_list;
 
-// Raw backtrace from DllMain PROCESS_ATTACH for deferred function-level resolution (DbgHelp); 0 = not set.
-static constexpr size_t kDllMainBacktraceMax = 256;
-extern void* g_dll_main_backtrace[kDllMainBacktraceMax];
-extern USHORT g_dll_main_backtrace_count;
+// Path to DisplayCommander.log next to the addon DLL (boot lines from DllMain).
 extern std::string g_dll_main_log_path;
 
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
@@ -616,6 +613,11 @@ extern std::atomic<uint64_t> g_global_frame_id;
 // Same moment in QPC ns (get_real_time_ns) when g_global_frame_id was last incremented; for relative "X.Xs ago" in
 // stuck log.
 extern std::atomic<LONGLONG> g_global_frame_id_last_updated_ns;
+
+/** Monotonic ns (`get_now_ns`) before the in-game performance overlay may draw. 0 until the first
+ *  `g_global_frame_id` increment on the present path; then set to (that moment + kPerformanceOverlayPostFirstFrameDelayNs). */
+extern std::atomic<LONGLONG> g_performance_overlay_allowed_after_ns;
+inline constexpr LONGLONG kPerformanceOverlayPostFirstFrameDelayNs = 2'000'000'000LL;
 
 /** `g_global_frame_id` when the performance overlay last requested an NVAPI GPU util sample; 0 = no active request. */
 extern std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id;

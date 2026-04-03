@@ -5,7 +5,6 @@
 #include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
-#include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "hooks/vulkan/vulkan_loader_hooks.hpp"
@@ -451,9 +450,14 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         OnPerformanceOverlay_DisplayCommanderWindow(runtime);
     }
 
+    const LONGLONG overlay_allowed_after = g_performance_overlay_allowed_after_ns.load(std::memory_order_acquire);
+    if (overlay_allowed_after == 0 || utils::get_now_ns() < overlay_allowed_after) {
+        return;
+    }
+
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-    bool show_performance_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
+    bool show_performance_overlay = settings::g_mainTabSettings.show_performance_overlay.GetValue();
     if (show_performance_overlay && (show_actual_refresh_rate || show_refresh_rate_frame_times)) {
         if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
             display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
@@ -464,7 +468,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
+    if (!settings::g_mainTabSettings.show_performance_overlay.GetValue()) {
         return;
     }
     OnPerformanceOverlay_TestWindow(runtime, show_tooltips);
@@ -1108,9 +1112,10 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
         LogInfo("DPI scaling disabled - process is now DPI-aware");
     }
 
-    bool suppress_pin_module = true;
-    display_commander::config::get_config_value_ensure_exists("DisplayCommander.Safemode", "SuppressPinModule",
-                                                              suppress_pin_module, false);
+    // Default: pin the module (same as legacy SuppressPinModule=0). Key is optional; we do not write it to config.
+    bool suppress_pin_module = false;
+    (void)display_commander::config::get_config_value("DisplayCommander.Safemode", "SuppressPinModule",
+                                                        suppress_pin_module);
     if (!suppress_pin_module) {
         HMODULE pinned_module = nullptr;
         if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -1761,9 +1766,6 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
         void* backtrace[256] = {};
         const USHORT n =
             CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])), backtrace, nullptr);
-        g_dll_main_backtrace_count =
-            (n <= static_cast<USHORT>(kDllMainBacktraceMax)) ? n : static_cast<USHORT>(kDllMainBacktraceMax);
-        for (USHORT i = 0; i < g_dll_main_backtrace_count; ++i) g_dll_main_backtrace[i] = backtrace[i];
         wchar_t path_buf[MAX_PATH] = {};
         std::string fallback;
         bool fallback_is_loader = false;
@@ -1846,133 +1848,6 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     }
 
     LogBoot(module_path_line);
-    LogBoot("(DLL load function call stack will follow after init)");
-}
-
-#ifndef IMAGE_DIRECTORY_ENTRY_IMPORT
-#define IMAGE_DIRECTORY_ENTRY_IMPORT 1
-#endif
-
-// Reads IMAGE_IMPORT_DESCRIPTOR[] from the game executable (main module) in memory and logs each imported DLL name.
-// Uses manual PE parsing only (no DbgHelp). Safe to call when we log the PROCESS_ATTACH stack.
-static void LogGameExeStaticImports(void (*emit_line)(const std::string&, std::ofstream*), std::ofstream* f) {
-    const bool supressed = true;
-    if (supressed) return;
-    HMODULE const base = GetModuleHandleW(nullptr);
-    if (!base) return;
-    const auto* const dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
-    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return;
-    const auto* const nt =
-        reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const BYTE*>(base) + dos->e_lfanew);
-    if (nt->Signature != IMAGE_NT_SIGNATURE) return;
-
-    DWORD import_rva = 0;
-    DWORD size_of_image = 0;
-    if (nt->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) {
-        const auto* const oh = &nt->OptionalHeader;
-        import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-        size_of_image = oh->SizeOfImage;
-    } else {
-        const auto* const oh = reinterpret_cast<const IMAGE_OPTIONAL_HEADER32*>(&nt->OptionalHeader);
-        import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-        size_of_image = oh->SizeOfImage;
-    }
-    if (import_rva == 0 || size_of_image == 0) return;
-
-    emit_line("Game executable static imports (DLLs):", f);
-    const auto* desc =
-        reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(reinterpret_cast<const BYTE*>(base) + import_rva);
-    constexpr DWORD kMaxImports = 1024;
-    for (DWORD i = 0; i < kMaxImports && desc->Name != 0; ++i, ++desc) {
-        DWORD const name_rva = desc->Name;
-        if (name_rva >= size_of_image) continue;
-        const char* const name = reinterpret_cast<const char*>(reinterpret_cast<const BYTE*>(base) + name_rva);
-        size_t len = 0;
-        while (len < 260 && name[len]) ++len;
-        if (len == 0) continue;
-        emit_line(std::string(name, len), f);
-    }
-}
-
-// Resolves g_dll_main_backtrace to function names via DbgHelp and appends to log + DebugView. Call after init (no
-// loader lock).
-void ResolveAndLogDllMainFunctionStack() {
-    if (g_dll_main_backtrace_count == 0) return;
-    const USHORT count = g_dll_main_backtrace_count;
-    g_dll_main_backtrace_count = 0;
-
-    auto emit_line = [](const std::string& line, std::ofstream* f) {
-        OutputDebugStringA("[DisplayCommander]   ");
-        OutputDebugStringA(line.c_str());
-        OutputDebugStringA("\n");
-        if (f && f->is_open()) *f << "  " << line << "\n";
-    };
-
-    OutputDebugStringA("[DisplayCommander] DLL load call stack (functions, outer first):\n");
-    std::ofstream f;
-    if (!g_dll_main_log_path.empty()) {
-        f.open(g_dll_main_log_path, std::ios::app);
-        if (f) f << "DLL load call stack (functions, outer first):\n";
-    }
-
-    if (!dbghelp_loader::LoadDbgHelp() || !dbghelp_loader::IsDbgHelpAvailable()) {
-        for (USHORT i = 0; i < count; ++i) {
-            HMODULE hmod = nullptr;
-            wchar_t path_buf[MAX_PATH] = {};
-            if (GetModuleHandleExW(
-                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                    static_cast<LPCWSTR>(g_dll_main_backtrace[i]), &hmod)
-                && hmod != nullptr && GetModuleFileNameW(hmod, path_buf, MAX_PATH) != 0) {
-                char narrow[MAX_PATH] = {};
-                if (WideCharToMultiByte(CP_UTF8, 0, path_buf, -1, narrow, static_cast<int>(sizeof(narrow)), nullptr,
-                                        nullptr)
-                    > 0)
-                    emit_line(narrow, &f);
-            } else {
-                char addr_buf[32];
-                snprintf(addr_buf, sizeof(addr_buf), "0x%p", g_dll_main_backtrace[i]);
-                emit_line(std::string(addr_buf), &f);
-            }
-        }
-        LogGameExeStaticImports(emit_line, &f);
-        return;
-    }
-
-    HANDLE process = GetCurrentProcess();
-    dbghelp_loader::EnsureSymbolsInitialized(process);
-
-    constexpr size_t kSymBufSize = 512;
-    char symbol_buffer[sizeof(SYMBOL_INFO) + kSymBufSize] = {};
-    IMAGEHLP_MODULE64 mod_info = {};
-    mod_info.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-
-    for (USHORT i = 0; i < count; ++i) {
-        const DWORD64 addr = reinterpret_cast<DWORD64>(g_dll_main_backtrace[i]);
-        PSYMBOL_INFO sym_info = reinterpret_cast<PSYMBOL_INFO>(symbol_buffer);
-        sym_info->SizeOfStruct = sizeof(SYMBOL_INFO);
-        sym_info->MaxNameLen = kSymBufSize;
-        DWORD64 displacement = 0;
-
-        std::string module_name = "?";
-        if (dbghelp_loader::SymGetModuleInfo64(process, addr, &mod_info) != FALSE) module_name = mod_info.ModuleName;
-
-        std::string line;
-        if (dbghelp_loader::SymFromAddr(process, addr, &displacement, sym_info) != FALSE) {
-            line = module_name + "!" + sym_info->Name;
-            if (displacement != 0) {
-                char disp_buf[24];
-                snprintf(disp_buf, sizeof(disp_buf), "+0x%llx", static_cast<unsigned long long>(displacement));
-                line += disp_buf;
-            }
-        } else {
-            line = module_name + "!0x";
-            char addr_hex[20];
-            snprintf(addr_hex, sizeof(addr_hex), "%llx", static_cast<unsigned long long>(addr));
-            line += addr_hex;
-        }
-        emit_line(line, &f);
-    }
-    LogGameExeStaticImports(emit_line, &f);
 }
 
 #if !defined(DISPLAY_COMMANDER_BUILD_EXE)
@@ -1984,7 +1859,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             EnsureDisplayCommanderLogWithModulePath(h_module);
             static const char* reason = "";
             auto set_process_attached_on_exit = [h_module]() {
-                ResolveAndLogDllMainFunctionStack();
                 // log current
                 WCHAR current_module_path[MAX_PATH] = {0};
                 if (GetModuleFileNameW(h_module, current_module_path, MAX_PATH) > 0) {

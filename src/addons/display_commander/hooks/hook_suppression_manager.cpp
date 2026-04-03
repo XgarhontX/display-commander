@@ -1,4 +1,6 @@
 #include "hook_suppression_manager.hpp"
+#include <atomic>
+#include <cstdint>
 #include <set>
 #include "../settings/hook_suppression_settings.hpp"
 #include "../utils/logging.hpp"
@@ -11,6 +13,9 @@ HookSuppressionManager& HookSuppressionManager::GetInstance() {
 }
 
 namespace {
+// Runtime-only mirror of which hook families reported successful install (not written to config).
+std::atomic<uint32_t> g_hooks_installed_bits{0};
+
 // Helper function to get the setting reference for a hook type
 ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
     switch (hookType) {
@@ -231,160 +236,77 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
 }
 
 void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
-    switch (hookType) {
-        case HookType::DXGI_FACTORY:
-            if (!settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.Save();
-            }
-            break;
-        case HookType::DXGI_SWAPCHAIN:
-            if (!settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.Save();
-            }
-            break;
-        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
-            if (!settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
-            }
-            break;
-        case HookType::XINPUT:
-            if (!settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.xinput_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
-            }
-            break;
-        case HookType::STREAMLINE:
-            if (!settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.streamline_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_streamline_hooks.Save();
-            }
-            break;
-        case HookType::NGX:
-            if (!settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.ngx_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_ngx_hooks.Save();
-            }
-            break;
-        case HookType::WINDOWS_GAMING_INPUT:
-            if (!settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.Save();
-            }
-            break;
-        case HookType::API:
-            if (!settings::g_hook_suppression_settings.api_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.api_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_api_hooks.Save();
-            }
-            break;
-        case HookType::WINDOW_API:
-            if (!settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.window_api_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
-            }
-            break;
-        case HookType::TIMESLOWDOWN:
-            if (!settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.timeslowdown_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.Save();
-            }
-            break;
-        case HookType::DEBUG_OUTPUT:
-            if (!settings::g_hook_suppression_settings.debug_output_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.debug_output_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_debug_output_hooks.Save();
-            }
-            break;
-        case HookType::LOADLIBRARY:
-            if (!settings::g_hook_suppression_settings.loadlibrary_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.loadlibrary_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.Save();
-            }
-            break;
-        case HookType::DISPLAY_SETTINGS:
-            if (!settings::g_hook_suppression_settings.display_settings_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.display_settings_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_display_settings_hooks.Save();
-            }
-            break;
-        case HookType::WINDOWS_MESSAGE:
-            if (!settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.windows_message_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_windows_message_hooks.Save();
-            }
-            break;
-        case HookType::OPENGL:
-            if (!settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.opengl_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_opengl_hooks.Save();
-            }
-            break;
-        case HookType::NVAPI:
-            if (!settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.nvapi_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_nvapi_hooks.Save();
-            }
-            break;
-        case HookType::PROCESS_EXIT:
-            if (!settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.process_exit_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
-            }
-            break;
-        case HookType::VULKAN_LOADER:
-            if (!settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.Save();
-            }
-            break;
-
-        default:
-
-            LogError("HookSuppressionManager::MarkHookInstalled - Invalid hook type: %d", static_cast<int>(hookType));
-            break;
+    const int type_index = static_cast<int>(hookType);
+    if (type_index < 0 || type_index >= kHookTypeCount) {
+        LogError("HookSuppressionManager::MarkHookInstalled - Invalid hook type: %d", type_index);
+        return;
     }
 
-    LogInfo("HookSuppressionManager::MarkHookInstalled - Marked %d as installed",
-            static_cast<int>(hookType));
+    const uint32_t mask = 1u << static_cast<unsigned>(type_index);
+    const uint32_t prev = g_hooks_installed_bits.fetch_or(mask, std::memory_order_relaxed);
+    if ((prev & mask) == 0) {
+        switch (hookType) {
+            case HookType::DXGI_FACTORY:
+                settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.Save();
+                break;
+            case HookType::DXGI_SWAPCHAIN:
+                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.Save();
+                break;
+            case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+                settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
+                break;
+            case HookType::XINPUT:
+                settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
+                break;
+            case HookType::STREAMLINE:
+                settings::g_hook_suppression_settings.suppress_streamline_hooks.Save();
+                break;
+            case HookType::NGX:
+                settings::g_hook_suppression_settings.suppress_ngx_hooks.Save();
+                break;
+            case HookType::WINDOWS_GAMING_INPUT:
+                settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.Save();
+                break;
+            case HookType::API:
+                settings::g_hook_suppression_settings.suppress_api_hooks.Save();
+                break;
+            case HookType::WINDOW_API:
+                settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
+                break;
+            case HookType::TIMESLOWDOWN:
+                settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.Save();
+                break;
+            case HookType::DEBUG_OUTPUT:
+                settings::g_hook_suppression_settings.suppress_debug_output_hooks.Save();
+                break;
+            case HookType::LOADLIBRARY:
+                settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.Save();
+                break;
+            case HookType::DISPLAY_SETTINGS:
+                settings::g_hook_suppression_settings.suppress_display_settings_hooks.Save();
+                break;
+            case HookType::WINDOWS_MESSAGE:
+                settings::g_hook_suppression_settings.suppress_windows_message_hooks.Save();
+                break;
+            case HookType::OPENGL:
+                settings::g_hook_suppression_settings.suppress_opengl_hooks.Save();
+                break;
+            case HookType::NVAPI:
+                settings::g_hook_suppression_settings.suppress_nvapi_hooks.Save();
+                break;
+            case HookType::PROCESS_EXIT:
+                settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
+                break;
+            case HookType::VULKAN_LOADER:
+                settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.Save();
+                break;
+            default:
+                LogError("HookSuppressionManager::MarkHookInstalled - Invalid hook type: %d", type_index);
+                break;
+        }
+    }
+
+    LogInfo("HookSuppressionManager::MarkHookInstalled - Marked %d as installed", type_index);
 }
 
 std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
@@ -414,37 +336,12 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
 }
 
 bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
-    switch (hookType) {
-        case HookType::DXGI_FACTORY:
-            return settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue();
-        case HookType::DXGI_SWAPCHAIN:
-            return settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
-        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
-            return settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue();
-        case HookType::XINPUT:     return settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue();
-        case HookType::STREAMLINE: return settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue();
-        case HookType::NGX:        return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
-        case HookType::WINDOWS_GAMING_INPUT:
-            return settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue();
-        case HookType::API:         return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
-        case HookType::WINDOW_API:  return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
-        case HookType::TIMESLOWDOWN:
-            return settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue();
-        case HookType::DEBUG_OUTPUT:
-            return settings::g_hook_suppression_settings.debug_output_hooks_installed.GetValue();
-        case HookType::LOADLIBRARY: return settings::g_hook_suppression_settings.loadlibrary_hooks_installed.GetValue();
-        case HookType::DISPLAY_SETTINGS:
-            return settings::g_hook_suppression_settings.display_settings_hooks_installed.GetValue();
-        case HookType::WINDOWS_MESSAGE:
-            return settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue();
-        case HookType::OPENGL: return settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue();
-        case HookType::NVAPI: return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
-        case HookType::PROCESS_EXIT:
-            return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
-        case HookType::VULKAN_LOADER:
-            return settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue();
-        default:                    return false;
+    const int type_index = static_cast<int>(hookType);
+    if (type_index < 0 || type_index >= kHookTypeCount) {
+        return false;
     }
+    const uint32_t mask = 1u << static_cast<unsigned>(type_index);
+    return (g_hooks_installed_bits.load(std::memory_order_relaxed) & mask) != 0;
 }
 
 HookType HookSuppressionManager::GetHookTypeByIndex(int index) {

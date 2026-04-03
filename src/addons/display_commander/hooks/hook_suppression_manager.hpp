@@ -43,7 +43,7 @@ class HookSuppressionManager {
     // Get the human-readable name for a hook type
     std::string GetHookTypeName(HookType hookType);
 
-    // Check if a hook type is currently marked as installed (from config DisplayCommander.HooksInstalled)
+    // Whether this hook type was marked installed in the current process (not persisted).
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)

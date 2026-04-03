@@ -110,8 +110,8 @@ class MainTabSettings {
     // CPU Settings
     ui::new_ui::IntSetting cpu_cores;
 
-    // Test Overlay Settings
-    ui::new_ui::BoolSetting show_test_overlay;
+    // Performance overlay (main ReShade overlay widget)
+    ui::new_ui::BoolSetting show_performance_overlay;
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_native_fps;
     ui::new_ui::BoolSetting show_refresh_rate;

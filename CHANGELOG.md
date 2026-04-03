@@ -17,6 +17,11 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.104 (2026-04-01)
+- [ui] **Improve compatibility with RTSS** - Delay showing performance overlay by 2s after first frame.
+
+- [cleanup] [settings] **Performance overlay setting name** - The main-tab toggle is stored as **`show_performance_overlay`** instead of **`show_test_overlay`**. If the new key is missing, the old key is still read once when settings load so existing configs keep the same on/off state.
+
 ## v0.13.103 (2026-04-01)
 - [new feature] [build] **Display Commander Lite on GitHub** - There is now an optional **Lite** download on GitHub if you do not need in-game **audio** or **controller** features. It works the same way as the normal addon (including using it as a renamed game DLL if you already do that). Pick **64-bit** or **32-bit** to match your game: **`zzz_display_commander_lite.addon64`** or **`zzz_display_commander_lite.addon32`** on [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) or [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). The main **README** also has download links.
 

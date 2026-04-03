@@ -977,9 +977,9 @@ void InputRemapper::execute_action(const std::string& action_name) {
         }
     } else if (action_name == "performance overlay toggle") {
         // Toggle performance overlay
-        bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
+        bool current_state = settings::g_mainTabSettings.show_performance_overlay.GetValue();
         bool new_state = !current_state;
-        settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+        settings::g_mainTabSettings.show_performance_overlay.SetValue(new_state);
         trigger_action_notification("Performance Overlay " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Performance overlay %s via action",
                 new_state ? "enabled" : "disabled");

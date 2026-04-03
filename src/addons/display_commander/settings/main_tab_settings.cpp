@@ -1,5 +1,6 @@
 #include "main_tab_settings.hpp"
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../config/display_commander_config.hpp"
 #include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
@@ -99,7 +100,7 @@ MainTabSettings::MainTabSettings()
       no_present_in_background("no_present_in_background", false, "DisplayCommander"),
       cpu_cores("cpu_cores", 0, 0, 64,
                 "DisplayCommander"),  // Max will be set dynamically based on CPU count
-      show_test_overlay("show_test_overlay", false, "DisplayCommander"),
+      show_performance_overlay("show_performance_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
       show_native_fps("show_native_fps", false, "DisplayCommander"),
       show_refresh_rate("show_refresh_rate", false, "DisplayCommander"),
@@ -235,7 +236,7 @@ MainTabSettings::MainTabSettings()
         &unclip_cursor_enabled,
         &no_render_in_background,
         &no_present_in_background,
-        &show_test_overlay,
+        &show_performance_overlay,
         &show_fps_counter,
         &show_native_fps,
         &show_refresh_rate,
@@ -382,6 +383,16 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
+
+    // Legacy config key was show_test_overlay; migrate if the new key is absent.
+    int new_key_value = 0;
+    if (!display_commander::config::get_config_value("DisplayCommander", "show_performance_overlay", new_key_value)) {
+        int legacy_value = 0;
+        if (display_commander::config::get_config_value("DisplayCommander", "show_test_overlay", legacy_value)
+            && (legacy_value == 0 || legacy_value == 1)) {
+            show_performance_overlay.SetValue(legacy_value != 0);
+        }
+    }
 
     if (clip_cursor_enabled.GetValue() && unclip_cursor_enabled.GetValue()) {
         LogInfo("Main tab: clip_cursor_enabled and unclip_cursor_enabled both true; disabling unclip_cursor_enabled.");

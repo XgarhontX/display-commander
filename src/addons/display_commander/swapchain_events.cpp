@@ -1205,7 +1205,13 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
     }
 
     g_global_frame_id.fetch_add(1);
-    g_global_frame_id_last_updated_ns.store(utils::get_real_time_ns(), std::memory_order_release);
+    const LONGLONG now_real_ns = utils::get_real_time_ns();
+    g_global_frame_id_last_updated_ns.store(now_real_ns, std::memory_order_release);
+    const LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG expected_overlay_deadline = 0;
+    (void)g_performance_overlay_allowed_after_ns.compare_exchange_strong(
+        expected_overlay_deadline, now_ns + kPerformanceOverlayPostFirstFrameDelayNs, std::memory_order_acq_rel,
+        std::memory_order_relaxed);
 
     if (s_reflex_enable_current_frame.load()) {
         if (GetReflexSendMarkers()) {

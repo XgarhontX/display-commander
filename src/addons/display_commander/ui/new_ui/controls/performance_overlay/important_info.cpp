@@ -495,10 +495,10 @@ static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::I
 static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapper& imgui) {
     // Test Overlay Control
     {
-        bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
-        if (imgui.Checkbox(ICON_FK_SEARCH " Show Overlay", &show_test_overlay)) {
-            settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
-            LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
+        bool show_performance_overlay = settings::g_mainTabSettings.show_performance_overlay.GetValue();
+        if (imgui.Checkbox(ICON_FK_SEARCH " Show performance overlay", &show_performance_overlay)) {
+            settings::g_mainTabSettings.show_performance_overlay.SetValue(show_performance_overlay);
+            LogInfo("Performance overlay %s", show_performance_overlay ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
