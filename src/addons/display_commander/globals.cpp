@@ -1013,6 +1013,10 @@ DLSSGSummary GetDLSSGSummary() {
                 summary.fg_mode = "3x";
             } else if (multi_frame_count == 3) {
                 summary.fg_mode = "4x";
+            } else if (multi_frame_count == 4) {
+                summary.fg_mode = "5x";
+            } else if (multi_frame_count == 5) {
+                summary.fg_mode = "6x";
             } else {
                 char buffer[16];
                 snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
@@ -1249,17 +1253,13 @@ DLSSGSummaryLite GetDLSSGSummaryLite() {
     if (is_fg_enabled) {
         unsigned int multi_frame_count;
         if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-            switch (multi_frame_count) {
-                case 1:  summary.fg_mode = DLSSGFgMode::k2x; break;
-                case 2:  summary.fg_mode = DLSSGFgMode::k3x; break;
-                case 3:  summary.fg_mode = DLSSGFgMode::k4x; break;
-                default: summary.fg_mode = DLSSGFgMode::Other; break;
-            }
+            const int n = static_cast<int>(multi_frame_count) + 1;
+            summary.fg_mode = (n >= 2) ? n : kDlssGFgModeActiveUnknown;
         } else {
-            summary.fg_mode = DLSSGFgMode::ActiveUnknown;
+            summary.fg_mode = kDlssGFgModeActiveUnknown;
         }
     } else {
-        summary.fg_mode = DLSSGFgMode::Off;
+        summary.fg_mode = kDlssGFgModeOff;
     }
     return summary;
 }

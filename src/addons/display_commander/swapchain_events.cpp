@@ -1338,32 +1338,27 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
         CALL_GUARD(start_time_ns);
         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
 
-        switch (lite.fg_mode) {
-            case DLSSGFgMode::k2x: target_fps /= 2.0f; break;
-            case DLSSGFgMode::k3x: target_fps /= 3.0f; break;
-            case DLSSGFgMode::k4x: target_fps /= 4.0f; break;
-            default:               break;
+        if (lite.fg_mode >= 2) {
+            target_fps /= static_cast<float>(lite.fg_mode);
         }
         static float last_target_fps = -1.0f;  // unset
 
         if (last_target_fps != target_fps) {
             last_target_fps = target_fps;
             LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s lite.fg_mode: %d", target_fps,
-                    target_fps_native, frame_generation_aware ? "true" : "false", static_cast<int>(lite.fg_mode));
+                    target_fps_native, frame_generation_aware ? "true" : "false", lite.fg_mode);
         }
 
         {
             static bool logged = false;
-            if (!logged
-                && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
-                    || lite.fg_mode == DLSSGFgMode::k4x)) {
-                LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+            if (!logged && lite.fg_mode >= 2) {
+                LogInfo("DLSS-G FG mode: %d", lite.fg_mode);
                 // log DLSSGSummaryLite all fields
                 LogInfo(
                     "DLSSGSummaryLite: any_dlss_active: %d, dlss_active: %d, dlss_g_active: %d, "
                     "ray_reconstruction_active: %d, fg_mode: %d",
                     lite.any_dlss_active, lite.dlss_active, lite.dlss_g_active, lite.ray_reconstruction_active,
-                    static_cast<int>(lite.fg_mode));
+                    lite.fg_mode);
 
                 logged = true;
             }

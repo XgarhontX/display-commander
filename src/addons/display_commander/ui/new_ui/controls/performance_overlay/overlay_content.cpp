@@ -349,25 +349,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
         const bool any_dlss_active = dlss_lite.any_dlss_active;
 
-        int fg_mode = 0;
-
-        int dllssg_mode = -1;
-        int enable_interp = -1;
-        g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
-        g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
-
-        bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode >= 1 : enable_interp == 1);
-
-        if (show_fg_mode) {
-            int num_frames_actually_presented;
-            (void)num_frames_actually_presented;
-            if (is_fg_enabled) {
-                unsigned int multi_frame_count;
-                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-                    fg_mode = static_cast<int>(multi_frame_count) + 1;
-                }
-            }
-        }
+        const int fg_mode = show_fg_mode ? dlss_lite.fg_mode : 0;
 
         std::string internal_resolution = "N/A";
         std::string output_resolution = "N/A";
@@ -405,7 +387,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
         if (show_fg_mode) {
             if (any_dlss_active && fg_mode >= 2) {
-                imgui.Text("FG: %sx", fg_mode);
+                imgui.Text("FG: %dx", fg_mode);
             } else {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
             }

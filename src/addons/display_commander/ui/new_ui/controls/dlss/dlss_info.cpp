@@ -149,12 +149,14 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         imgui.TreePop();
     }
 
-    // FG Mode
-    if (any_dlss_active
-        && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
-        imgui.Text("FG: %s", dlssg_summary.fg_mode.c_str());
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+    // FG Mode (integer N from GetDLSSGSummaryLite: 2 => 2x, 3 => 3x, …)
+    {
+        const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+        if (any_dlss_active && lite.fg_mode >= 2) {
+            imgui.Text("FG: %dx", lite.fg_mode);
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+        }
     }
 
     // DLSS Internal Resolution (same format as performance overlay: internal -> output -> backbuffer)

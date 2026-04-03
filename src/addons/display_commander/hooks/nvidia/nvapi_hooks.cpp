@@ -257,17 +257,12 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                     float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
                     if (effective_fps > 0.0f) {
                         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-                        switch (lite.fg_mode) {
-                            case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
-                            case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
-                            case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
-                            default:               break;
+                        if (lite.fg_mode >= 2) {
+                            effective_fps /= static_cast<float>(lite.fg_mode);
                         }
                         static bool logged = false;
-                        if (!logged
-                            && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
-                                || lite.fg_mode == DLSSGFgMode::k4x)) {
-                            LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                        if (!logged && lite.fg_mode >= 2) {
+                            LogInfo("DLSS-G FG mode: %dx", lite.fg_mode);
                             logged = true;
                         }
                     }

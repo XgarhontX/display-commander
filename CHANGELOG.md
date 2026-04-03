@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.105 (2026-04-02)
+- [cleanup] [compatibility] **DLSS-G FG multiplier as integer** - `DLSSGSummaryLite::fg_mode` is an **int**: **0** = off, **-1** = FG on without NGX **MultiFrameCount**, **≥2** = **N** for **Nx** (FPS limiter and Reflex present-delay divide by **N**). Any valid **MultiFrameCount** maps to **multi_frame_count + 1** when ≥2 (2x through 7x+). The old `DLSSGFgMode` enum is removed; overlay **FG** line uses `GetDLSSGSummaryLite()` so it stays in sync.
+
 ## v0.13.104 (2026-04-01)
 - [ui] **Improve compatibility with RTSS** - Delay showing performance overlay by 2s after first frame.
 

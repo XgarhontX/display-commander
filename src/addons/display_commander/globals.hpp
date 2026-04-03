@@ -1227,16 +1227,9 @@ DLSSGSummary GetDLSSGSummary();
 // Main tab optional \"DLSS Control\" panel: cheap gate before calling GetDLSSGSummary (DLSS DLL loaded / feature seen).
 bool ShouldShowDlssInformationSection();
 
-// DLSS-G frame generation mode (used by FPS limiter; call GetDLSSGSummaryLite every frame)
-enum class DLSSGFgMode : std::uint8_t {
-    Off = 0,        // Disabled
-    Unknown,        // API did not return
-    ActiveUnknown,  // Active but MultiFrameCount unknown
-    k2x,
-    k3x,
-    k4x,
-    Other  // 5x, 6x, etc.
-};
+// DLSSGSummaryLite::fg_mode — frame-generation multiplier (call GetDLSSGSummaryLite every frame)
+inline constexpr int kDlssGFgModeOff = 0;              // FG disabled
+inline constexpr int kDlssGFgModeActiveUnknown = -1;     // FG on but NGX MultiFrameCount unavailable
 
 // Lite summary for FPS limiter / overlay: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active,
 // fg_mode (call every frame)
@@ -1245,7 +1238,8 @@ struct DLSSGSummaryLite {
     bool dlss_active = false;
     bool dlss_g_active = false;
     bool ray_reconstruction_active = false;
-    DLSSGFgMode fg_mode = DLSSGFgMode::Off;
+    // 0 = off, -1 = active unknown, >= 2 => Nx (divide capped FPS by this integer)
+    int fg_mode = kDlssGFgModeOff;
 };
 DLSSGSummaryLite GetDLSSGSummaryLite();
 
