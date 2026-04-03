@@ -11,7 +11,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "config/override_reshade_settings.hpp"
 #include "globals.hpp"
+#include "reshade_event_registration.hpp"
 #include "utils.hpp"
 
 // WASAPI per-app volume control
@@ -29,9 +31,5 @@ void ApplyWindowChange(HWND hwnd, const char* reason = "unknown", bool force_app
 
 // Power saving settings and swapchain utilities (declared in swapchain_events.hpp)
 
-// ReShade config: add/remove Display Commander EffectSearchPaths and TextureSearchPaths. Pass runtime when available so config is applied to that runtime's .ini.
-void OverrideReShadeSettings(reshade::api::effect_runtime* runtime = nullptr);
-
 // Initialization functions
 bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool do_unregister = true);
-void RegisterReShadeEvents(HMODULE h_module);
