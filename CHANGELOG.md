@@ -8,6 +8,7 @@ Known issues:
 - Injustice 2/Mortal Kombat 11, alt-tab with prevent fullscreen + continue rendering: prevent minimize doesn't work.
 - Injected reflex is broken after cleanup.
 - DC's main UI when open lowers fps.
+- Crimson Desert (latency estimate doesn't match nvidia overlay PCL (AV)) @fuzzy833 FGx2
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
@@ -20,6 +21,9 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
+
+## v0.13.132 (2026-04-04)
+- [ui] [settings] **Performance overlay: label modes, two-column scalars, FPS split, HUD order** - Present FPS and native FPS are on separate lines with clear names.
 
 ## v0.13.131 (2026-04-04)
 - [cleanup] **Log privacy: Windows profile name redacted** - Log file lines no longer include your user folder name.

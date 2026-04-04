@@ -72,7 +72,7 @@ void AppendDisplayCommanderBootLog(const std::string& text) {
         if (g_dll_main_log_path.empty()) return;
         std::ofstream f(g_dll_main_log_path, std::ios::app);
         if (!f) return;
-        const std::string sanitized = display_commander::utils::SanitizeLogUserPaths(text);
+        const std::string sanitized = display_commander::log_privacy::SanitizeLogUserPaths(text);
         f << sanitized << '\n';
         f.flush();
     } catch (...) {

@@ -111,7 +111,8 @@ MainTabSettings::MainTabSettings()
       show_display_commander_ui("show_display_commander_ui", false, "DisplayCommander"),
       display_commander_ui_window_x("display_commander_ui_window_x", 100.0f, 0.0f, 10000.0f, "DisplayCommander"),
       display_commander_ui_window_y("display_commander_ui_window_y", 100.0f, 0.0f, 10000.0f, "DisplayCommander"),
-      show_labels("show_labels", true, "DisplayCommander"),
+      overlay_label_mode("overlay_label_mode", static_cast<int>(OverlayLabelMode::kFull),
+                         {"No labels", "Short labels", "Full labels"}, "DisplayCommander"),
       show_clock("show_clock", false, "DisplayCommander"),
       show_frame_time_graph("show_frame_time_graph", true, "DisplayCommander"),
       show_frame_time_stats("show_frame_time_stats", false, "DisplayCommander"),
@@ -248,7 +249,7 @@ MainTabSettings::MainTabSettings()
         &show_display_commander_ui,
         &display_commander_ui_window_x,
         &display_commander_ui_window_y,
-        &show_labels,
+        &overlay_label_mode,
         &show_clock,
         &show_frame_time_graph,
         &show_frame_time_stats,
@@ -393,6 +394,16 @@ void MainTabSettings::LoadSettings() {
         if (display_commander::config::get_config_value("DisplayCommander", "show_test_overlay", legacy_value)
             && (legacy_value == 0 || legacy_value == 1)) {
             show_performance_overlay.SetValue(legacy_value != 0);
+        }
+    }
+
+    // Legacy bool show_labels -> overlay_label_mode (0=None, 2=Full). New key takes precedence when present.
+    int overlay_mode_probe = 0;
+    if (!display_commander::config::get_config_value("DisplayCommander", "overlay_label_mode", overlay_mode_probe)) {
+        bool legacy_show_labels = true;
+        if (display_commander::config::get_config_value("DisplayCommander", "show_labels", legacy_show_labels)) {
+            overlay_label_mode.SetValue(legacy_show_labels ? static_cast<int>(OverlayLabelMode::kFull)
+                                                           : static_cast<int>(OverlayLabelMode::kNone));
         }
     }
 

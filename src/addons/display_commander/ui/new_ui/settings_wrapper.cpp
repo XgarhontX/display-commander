@@ -759,6 +759,10 @@ template class ComboSettingEnum<FpsLimiterPreset>;
 template bool ComboSettingEnumWrapper<FpsLimiterPreset>(ComboSettingEnum<FpsLimiterPreset>&, const char*,
                                                         display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 
+template class ComboSettingEnum<OverlayLabelMode>;
+template bool ComboSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<OverlayLabelMode>&, const char*,
+                                                        display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
+
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {
     std::vector<std::string> changed_settings;

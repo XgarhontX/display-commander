@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <string>
 
-namespace display_commander::utils {
+namespace display_commander::log_privacy {
 
 namespace {
 
@@ -85,4 +85,4 @@ std::string SanitizeLogUserPaths(std::string message) {
     return message;
 }
 
-}  // namespace display_commander::utils
+}  // namespace display_commander::log_privacy

@@ -89,7 +89,7 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
         return;
     }
 
-    const std::string sanitized_message = display_commander::utils::SanitizeLogUserPaths(message);
+    const std::string sanitized_message = display_commander::log_privacy::SanitizeLogUserPaths(message);
     std::string formatted_message = FormatMessage(level, sanitized_message);
 
     {

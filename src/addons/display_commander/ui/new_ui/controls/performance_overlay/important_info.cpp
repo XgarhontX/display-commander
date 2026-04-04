@@ -8,6 +8,7 @@
 #include "nvapi/nvapi_init.hpp"
 #include "swapchain_events.hpp"
 #include "ui/forkawesome.h"
+#include "../../settings_wrapper.hpp"
 #include "utils.hpp"
 
 namespace ui::new_ui {
@@ -507,12 +508,12 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.SameLine();
 
-        bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
-        if (imgui.Checkbox("Show labels", &show_labels)) {
-            settings::g_mainTabSettings.show_labels.SetValue(show_labels);
-        }
+        (void)ComboSettingEnumWrapper(settings::g_mainTabSettings.overlay_label_mode, "Overlay labels", imgui, 220.0f,
+                                      nullptr);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
+            imgui.SetTooltipEx(
+                "How metric names appear in the performance overlay: no prefix, short tokens, or full phrases. Values "
+                "use a second column when labels are on.");
         }
 
         imgui.Separator();
@@ -548,9 +549,9 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
-                "YY.Y fps%s",
-                native_reflex_active ? "" : ". Requires a game with native Reflex.");
+                "Shows native FPS on its own line (estimated from native Reflex sleep smoothing), below present FPS. "
+                "Requires a game with native Reflex.%s",
+                native_reflex_active ? "" : " Disabled when native Reflex is not active.");
         }
         if (!native_reflex_active) {
             imgui.EndDisabled();

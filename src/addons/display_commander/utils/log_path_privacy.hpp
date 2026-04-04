@@ -3,10 +3,10 @@
 
 #include <string>
 
-namespace display_commander::utils {
+namespace display_commander::log_privacy {
 
 // Replaces the Windows profile folder name after \Users\ or \Documents and Settings\ (case-insensitive,
 // both \ and / separators) with "<user>" so log files do not contain the account directory name.
 std::string SanitizeLogUserPaths(std::string message);
 
-}  // namespace display_commander::utils
+}  // namespace display_commander::log_privacy

@@ -13,6 +13,7 @@
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
+#include "performance_types.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "utils/detour_call_tracker.hpp"  // CALL_GUARD_NO_TS
@@ -294,21 +295,22 @@ static void Every1sFpsAggregate() {
     }
 
     std::ostringstream fps_oss;
-    bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
-    if (show_labels) {
-        fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1)
-                << frame_time_ms << " ms median)"
-                << "   (1% Low: " << std::setprecision(1) << one_percent_low << ", 0.1% Low: " << std::setprecision(1)
-                << point_one_percent_low << ")"
-                << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
-                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
+    fps_oss << std::fixed << std::setprecision(1);
+    const OverlayLabelMode overlay_lbl = settings::g_mainTabSettings.overlay_label_mode.GetEnumValue();
+    if (overlay_lbl == OverlayLabelMode::kFull) {
+        fps_oss << "FPS: " << fps_display << " (" << frame_time_ms << " ms median)"
+                << "   (1% Low: " << one_percent_low << ", 0.1% Low: " << point_one_percent_low << ")"
+                << "   Top FT: P99 " << p99_frame_time_ms << " ms"
+                << ", P99.9 " << p999_frame_time_ms << " ms";
+    } else if (overlay_lbl == OverlayLabelMode::kShort) {
+        fps_oss << "FPS " << fps_display << " (" << frame_time_ms << " ms)"
+                << "  1%L " << one_percent_low << " 0.1%L " << point_one_percent_low << "  P99 " << p99_frame_time_ms
+                << "ms P99.9 " << p999_frame_time_ms << "ms";
     } else {
-        fps_oss << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1) << frame_time_ms
-                << " ms median)"
-                << "   (1%: " << std::setprecision(1) << one_percent_low << ", 0.1%: " << std::setprecision(1)
-                << point_one_percent_low << ")"
-                << "   P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
-                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
+        fps_oss << fps_display << " (" << frame_time_ms << " ms median)"
+                << "   (1%: " << one_percent_low << ", 0.1%: " << point_one_percent_low << ")"
+                << "   P99 " << p99_frame_time_ms << " ms"
+                << ", P99.9 " << p999_frame_time_ms << " ms";
     }
     g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
 }

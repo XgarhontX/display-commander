@@ -21,7 +21,7 @@ extern std::atomic<HMODULE> g_reshade_module;
 namespace {
 void WriteToLogFile(const std::string& message, const char* level = "INFO") {
     try {
-        const std::string sanitized = display_commander::utils::SanitizeLogUserPaths(message);
+        const std::string sanitized = display_commander::log_privacy::SanitizeLogUserPaths(message);
         // Get the game executable path to determine log file location
         WCHAR exe_path[MAX_PATH];
         if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
