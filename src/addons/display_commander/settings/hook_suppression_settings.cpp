@@ -20,7 +20,7 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_debug_output_hooks(
           "DebugOutputHooks", true,
           "DisplayCommander.HookSuppression"),  // BLACKLISTED: Debug output can be noisy
-      suppress_loadlibrary_hooks("LoadLibraryHooks", false, "DisplayCommander.HookSuppression"),
+      suppress_loadlibrary_hooks("SupressAllHooks", false, "DisplayCommander.HookSuppression"),
       suppress_display_settings_hooks("DisplaySettingsHooks", false, "DisplayCommander.HookSuppression"),
       suppress_windows_message_hooks("WindowsMessageHooks", false, "DisplayCommander.HookSuppression"),
       suppress_opengl_hooks("OpenGLHooks", false, "DisplayCommander.HookSuppression"),
