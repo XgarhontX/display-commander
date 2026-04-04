@@ -9,6 +9,7 @@
 #include "../hook_suppression_manager.hpp"
 
 #include <MinHook.h>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 
@@ -21,11 +22,14 @@
 // Streamline DLSS-G types (from sl_dlss_g.h)
 #include "sl_dlss_g.h"
 
-// Streamline loader / feature function pointer types (sl_core_api.h PFun_sl*, sl_dlss.h, sl_dlss_g.h, plugin slSetData)
+// Loader exports from sl.interposer.dll — hooked via kStreamlineLoaderHooks (sl_core_api.h PFun_*).
 using slInit_pfn = sl::Result (*)(const sl::Preferences& pref, uint64_t sdkVersion);
 using slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 using slGetNativeInterface_pfn = sl::Result (*)(void* proxyInterface, void** baseInterface);
 using slGetFeatureFunction_pfn = sl::Result (*)(sl::Feature feature, const char* functionName, void*& function);
+
+// Feature/plugin function pointers — resolved via slGetFeatureFunction or GetProcAddress on the DLSS plugin
+// (sl_dlss.h, sl_dlss_g.h, slSetData).
 using slDLSSGetOptimalSettings_pfn = sl::Result (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
 using slDLSSSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
 using slDLSSGSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
@@ -71,7 +75,8 @@ static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::s
      .original = reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original)},
 };
 
-// slDLSSGetOptimalSettings / slDLSSSetOptions / slDLSSGSetOptions / slSetData — originals via slGetFeatureFunction (or plugin for slSetData)
+// slDLSSGetOptimalSettings / slDLSSSetOptions / slDLSSGSetOptions / slSetData — originals via slGetFeatureFunction
+// (or plugin for slSetData); see kSlGetFeatureResolvedHooks.
 static slDLSSGetOptimalSettings_pfn slDLSSGetOptimalSettings_Original = nullptr;
 static std::atomic<bool> g_slDLSSGetOptimalSettings_hook_installed{false};
 
@@ -507,6 +512,57 @@ static sl::Result slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl:
     return result;
 }
 
+struct SlGetFeatureResolvedHookEntry {
+    const char* export_name;
+    LPVOID detour;
+    LPVOID* original;
+    std::atomic<bool>* installed;
+    bool install_sl_set_data_from_plugin;
+};
+
+static void TryInstallSlSetDataHookFromPluginModule(void* address_in_plugin) {
+    HMODULE pluginMod = nullptr;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            reinterpret_cast<LPCWSTR>(address_in_plugin), &pluginMod)
+        || pluginMod == nullptr) {
+        return;
+    }
+    FARPROC slSetDataAddr = GetProcAddress(pluginMod, "slSetData");
+    if (slSetDataAddr == nullptr || g_slSetData_hook_installed.exchange(true)) {
+        return;
+    }
+    if (CreateAndEnableHook(slSetDataAddr, reinterpret_cast<LPVOID>(slSetData_Detour),
+                            reinterpret_cast<LPVOID*>(&slSetData_Original), "slSetData")) {
+        LogInfo("Installed slSetData hook from DLSS plugin");
+    } else {
+        g_slSetData_hook_installed.store(false);
+        LogError("Failed to install slSetData hook");
+    }
+}
+
+static const SlGetFeatureResolvedHookEntry kSlGetFeatureResolvedHooks[] = {
+    {.export_name = "slDLSSGGetState",
+     .detour = reinterpret_cast<LPVOID>(slDLSSGGetState_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slDLSSGGetState_Original),
+     .installed = &g_slDLSSGGetState_hook_installed,
+     .install_sl_set_data_from_plugin = false},
+    {.export_name = "slDLSSGSetOptions",
+     .detour = reinterpret_cast<LPVOID>(slDLSSGSetOptions_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slDLSSGSetOptions_Original),
+     .installed = &g_slDLSSGSetOptions_hook_installed,
+     .install_sl_set_data_from_plugin = false},
+    {.export_name = "slDLSSGetOptimalSettings",
+     .detour = reinterpret_cast<LPVOID>(slDLSSGetOptimalSettings_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slDLSSGetOptimalSettings_Original),
+     .installed = &g_slDLSSGetOptimalSettings_hook_installed,
+     .install_sl_set_data_from_plugin = false},
+    {.export_name = "slDLSSSetOptions",
+     .detour = reinterpret_cast<LPVOID>(slDLSSSetOptions_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slDLSSSetOptions_Original),
+     .installed = &g_slDLSSSetOptions_hook_installed,
+     .install_sl_set_data_from_plugin = true},
+};
+
 // slGetFeatureFunction detour: install hooks when game requests DLSS-G/DLSS feature functions
 static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function) {
     if (slGetFeatureFunction_Original == nullptr) {
@@ -516,67 +572,24 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
     if (result != sl::Result::eOk || function == nullptr) {
         return result;
     }
-    // Install slDLSSGGetState hook on first successful lookup
-    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGGetState") == 0
-        && !g_slDLSSGGetState_hook_installed.exchange(true)) {
-        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGGetState_Detour),
-                                reinterpret_cast<LPVOID*>(&slDLSSGGetState_Original), "slDLSSGGetState")) {
-            LogInfo("Installed slDLSSGGetState hook");
-        } else {
-            g_slDLSSGGetState_hook_installed.store(false);
-            LogError("Failed to install slDLSSGGetState hook");
-        }
-    }
-    // Install slDLSSGSetOptions hook on first successful lookup
-    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGSetOptions") == 0
-        && !g_slDLSSGSetOptions_hook_installed.exchange(true)) {
-        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGSetOptions_Detour),
-                                reinterpret_cast<LPVOID*>(&slDLSSGSetOptions_Original), "slDLSSGSetOptions")) {
-            LogInfo("Installed slDLSSGSetOptions hook");
-        } else {
-            g_slDLSSGSetOptions_hook_installed.store(false);
-            LogError("Failed to install slDLSSGSetOptions hook");
-        }
-    }
-    // Install slDLSSGetOptimalSettings hook on first successful lookup
-    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGetOptimalSettings") == 0
-        && !g_slDLSSGetOptimalSettings_hook_installed.exchange(true)) {
-        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGetOptimalSettings_Detour),
-                                reinterpret_cast<LPVOID*>(&slDLSSGetOptimalSettings_Original),
-                                "slDLSSGetOptimalSettings")) {
-            LogInfo("Installed slDLSSGetOptimalSettings hook");
-        } else {
-            g_slDLSSGetOptimalSettings_hook_installed.store(false);
-            LogError("Failed to install slDLSSGetOptimalSettings hook");
-        }
-    }
-    // Install slDLSSSetOptions hook on first successful lookup
-    if (functionName != nullptr && std::strcmp(functionName, "slDLSSSetOptions") == 0
-        && !g_slDLSSSetOptions_hook_installed.exchange(true)) {
-        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSSetOptions_Detour),
-                                reinterpret_cast<LPVOID*>(&slDLSSSetOptions_Original), "slDLSSSetOptions")) {
-            LogInfo("Installed slDLSSSetOptions hook");
-            // Also hook slSetData from the same plugin DLL (game sets DLSS options via slDLSSSetOptions -> plugin calls
-            // slSetData)
-            HMODULE pluginMod = nullptr;
-            if (GetModuleHandleExW(
-                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                    reinterpret_cast<LPCWSTR>(function), &pluginMod)
-                && pluginMod != nullptr) {
-                FARPROC slSetDataAddr = GetProcAddress(pluginMod, "slSetData");
-                if (slSetDataAddr != nullptr && !g_slSetData_hook_installed.exchange(true)) {
-                    if (CreateAndEnableHook(slSetDataAddr, reinterpret_cast<LPVOID>(slSetData_Detour),
-                                            reinterpret_cast<LPVOID*>(&slSetData_Original), "slSetData")) {
-                        LogInfo("Installed slSetData hook from DLSS plugin");
-                    } else {
-                        g_slSetData_hook_installed.store(false);
-                        LogError("Failed to install slSetData hook");
-                    }
-                }
+    if (functionName != nullptr) {
+        for (const SlGetFeatureResolvedHookEntry& e : kSlGetFeatureResolvedHooks) {
+            if (std::strcmp(functionName, e.export_name) != 0) {
+                continue;
             }
-        } else {
-            g_slDLSSSetOptions_hook_installed.store(false);
-            LogError("Failed to install slDLSSSetOptions hook");
+            if (e.installed->exchange(true)) {
+                break;
+            }
+            if (CreateAndEnableHook(function, e.detour, e.original, e.export_name)) {
+                LogInfo("Installed %s hook", e.export_name);
+                if (e.install_sl_set_data_from_plugin) {
+                    TryInstallSlSetDataHookFromPluginModule(function);
+                }
+            } else {
+                e.installed->store(false);
+                LogError("Failed to install %s hook", e.export_name);
+            }
+            break;
         }
     }
     return result;

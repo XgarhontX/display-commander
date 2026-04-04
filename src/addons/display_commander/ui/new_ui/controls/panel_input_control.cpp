@@ -92,6 +92,7 @@ void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& 
                 "Useful on multi-monitor setups or when a game traps the cursor.\n\n"
                 "Mutually exclusive with Clip Cursor.");
         }
+        imgui.Unindent();
     }
 }
 
