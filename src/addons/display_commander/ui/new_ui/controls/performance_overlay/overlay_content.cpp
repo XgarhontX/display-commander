@@ -539,10 +539,18 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             ReflexProvider::NvapiLatencyMetrics metrics{};
             if (g_reflexProvider->GetLatencyMetrics(metrics)) {
                 shown = true;
+                double pcl_latency_ms_estimate = metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0;
+                const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
+                const int fg_mode = dlss_lite.fg_mode;
+                // TODO simplify this math, make a function that takes the fg_mode and returns the pcl_latency_ms_estimate
+
+                if (fg_mode >= 2) {
+                    pcl_latency_ms_estimate += metrics.gpu_frame_time_ms * (fg_mode - 1) / (fg_mode * 2.0);
+                }
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("Latency: %.1f ms(NVAPI)", metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0);
+                    imgui.Text("Latency: %.1f ms(NVAPI)", pcl_latency_ms_estimate);
                 } else {
-                    imgui.Text("%.1f ms", metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0);
+                    imgui.Text("%.1f ms", pcl_latency_ms_estimate);
                 }
                 if (imgui.IsItemHovered() && show_tooltips) {
                     imgui.SetTooltipEx(

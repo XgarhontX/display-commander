@@ -21,6 +21,8 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.127 (2026-04-03)
+- [ui] [osd] **Improved latency formula to more closely match PCL(AV) from nvidia overlay**
 
 ## v0.13.126 (2026-04-03)
 - [ui] [osd] **Show latency in OSD shows data from NVAPI if available by default** - Simplified UI with DC lite in mind.
