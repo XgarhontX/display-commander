@@ -58,7 +58,7 @@ class ReflexProvider {
     static void EnsurePCLStatsInitialized();
     static bool IsPCLStatsInitialized();
 
-    /** Writes PCLStatsEvent (ETW) and bumps g_pclstats_etw_* counters only after PCLSTATS_INIT (inject reflex + PCL stats on, g_global_frame_id > 500). No-op otherwise. */
+    /** Writes PCLStatsEvent (ETW) and bumps g_pclstats_etw_* counters only after PCLSTATS_INIT (inject reflex + PCL stats on, g_global_frame_id > 500, no foreign PCLStats init). No-op otherwise. */
     static void EmitPclStatsMarker(uint32_t marker, uint64_t frame_id);
 
    private:

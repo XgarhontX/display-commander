@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "reflex_pclstats_tab.hpp"
 #include "../../../globals.hpp"
+#include "../../../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../../../latency/reflex_provider.hpp"
 #include "../../../settings/main_tab_settings.hpp"
 #include "../../ui_colors.hpp"
@@ -105,6 +106,9 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.TextColored(ImVec4{0.85f, 0.85f, 0.85f, 1.0f}, "PCLStats provider");
     imgui.Indent();
+    imgui.Text("PCLStats ETW hooks (advapi32): %s", ArePCLStatsEtwHooksInstalled() ? "installed" : "not installed");
+    imgui.Text("Foreign PCLStats init observed: %s (skips DC PCLSTATS_INIT)",
+               PclStatsForeignInitObserved() ? "yes" : "no");
     const bool pcl_user = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
     imgui.Text("Setting \"PCL stats for injected reflex\": %s", pcl_user ? "on" : "off");
     imgui.Text("PCLStats initialized: %s", ReflexProvider::IsPCLStatsInitialized() ? "yes" : "no");

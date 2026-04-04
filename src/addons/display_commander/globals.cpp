@@ -1022,21 +1022,9 @@ DLSSGSummary GetDLSSGSummary() {
         // DLSS-G is enabled, check MultiFrameCount for mode
         unsigned int multi_frame_count;
         if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
-            if (multi_frame_count == 1) {
-                summary.fg_mode = "2x";
-            } else if (multi_frame_count == 2) {
-                summary.fg_mode = "3x";
-            } else if (multi_frame_count == 3) {
-                summary.fg_mode = "4x";
-            } else if (multi_frame_count == 4) {
-                summary.fg_mode = "5x";
-            } else if (multi_frame_count == 5) {
-                summary.fg_mode = "6x";
-            } else {
-                char buffer[16];
-                snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
-                summary.fg_mode = std::string(buffer);
-            }
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+            summary.fg_mode = std::string(buffer);
         } else {
             summary.fg_mode = "Active (mode unknown)";
         }

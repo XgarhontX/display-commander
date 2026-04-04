@@ -22,6 +22,7 @@
 #include "hook_suppression_manager.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
+#include "nvidia/pclstats_etw_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
 #include "opengl/opengl_hooks.hpp"
 #include "../modules/module_registry.hpp"
@@ -1585,6 +1586,14 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo(
                 "[OnModuleLoaded] OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not "
                 "ready)");
+        }
+    }
+    // advapi32.dll – PCLStats ETW (foreign EventRegister / PCLStatsInit detection; skips duplicate PCLSTATS_INIT)
+    else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
+        if (InstallPCLStatsEtwHooks(hModule)) {
+            LogInfo("[OnModuleLoaded] PCLStats ETW hooks installed (advapi32.dll)");
+        } else {
+            LogInfo("[OnModuleLoaded] PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
         }
     }
     // Generic logging for other modules

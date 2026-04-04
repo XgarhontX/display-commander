@@ -13,6 +13,7 @@
 #include "../../modules/module_registry.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"
+#include "../nvidia/pclstats_etw_hooks.hpp"
 #include "../opengl/opengl_hooks.hpp"
 #include "windows_message_hooks.hpp"
 
@@ -668,6 +669,8 @@ void UninstallApiHooks() {
     process_exit_hooks::Shutdown();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
+
+    UninstallPCLStatsEtwHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

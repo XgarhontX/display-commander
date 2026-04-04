@@ -4,6 +4,7 @@
 
 // Define the PCLStats provider (must be in exactly one .cpp)
 PCLSTATS_DEFINE()
+#include "../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -39,7 +40,7 @@ void ReflexProvider::EnsurePCLStatsInitialized() {
     // Without inject reflex we must not PCLSTATS_INIT(); EmitPclStatsMarker skips TraceLoggingWrite if not initialized.
     if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue() &&
         settings::g_mainTabSettings.inject_reflex.GetValue() &&
-        g_global_frame_id.load(std::memory_order_acquire) > 500) {
+        g_global_frame_id.load(std::memory_order_acquire) > 500 && !PclStatsForeignInitObserved()) {
         PCLSTATS_INIT(0);
         _is_pcl_initialized = true;
         g_pclstats_init_success_count.fetch_add(1, std::memory_order_relaxed);
