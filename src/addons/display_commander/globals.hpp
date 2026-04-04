@@ -1000,6 +1000,15 @@ extern std::atomic<LONGLONG> g_onpresent_sync_frame_start_ns;     // When curren
 extern std::atomic<LONGLONG> g_onpresent_sync_pre_sleep_ns;       // Actual pre-sleep time applied (for debugging)
 extern std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns;      // Actual post-sleep time applied (for debugging)
 
+/** Debug tab: last HandleFpsLimiterPre snapshot (racy but sufficient for diagnostics). */
+extern std::atomic<float> g_fps_limiter_debug_target_fps_native;
+extern std::atomic<float> g_fps_limiter_debug_target_fps_effective;
+extern std::atomic<int> g_fps_limiter_debug_getlite_fg_mode;
+extern std::atomic<uint8_t> g_fps_limiter_debug_frame_generation_aware;
+extern std::atomic<uint64_t> g_fps_limiter_debug_pre_entry_count;
+extern std::atomic<uint64_t> g_fps_limiter_debug_pre_active_count;
+extern std::atomic<uint64_t> g_fps_limiter_debug_post_entry_count;
+
 // GPU completion measurement using EnqueueSetEvent
 extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU completion measurement
 extern std::atomic<LONGLONG> g_gpu_duration_ns;     // Last measured GPU duration (smoothed)

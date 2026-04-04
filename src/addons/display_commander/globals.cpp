@@ -610,6 +610,14 @@ std::atomic<LONGLONG> g_onpresent_sync_frame_start_ns{0};
 std::atomic<LONGLONG> g_onpresent_sync_pre_sleep_ns{0};
 std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns{0};
 
+std::atomic<float> g_fps_limiter_debug_target_fps_native{0.0f};
+std::atomic<float> g_fps_limiter_debug_target_fps_effective{0.0f};
+std::atomic<int> g_fps_limiter_debug_getlite_fg_mode{0};
+std::atomic<uint8_t> g_fps_limiter_debug_frame_generation_aware{0};
+std::atomic<uint64_t> g_fps_limiter_debug_pre_entry_count{0};
+std::atomic<uint64_t> g_fps_limiter_debug_pre_active_count{0};
+std::atomic<uint64_t> g_fps_limiter_debug_post_entry_count{0};
+
 // GPU completion measurement using EnqueueSetEvent
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
 std::atomic<LONGLONG> g_gpu_duration_ns{0};           // Last measured GPU duration (smoothed)

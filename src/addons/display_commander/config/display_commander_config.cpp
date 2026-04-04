@@ -518,9 +518,9 @@ void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
         g_config_save_failure_path.store(nullptr);
 
         if (reason != nullptr && reason[0] != '\0') {
-            LogInfo("DisplayCommanderConfigManager: Saved config to %s (reason: %s)", config_path_.c_str(), reason);
+            LogInfoThrottled(10, "Saved config to %s (reason: %s)", config_path_.c_str(), reason);
         } else {
-            LogInfo("DisplayCommanderConfigManager: Saved config to %s", config_path_.c_str());
+            LogInfoThrottled(10, "Saved config to %s", config_path_.c_str());
         }
     } else {
         // Set save failure state for UI display

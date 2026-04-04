@@ -21,6 +21,12 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.119 (2026-04-03)
+- [new feature] [ui] **Debug FPS limiter: targets, sleeps, call rates** - more fps limiter stats.
+
+## v0.13.118 (2026-04-03)
+- [new feature] [ui] **Debug FPS limiter tab** -FPS limiter debugger internal page.
+
 ## v0.13.117 (2026-04-03)
 - [new feature] [ui] [hooks] **Debug NGX: DLSSG.MultiFrameCount override and UpdateFeature hook** - With **DEBUG_TABS**, **Debug NGX** adds a session-only combo (**Default**, **1x**–**6x**) that sets **`DLSSG.MultiFrameCount`** via **`Parameter_SetUI`** on **`g_last_ngx_parameter`** before **`NVSDK_NGX_UpdateFeature`** when the feature is frame generation; mirrors into **`g_ngx_parameters`** for UI consistency. **`NVSDK_NGX_UpdateFeature`** is now listed in **`kNGXHooks`** so the detour runs when the export exists. **Details:** `GetDebugDLSSGMultiFrameCountOverride` / `SetDebugDLSSGMultiFrameCountOverride`, `ngx_counters_tab.*`, `ngx_hooks.*`.
 

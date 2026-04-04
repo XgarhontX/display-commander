@@ -1036,6 +1036,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool frame_generation_aware 
     if (g_global_frame_id.load(std::memory_order_relaxed) < kFpsLimiterWarmupFrames) {
         return;
     }
+    g_fps_limiter_debug_post_entry_count.fetch_add(1, std::memory_order_relaxed);
     float target_fps = GetTargetFps();
 
     if (target_fps <= 0.0f) {
@@ -1329,36 +1330,38 @@ float GetDelayBiasFromRatio(int ratio_index) {
 void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware = false) {
     auto start_time_ns = utils::get_now_ns();
     CALL_GUARD(start_time_ns);
+    g_fps_limiter_debug_pre_entry_count.fetch_add(1, std::memory_order_relaxed);
     LONGLONG handle_fps_limiter_start_time_ns = start_time_ns;
     float target_fps = GetTargetFps();
     auto target_fps_native = target_fps;
     late_amount_ns.store(0);
 
+    const DLSSGSummaryLite ngx_lite_snapshot = GetDLSSGSummaryLite();
+
     if (frame_generation_aware) {
         CALL_GUARD(start_time_ns);
-        const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
 
-        if (lite.fg_mode >= 2) {
-            target_fps /= static_cast<float>(lite.fg_mode);
+        if (ngx_lite_snapshot.fg_mode >= 2) {
+            target_fps /= static_cast<float>(ngx_lite_snapshot.fg_mode);
         }
         static float last_target_fps = -1.0f;  // unset
 
         if (last_target_fps != target_fps) {
             last_target_fps = target_fps;
             LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s lite.fg_mode: %d", target_fps,
-                    target_fps_native, frame_generation_aware ? "true" : "false", lite.fg_mode);
+                    target_fps_native, frame_generation_aware ? "true" : "false", ngx_lite_snapshot.fg_mode);
         }
 
         {
             static bool logged = false;
-            if (!logged && lite.fg_mode >= 2) {
-                LogInfo("DLSS-G FG mode: %d", lite.fg_mode);
+            if (!logged && ngx_lite_snapshot.fg_mode >= 2) {
+                LogInfo("DLSS-G FG mode: %d", ngx_lite_snapshot.fg_mode);
                 // log DLSSGSummaryLite all fields
                 LogInfo(
                     "DLSSGSummaryLite: any_dlss_active: %d, dlss_active: %d, dlss_g_active: %d, "
                     "ray_reconstruction_active: %d, fg_mode: %d",
-                    lite.any_dlss_active, lite.dlss_active, lite.dlss_g_active, lite.ray_reconstruction_active,
-                    lite.fg_mode);
+                    ngx_lite_snapshot.any_dlss_active, ngx_lite_snapshot.dlss_active, ngx_lite_snapshot.dlss_g_active,
+                    ngx_lite_snapshot.ray_reconstruction_active, ngx_lite_snapshot.fg_mode);
 
                 logged = true;
             }
@@ -1371,8 +1374,16 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                     frame_generation_aware ? "true" : "false");
         }
     }
+    {
+        g_fps_limiter_debug_target_fps_native.store(target_fps_native, std::memory_order_relaxed);
+        g_fps_limiter_debug_target_fps_effective.store(target_fps, std::memory_order_relaxed);
+        g_fps_limiter_debug_getlite_fg_mode.store(ngx_lite_snapshot.fg_mode, std::memory_order_relaxed);
+        g_fps_limiter_debug_frame_generation_aware.store(frame_generation_aware ? uint8_t{1} : uint8_t{0},
+                                                         std::memory_order_relaxed);
+    }
     if (s_fps_limiter_enabled.load()
         && (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync)) {
+        g_fps_limiter_debug_pre_active_count.fetch_add(1, std::memory_order_relaxed);
         CALL_GUARD(start_time_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
