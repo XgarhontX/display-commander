@@ -67,8 +67,9 @@ void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::IImGuiWr
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "DLSS / DLSS-G / RR status, preset overrides, DLL overrides, registry indicator, and related controls "
-            "(moved out of Display Settings).");
+            "DLSS / DLSS-G / RR status, preset overrides, DLL overrides, and related controls (moved out of Display "
+            "Settings). Registry DLSS indicator, tracked module paths, and CreateFeature-seen blocks appear in full "
+            "builds only (omitted when DC_NO_MODULES / Lite).");
     }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_dxgi_control, "Show DXGI Control", imgui)) {
         LogInfo("Show main tab DXGI Control %s",

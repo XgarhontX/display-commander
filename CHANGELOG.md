@@ -21,6 +21,11 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.125 (2026-04-03)
+- [removal] [ui] **DLSS Control: WM_SIZE button** - Removed the **Send WM_SIZE (force resize / recreate DLSS)** control from the optional DLSS Control panel; **Resize window to quarter then restore** remains. **Details:** `panel_dlss_control.cpp`.
+- [ui] [compatibility] **DLSS Control (Lite / DC_NO_MODULES)** - The optional DLSS Control panel omits the registry **DLSS indicator**, **DLSS module paths (tracked)**, and **CreateFeature seen (tracked)** sections in Lite builds, consistent with hiding **Features Enabled By Default** on the Advanced tab. **Details:** `#if !defined(DC_NO_MODULES)` in `dlss_info.cpp`.
+- [new feature] [ui] [hooks] **Debug NGX: EvaluateFeature override activity** - You can see whether the game recently hit the code path that applies your frame-generation debug overrides, and how many times that has happened this session. **Details:** `GetDebugDLSSGEvaluateOverrideApplyCount` / `GetDebugDLSSGEvaluateOverrideLastApplyTimeNs`, `ApplyDebugDLSSGParameterOverridesForEvaluate`, `ngx_counters_tab.cpp`.
+
 ## v0.13.124 (2026-04-03)
 - [new feature] [ui] [hooks] **Debug NGX** - Add more options to internal debug tab
 

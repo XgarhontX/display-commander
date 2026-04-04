@@ -88,6 +88,9 @@ std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
 std::atomic<int> s_debug_dlssg_mode{-1};
 std::atomic<int> s_debug_dlssg_enable_interp{-1};
 
+std::atomic<uint64_t> s_debug_dlssg_evaluate_override_apply_count{0};
+std::atomic<uint64_t> s_debug_dlssg_evaluate_override_last_ns{0};
+
 // Not defined in bundled nvsdk_ngx_defs_dlssg.h; int via SetI (matches sl::DLSSGMode: off=0, on=1, auto=2).
 static constexpr const char* kNgxDlssgParameterMode = "DLSSG.Mode";
 static constexpr const char* kNgxDlssgParameterEnableInterp = "DLSSG.EnableInterp";
@@ -124,6 +127,14 @@ void SetDebugDLSSGEnableInterpOverride(int enable_interp) {
         return;
     }
     s_debug_dlssg_enable_interp.store(enable_interp, std::memory_order_relaxed);
+}
+
+uint64_t GetDebugDLSSGEvaluateOverrideApplyCount() {
+    return s_debug_dlssg_evaluate_override_apply_count.load(std::memory_order_relaxed);
+}
+
+uint64_t GetDebugDLSSGEvaluateOverrideLastApplyTimeNs() {
+    return s_debug_dlssg_evaluate_override_last_ns.load(std::memory_order_relaxed);
 }
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
@@ -1403,27 +1414,38 @@ void ApplyDebugDLSSGParameterOverridesForEvaluate(NVSDK_NGX_Parameter* param,
         return;
     }
     NVSDK_NGX_Handle* handle_for_lookup = const_cast<NVSDK_NGX_Handle*>(feature_handle);
-  //  if (GetFeatureFromHandle(handle_for_lookup) != NVSDK_NGX_Feature_FrameGeneration) {
- //       return;
-  //  }
+    if (GetFeatureFromHandle(handle_for_lookup) != NVSDK_NGX_Feature_FrameGeneration) {
+        return;
+    }
+
+    bool any_applied = false;
 
     const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
     if (mfc_override >= 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
         const unsigned int v = static_cast<unsigned int>(mfc_override);
         NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
         g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
+        any_applied = true;
     }
 
     const int mode_override = s_debug_dlssg_mode.load(std::memory_order_relaxed);
     if (mode_override >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
         NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterMode, mode_override);
         g_ngx_parameters.update_int("DLSSG.Mode", mode_override);
+        any_applied = true;
     }
 
     const int interp_override = s_debug_dlssg_enable_interp.load(std::memory_order_relaxed);
     if (interp_override >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
         NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterEnableInterp, interp_override);
         g_ngx_parameters.update_int("DLSSG.EnableInterp", interp_override);
+        any_applied = true;
+    }
+
+    if (any_applied) {
+        s_debug_dlssg_evaluate_override_apply_count.fetch_add(1, std::memory_order_relaxed);
+        s_debug_dlssg_evaluate_override_last_ns.store(static_cast<uint64_t>(utils::get_now_ns()),
+                                                      std::memory_order_relaxed);
     }
 }
 

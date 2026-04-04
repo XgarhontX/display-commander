@@ -2,6 +2,7 @@
 #include "ngx_counters_tab.hpp"
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
+#include "../../../utils/timing.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
@@ -110,6 +111,18 @@ void DrawNGXCountersTab(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.Combo("##debug_ngx_fg_interp", &interp_combo_idx, kInterpLabels, kInterpLabelCount)) {
             SetDebugDLSSGEnableInterpOverride((interp_combo_idx <= 0) ? -1 : (interp_combo_idx - 1));
         }
+    }
+    {
+        constexpr uint64_t kRecentWindowNs = 250ULL * 1000ULL * 1000ULL;
+        const uint64_t last_ns = GetDebugDLSSGEvaluateOverrideLastApplyTimeNs();
+        const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+        const bool recent =
+            last_ns != 0 && now_ns >= last_ns && (now_ns - last_ns) < kRecentWindowNs;
+        bool show_check = recent;
+        imgui.BeginDisabled();
+        imgui.Checkbox("EvaluateFeature override ran (recent)", &show_check);
+        imgui.EndDisabled();
+        imgui.Text("EvaluateFeature override pushes: %" PRIu64, GetDebugDLSSGEvaluateOverrideApplyCount());
     }
     imgui.Spacing();
 

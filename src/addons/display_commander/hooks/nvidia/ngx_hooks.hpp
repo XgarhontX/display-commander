@@ -48,3 +48,8 @@ void SetDebugDLSSGModeOverride(int mode);
 /** Debug-only generated-frame interpolation flag on the same path: -1 = game default, 0 = off, 1 = on. */
 int GetDebugDLSSGEnableInterpOverride();
 void SetDebugDLSSGEnableInterpOverride(int enable_interp);
+
+/** How many times FG debug overrides were pushed on EvaluateFeature (at least one of multiplier/mode/interpolation). */
+uint64_t GetDebugDLSSGEvaluateOverrideApplyCount();
+/** Monotonic ns timestamp of last such push; 0 if never. */
+uint64_t GetDebugDLSSGEvaluateOverrideLastApplyTimeNs();

@@ -106,40 +106,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
 
     {
         HWND hwnd = g_last_swapchain_hwnd.load();
-        const bool can_send = (hwnd != nullptr && IsWindow(hwnd));
-        if (!can_send) {
-            imgui.BeginDisabled();
-        }
-        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
-        if (imgui.Button("Send WM_SIZE (force resize / recreate DLSS)")) {
-            RECT client_rect = {};
-            if (GetClientRect(hwnd, &client_rect)) {
-                const int w = client_rect.right - client_rect.left;
-                const int h = client_rect.bottom - client_rect.top;
-                if (w > 0 && h > 0) {
-                    LogInfo("Posted WM_SIZE w-1,h-1 then will post %dx%d after short delay", w, h);
-                    std::thread([hwnd, w, h]() {
-                        PostMessage(hwnd, WM_SIZE, SIZE_RESTORED,
-                                    MAKELPARAM(static_cast<UINT>(w - 1), static_cast<UINT>(h - 1)));
-                        Sleep(100);
-                        if (IsWindow(hwnd)) {
-                            PostMessage(hwnd, WM_SIZE, SIZE_RESTORED,
-                                        MAKELPARAM(static_cast<UINT>(w), static_cast<UINT>(h)));
-                            LogInfo("Posted WM_SIZE %dx%d to game window", w, h);
-                        }
-                    }).detach();
-                }
-            }
-        }
-        imgui.PopStyleColor();
-        if (!can_send) {
-            imgui.EndDisabled();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Sends two WM_SIZE messages: first with -1,-1, then after a short delay with the current "
-                "client size. Use this to force the game to process a resize and recreate the DLSS feature.");
-        }
 
         if (imgui.Button("Resize window to quarter then restore")) {
             RECT window_rect = {};

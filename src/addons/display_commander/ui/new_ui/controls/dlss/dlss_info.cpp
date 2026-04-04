@@ -1,7 +1,9 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Headers <Display Commander>
 #include "dlss_info.hpp"
+#if !defined(DC_NO_MODULES)
 #include "dlss/dlss_indicator_manager.hpp"
+#endif
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "settings/streamline_tab_settings.hpp"
@@ -27,6 +29,7 @@ namespace ui::new_ui {
 
 namespace {
 
+#if !defined(DC_NO_MODULES)
 // Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Control when active.
 void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_None)) {
@@ -70,6 +73,7 @@ void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) 
         imgui.TreePop();
     }
 }
+#endif
 
 }  // namespace
 
@@ -80,6 +84,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
+#if !defined(DC_NO_MODULES)
     DrawDLSSInfo_IndicatorSection(imgui);
 
     // Tracked DLSS modules (from OnModuleLoaded: nvngx_dlss/dlssg/dlssd.dll or .bin identified as such)
@@ -148,6 +153,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
         imgui.TreePop();
     }
+#endif
 
     // FG Mode (integer N from GetDLSSGSummaryLite: 2 => 2x, 3 => 3x, …)
     {
