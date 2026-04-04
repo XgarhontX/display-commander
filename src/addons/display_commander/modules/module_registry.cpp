@@ -6,6 +6,7 @@
 #if DC_INTERNAL_MODULES
 #include "audio/audio_module.hpp"
 #include "controller/controller_module.hpp"
+#include "reshade_addons/reshade_addons_module.hpp"
 #endif
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
@@ -95,6 +96,42 @@ void RegisterPublicModules() {
 #if !DC_INTERNAL_MODULES
     return;
 #else
+    {
+        ModuleRegistrationSpec spec{};
+        spec.descriptor.id = "reshade_addons";
+        spec.descriptor.display_name = "ReShade";
+        spec.descriptor.description =
+            "Add-on manager, shader paths, and ReShade-related options. Disabling hides this tab only; "
+            "Display Commander still applies ReShade path and ini overrides from main_entry when configured.";
+        spec.descriptor.has_tab = true;
+        spec.descriptor.tab_name = "ReShade";
+        spec.descriptor.tab_id = "reshade";
+        spec.descriptor.is_advanced_tab = true;
+        spec.default_enabled = true;
+        spec.default_show_in_overlay = false;
+        spec.initialize_fn = &reshade_addons::Initialize;
+        spec.draw_tab_fn = &reshade_addons::DrawTab;
+
+        ModuleEntry entry{};
+        entry.descriptor = spec.descriptor;
+        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.initialize_fn = spec.initialize_fn;
+        entry.tick_fn = spec.tick_fn;
+        entry.reshade_present_before_fn = spec.reshade_present_before_fn;
+        entry.draw_tab_fn = spec.draw_tab_fn;
+        entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
+        entry.on_enabled_fn = spec.on_enabled_fn;
+        entry.on_disabled_fn = spec.on_disabled_fn;
+        entry.on_uninstall_api_hooks_fn = spec.on_uninstall_api_hooks_fn;
+        entry.on_library_loaded_fn = spec.on_library_loaded_fn;
+        entry.hotkeys = spec.hotkeys;
+        entry.actions = spec.actions;
+        AddModuleEntry(std::move(entry));
+    }
+
     {
         ModuleRegistrationSpec spec{};
         spec.descriptor.id = "audio";

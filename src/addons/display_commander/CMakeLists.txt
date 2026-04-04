@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 111)
+set(DISPLAY_COMMANDER_VERSION_PATCH 112)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -15,12 +15,13 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 )
 
 
-# DC_NO_MODULES=ON: omit in-repo module implementations (audio/controller); module_registry.cpp remains (empty registry + stubs
-# via DC_INTERNAL_MODULES=0). proxy_dll/*.cpp stay in the build so the same binary works as a renamed d3d11/dxgi/etc. proxy
-# (full exports.def). For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
+# DC_NO_MODULES=ON: omit in-repo module implementations (audio/controller/reshade_addons); module_registry.cpp remains (empty
+# registry + stubs via DC_INTERNAL_MODULES=0). proxy_dll/*.cpp stay in the build so the same binary works as a renamed
+# d3d11/dxgi/etc. proxy (full exports.def). For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
 if(DC_NO_MODULES)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/reshade_addons/.*\\.cpp$")
 endif()
 
 if(DC_EXTERNAL_MODULES)

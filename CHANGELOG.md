@@ -20,6 +20,10 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
+## v0.13.112 (2026-04-03)
+- [cleanup] [ui] [settings] **ReShade tab as internal module** - The **ReShade** (add-ons) panel is registered like **Audio** and **Controller**: it appears under Main **Features** as **Enable ReShade**, with settings in `[Modules_reshade_addons]` (default on). **Show ReShade Tab** under Advanced still applies. Turning the module off **only hides the tab**; ReShade path/ini overrides from `main_entry` and elsewhere are unchanged.
+  Details: `modules/reshade_addons/reshade_addons_module.*`, `module_registry.cpp`, `new_ui_tabs.cpp` (removed special-case tab); `DC_NO_MODULES` excludes `modules/reshade_addons` sources like other built-in modules. With **DEBUG_TABS** on, tab order is Main → … → debug tabs → ReShade → Audio → Controller (ReShade used to sit before debug tabs).
+
 ## v0.13.111 (2026-04-03)
 - [cleanup] [hooks] **Code cleanup**
 - [settings] **Make config entries sorted** - Saving `DisplayCommander.ini` writes sections and keys in sorted order for easier diffs and editing.

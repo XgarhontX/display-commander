@@ -7,9 +7,6 @@
 #include "../../ui/ui_scale.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
-#if !defined(DC_NO_MODULES)
-#include "addons_tab.hpp"
-#endif
 #include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/dxgi_refresh_rate_tab.hpp"
@@ -253,9 +250,6 @@ void InitializeNewUI() {
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitAdvancedTab();
     ui::new_ui::InitHotkeysTab();
-#if !defined(DC_NO_MODULES)
-    ui::new_ui::InitAddonsTab();
-#endif
 
     modules::InitializeModuleRegistry();
 
@@ -306,23 +300,6 @@ void InitializeNewUI() {
             }
         },
         true);  // Hotkeys tab: visibility gated by show_hotkeys_tab (default on)
-
-#if !defined(DC_NO_MODULES)
-    // ReShade add-ons UI omitted in DC_NO_MODULES (Display Commander Lite) builds.
-    g_tab_manager.AddTab(
-        "ReShade", "reshade",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawAddonsTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing reshade tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing reshade tab");
-            }
-        },
-        true);  // ReShade tab is advanced
-#endif
 
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
     g_tab_manager.AddTab(
