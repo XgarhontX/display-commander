@@ -173,7 +173,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         if (bb_w > 0 && bb_h > 0) {
             res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
         }
-        imgui.Text("DLSS Internal->Output: %s", res_text.c_str());
+        imgui.Text("DLSS %s", res_text.c_str());
     } else {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Internal->Output: N/A");
     }

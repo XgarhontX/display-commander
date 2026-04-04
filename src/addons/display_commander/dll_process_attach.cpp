@@ -378,7 +378,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
             return true;
         }
     }
-    display_commanderhooks::InstallLoadLibraryHooks();
 
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
     display_commanderhooks::InstallLoadLibraryHooks();

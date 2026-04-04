@@ -23,7 +23,6 @@ Planned:
 
 
 ## v0.13.128 (2026-04-03)
-- [settings] [hooks] **`LoadLibraryHooks` renamed to `SupressAllHooks`** - Renamed to avoid confusion.
 - [ui] [osd] **Overlay cleanup**
 
 ## v0.13.127 (2026-04-03)
