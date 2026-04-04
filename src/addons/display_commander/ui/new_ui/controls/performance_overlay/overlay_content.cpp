@@ -248,11 +248,11 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         if (show_dxgi_vrr_status) {
             if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s
                 && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
             } else if (dxgi_stats.is_valid) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
             } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: --");
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: --");
             }
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltipEx(
@@ -264,7 +264,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             double dxgi_hz = dxgi::fps_limiter::GetSmoothedRefreshRate();
             if (dxgi_hz > 0.0) {
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("DXGI refresh rate: %.1f Hz", dxgi_hz);
+                    imgui.Text("Refresh Rate: %.1f Hz", dxgi_hz);
                 } else {
                     imgui.Text("%.1f Hz", dxgi_hz);
                 }

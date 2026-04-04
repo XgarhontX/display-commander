@@ -21,6 +21,10 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+
+## v0.13.128 (2026-04-03)
+- [ui] [osd] **Overlay cleanup**
+
 ## v0.13.127 (2026-04-03)
 - [ui] [osd] **Improved latency formula to more closely match PCL(AV) from nvidia overlay**
 

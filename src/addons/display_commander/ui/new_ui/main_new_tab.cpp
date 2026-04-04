@@ -135,9 +135,9 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Spacing();
             if (dxgi_stats.is_valid) {
                 if (dxgi_stats.all_last_20_within_1s && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
                 } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
                 }
                 imgui.SameLine(0.0f, imgui.GetStyle().ItemInnerSpacing.x * 2.0f);
             }
@@ -183,6 +183,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     imgui.NextColumn();
 
+    #if 0
     bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
     if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
         settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
@@ -198,6 +199,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
     imgui.NextColumn();
+    #endif
 
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     if (imgui.Checkbox("Refresh rate" ICON_FK_WARNING, &show_actual_refresh_rate)) {

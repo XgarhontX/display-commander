@@ -31,7 +31,7 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     }
 
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
-    if (imgui.Checkbox("Show DXGI VRR status", &show_dxgi_vrr_status)) {
+    if (imgui.Checkbox("VRR status", &show_dxgi_vrr_status)) {
         settings::g_mainTabSettings.show_dxgi_vrr_status.SetValue(show_dxgi_vrr_status);
     }
     if (imgui.IsItemHovered()) {
@@ -43,7 +43,7 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     imgui.NextColumn();
 
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
-    if (imgui.Checkbox("Show DXGI refresh rate", &show_dxgi_refresh_rate)) {
+    if (imgui.Checkbox("Refresh Rate", &show_dxgi_refresh_rate)) {
         settings::g_mainTabSettings.show_dxgi_refresh_rate.SetValue(show_dxgi_refresh_rate);
     }
     if (imgui.IsItemHovered()) {
@@ -94,8 +94,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     imgui.Columns(1);
     imgui.Separator();
     imgui.TextWrapped(
-        "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD, "
-        "Linux, or 32-bit builds.");
+        "NVIDIA API stats");
     imgui.Columns(4, "overlay_checkboxes", false);
 
     const bool nvapi_initialized = nvapi::EnsureNvApiInitialized();
@@ -104,6 +103,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
         imgui.BeginDisabled();
     }
 
+    #if 0
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
         settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
@@ -142,7 +142,6 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
             "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
     }
     imgui.NextColumn();
-    imgui.NextColumn();
 
     bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
     if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
@@ -166,6 +165,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
     imgui.NextColumn();
+    #endif
 
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     if (imgui.Checkbox("GPU util", &show_overlay_nvapi_gpu_util)) {
@@ -555,6 +555,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (!native_reflex_active) {
             imgui.EndDisabled();
         }
+#if 0
         imgui.NextColumn();
 
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
@@ -566,13 +567,14 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Reserved for overlay integration with the optional PresentMon private module (external-private "
                 "display-commander2-modules, DC_EXTERNAL_MODULES build).");
         }
+        #endif
         imgui.NextColumn();
 
         imgui.Columns(1);
         imgui.Separator();
+        #if 0
         imgui.TextUnformatted("CPU / limiter");
         imgui.Columns(4, "overlay_checkboxes", false);
-
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (imgui.Checkbox("Cpu busy", &show_cpu_usage)) {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
@@ -594,9 +596,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "E.g. 100 fps at 50%% busy = 200 cpu fps.");
         }
         imgui.NextColumn();
-
         bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
-        if (imgui.Checkbox("FPS limiter source", &show_fps_limiter_src)) {
+        if (imgui.Checkbox("FPS limiter", &show_fps_limiter_src)) {
             settings::g_mainTabSettings.show_fps_limiter_src.SetValue(show_fps_limiter_src);
         }
         if (imgui.IsItemHovered()) {
@@ -608,6 +609,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 
         imgui.Columns(1);
         imgui.Separator();
+        #endif
         imgui.TextUnformatted("Frame timing & graphs");
         imgui.Columns(4, "overlay_checkboxes", false);
 
@@ -674,7 +676,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-        if (imgui.Checkbox("DLSS Internal/Output Res", &show_dlss_internal_resolution)) {
+        if (imgui.Checkbox("DLSS resolution", &show_dlss_internal_resolution)) {
             settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
         }
         if (imgui.IsItemHovered()) {
@@ -773,7 +775,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx("Shows the current time (HH:MM:SS) in the overlay.");
         }
         imgui.NextColumn();
-
+#if 0
         bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
         if (imgui.Checkbox("Show volume", &show_volume)) {
             settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
@@ -782,7 +784,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx("Shows the current audio volume percentage in the overlay.");
         }
         imgui.NextColumn();
-
+#endif
         DrawNvapiStatsOverlaySubsection(imgui);
         DrawDxgiOverlaySubsection(imgui);
 
