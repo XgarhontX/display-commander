@@ -245,7 +245,7 @@ void PrintLoadedModules() {
 
 namespace process_exit_hooks {
 
-void LogDiagnosticSectionContext() {
+void LogSectionContextAndDetourDiagnostics() {
     const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
     const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
     const uint64_t frame_id = g_global_frame_id.load(std::memory_order_acquire);
@@ -257,9 +257,7 @@ void LogDiagnosticSectionContext() {
     section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)")
                 << " g_global_frame_id=" << frame_id;
     LogInfo("%s", section_msg.str().c_str());
-}
 
-void LogDetourGuardDiagnostics() {
     const uint64_t crash_timestamp_ns = utils::get_real_time_ns();
     std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
     LogInfo("=== RECENT DETOUR CALLS ===");
@@ -276,12 +274,12 @@ void LogDetourGuardDiagnostics() {
 
 namespace {
 
-// Shared crash report: header, optional section context, version/system/process info,
-// exception details, memory load, recent detour calls, undestroyed guards, stack trace, loaded modules.
+// Shared crash report: header, section context + detour diagnostics, version/system/process info,
+// exception details, memory load, stack trace, loaded modules.
 void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line) {
     LogInfo("%s", header_line);
 
-    process_exit_hooks::LogDiagnosticSectionContext();
+    process_exit_hooks::LogSectionContextAndDetourDiagnostics();
 
     PrintVersionInfo();
     PrintSystemInfo();
@@ -308,8 +306,6 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line)
         mem_details << "System Memory Load: " << mem_status.dwMemoryLoad << "%";
         LogInfo("%s", mem_details.str().c_str());
     }
-
-    process_exit_hooks::LogDetourGuardDiagnostics();
 
     LogInfo("=== GENERATING STACK TRACE ===");
     CONTEXT* exception_context =

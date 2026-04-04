@@ -1355,8 +1355,7 @@ size_t GetReShadeRuntimeCount() {
 }
 
 void OnReshadeUnload() {
-    process_exit_hooks::LogDiagnosticSectionContext();
-    process_exit_hooks::LogDetourGuardDiagnostics();
+    process_exit_hooks::LogSectionContextAndDetourDiagnostics();
     utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
     g_reshade_runtimes.clear();
     // g_reshade_module = nullptr;  // module unloaded; avoid using stale handle

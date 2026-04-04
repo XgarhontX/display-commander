@@ -1,4 +1,5 @@
 #include "exit_handler.hpp"
+#include "process_exit_hooks.hpp"
 #include <windows.h>
 #include <atomic>
 #include <reshade.hpp>
@@ -12,10 +13,8 @@
 #include "presentmon/presentmon_module.hpp"
 #endif
 #include "utils.hpp"
-#include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
-#include "utils/timing.hpp"
 
 namespace exit_handler {
 
@@ -51,12 +50,8 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     exit_message << "[exit_handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
     LogInfo("%s", exit_message.str().c_str());
 
-    // Print undestroyed guard information (crash detection)
-    uint64_t exit_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
-    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(exit_timestamp_ns);
-    LogInfo("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
-    WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
-    LogInfo("=== END UNDESTROYED DETOUR GUARDS ===");
+    // Section context + detour diagnostics (same snapshot as crash / unload)
+    process_exit_hooks::LogSectionContextAndDetourDiagnostics();
 
     // Enumerate loaded modules and report any hookable module we never saw (e.g. LdrLoadDll or load before hooks)
     std::vector<std::string> missed_modules = display_commanderhooks::ReportMissedModulesOnExit();

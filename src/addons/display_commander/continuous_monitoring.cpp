@@ -1,25 +1,21 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "display/display_cache.hpp"
-#include "exit_handler.hpp"
+#include "process_exit_hooks.hpp"
 #include "globals.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
-#include "hooks/nvidia/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/nvapi_init.hpp"
 #include "nvapi/nvapi_loader.hpp"
-#include "nvapi/reflex_manager.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
-#include "swapchain_events.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
-#include "utils/detour_call_tracker.hpp"
-#include "utils/display_commander_logger.hpp"
+#include "utils/detour_call_tracker.hpp"  // CALL_GUARD_NO_TS
 #include "utils/logging.hpp"
 #include "utils/srwlock_registry.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -599,15 +595,7 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
 
     utils::LogAllSrwlockStatus();
 
-    {
-        constexpr size_t RECENT_CALLS_COUNT = 256;
-        std::string recent_calls =
-            detour_call_tracker::FormatRecentDetourCalls(static_cast<uint64_t>(now_real_ns), RECENT_CALLS_COUNT);
-        exit_handler::WriteMultiLineToDebugLog(recent_calls, "Recent Detour Calls: <none recorded>");
-    }
-
-    std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
-    exit_handler::WriteMultiLineToDebugLog(undestroyed_info, "Undestroyed Detour Guards: 0");
+    process_exit_hooks::LogSectionContextAndDetourDiagnostics();
     LogInfo("=== END STUCK METHODS (undestroyed guards) ===");
 }
 
