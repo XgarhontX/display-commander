@@ -20,6 +20,9 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
+## v0.13.114 (2026-04-03)
+- [bugfix] [hooks] **NVIDIA overlay latency** - Fixed the NVIDIA overlay not showing correct Reflex latency. PCLStats ETW now starts only with **Inject Reflex** and **PCL stats for injected reflex** on, after 500 frames; until then markers are not emitted (`reflex_provider.cpp`).
+
 ## v0.13.113 (2026-04-03)
 - [cleanup] [settings] [compatibility] **ReShade ini overrides removed from DC Lite**
 

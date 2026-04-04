@@ -34,11 +34,12 @@ void ReflexProvider::Shutdown() {
 }
 
 void ReflexProvider::EnsurePCLStatsInitialized() {
-    // Initialize when user has "PCL stats for injected reflex" on and we're not yet initialized.
-    // Use only the setting here so init succeeds for injected reflex even if PCLStatsReportingAllowed()
-    // is temporarily false (e.g. warmup, or game once called SetLatencyMarker). The caller only
-    // invokes us when PCLStatsReportingEnabled() is true, so we only attempt init when we will emit.
-    if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+    // Register the ETW provider only when both "PCL stats for injected reflex" and "Inject Reflex" are on,
+    // and after the same frame warmup as ReflexManager::Sleep (avoid early-init during startup).
+    // Without inject reflex we must not PCLSTATS_INIT(); EmitPclStatsMarker skips TraceLoggingWrite if not initialized.
+    if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue() &&
+        settings::g_mainTabSettings.inject_reflex.GetValue() &&
+        g_global_frame_id.load(std::memory_order_acquire) > 500) {
         PCLSTATS_INIT(0);
         _is_pcl_initialized = true;
         g_pclstats_init_success_count.fetch_add(1, std::memory_order_relaxed);
@@ -48,6 +49,9 @@ void ReflexProvider::EnsurePCLStatsInitialized() {
 
 void ReflexProvider::EmitPclStatsMarker(uint32_t marker, uint64_t frame_id) {
     EnsurePCLStatsInitialized();
+    if (!_is_pcl_initialized) {
+        return;
+    }
     PCLSTATS_MARKER(marker, frame_id);
     g_pclstats_etw_total_count.fetch_add(1, std::memory_order_relaxed);
     std::size_t idx = static_cast<std::size_t>(marker);
@@ -63,7 +67,8 @@ bool ReflexProvider::IsInitialized() const { return reflex_manager_.IsInitialize
 
 bool ReflexProvider::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!IsInitialized()) return false;
-    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue() &&
+        settings::g_mainTabSettings.inject_reflex.GetValue()) {
         EnsurePCLStatsInitialized();
     }
     static bool first_call = true;
