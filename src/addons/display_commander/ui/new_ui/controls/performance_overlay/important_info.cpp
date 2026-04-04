@@ -179,7 +179,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     }
     imgui.NextColumn();
 
-    bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
+   /*/ bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
     if (imgui.Checkbox("Latency PCL(AV)", &show_nvapi_latency_stats)) {
         settings::g_mainTabSettings.show_nvapi_latency_stats.SetValue(show_nvapi_latency_stats);
     }
@@ -188,7 +188,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
             "Shows NVIDIA Reflex NVAPI latency stats (PC latency and GPU frame time) in the performance overlay.\n"
             "Requires a D3D11/D3D12 device with Reflex latency reporting available. Uses NvAPI_D3D_GetLatency, "
             "which may add minor overhead when enabled.");
-    }
+    }*/
 
     if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
         && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {

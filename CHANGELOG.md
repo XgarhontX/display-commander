@@ -21,6 +21,11 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+
+## v0.13.126 (2026-04-03)
+- [ui] [osd] **Show latency in OSD shows data from NVAPI if available by default** - Simplified UI with DC lite in mind.
+- [ui] [osd] **Updated latency estimate for PCL (AV) latency to be more accurate**
+
 ## v0.13.125 (2026-04-03)
 - [new feature] [ui] **Debug Reflex / PCLStats: GetLatency segment breakdown** - Added debug tab for showing PCLStats (not in release build)
 - [ui] [compatibility] **DLSS Control (Lite / DC_NO_MODULES)** - The optional DLSS Control panel omits the registry **DLSS indicator**, **DLSS module paths (tracked)**, and **CreateFeature seen (tracked)** sections in Lite builds, consistent with hiding **Features Enabled By Default** on the Advanced tab. **Details:** `#if !defined(DC_NO_MODULES)` in `dlss_info.cpp`.

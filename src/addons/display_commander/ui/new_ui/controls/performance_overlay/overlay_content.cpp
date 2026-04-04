@@ -45,7 +45,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
-    bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
+   // bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue(); // TODO cleanup
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
@@ -534,13 +534,33 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     if (show_gpu_measurement) {
-        LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
-        if (latency_ns > 0) {
-            double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("%.1f ms lat", latency_ms);
-            } else {
-                imgui.Text("%.1f", latency_ms);
+        boolean shown = false;
+        if (g_reflexProvider) {
+            ReflexProvider::NvapiLatencyMetrics metrics{};
+            if (g_reflexProvider->GetLatencyMetrics(metrics)) {
+                shown = true;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("Latency: %.1f ms(NVAPI)", metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0);
+                } else {
+                    imgui.Text("%.1f ms", metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0);
+                }
+                if (imgui.IsItemHovered() && show_tooltips) {
+                    imgui.SetTooltipEx(
+                        "PC latency from NVAPI Reflex (input sample to GPU render end) and GPU frame time.\n"
+                        "FrameID: %llu",
+                        static_cast<unsigned long long>(metrics.frame_id));
+                }
+            }
+        }
+        if (!shown) {
+            LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
+            if (latency_ns > 0) {
+                double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("%.1f ms lat", latency_ms);
+                } else {
+                    imgui.Text("%.1f", latency_ms);
+                }
             }
         }
     }
@@ -624,6 +644,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
     }
 
+    /*
     if (show_nvapi_latency_stats) {
         if (g_reflexProvider) {
             ReflexProvider::NvapiLatencyMetrics metrics{};
@@ -641,7 +662,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 }
             }
         }
-    }
+    }*/
 
     if (show_fps_limiter_src) {
         const char* src_name = GetChosenFpsLimiterSiteName();
