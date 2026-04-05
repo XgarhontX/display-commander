@@ -338,7 +338,7 @@ enum class WindowAlignment : std::uint8_t {
 };
 
 enum class ScreensaverMode : std::uint8_t {
-    kDefault = 0,             // Default (no change)
+    kDefault = 0,             // Default
     kDisableWhenFocused = 1,  // Disable when focused
     kDisable = 2              // Disable
 };

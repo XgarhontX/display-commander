@@ -817,6 +817,10 @@ template bool ComboSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<Overlay
                                                         display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template bool RadioSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<OverlayLabelMode>&, const char*, const char*,
                                                         display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
+template bool RadioSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*, const char*,
+                                                       display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
+template bool RadioSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*, const char*,
+                                                       display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {
