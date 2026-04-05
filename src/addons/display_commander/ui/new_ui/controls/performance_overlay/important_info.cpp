@@ -4,7 +4,6 @@
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_init.hpp"
 #include "swapchain_events.hpp"
 #include "ui/forkawesome.h"
@@ -131,41 +130,6 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
     imgui.NextColumn();
-
-    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    if (imgui.Checkbox("Refresh rate" ICON_FK_WARNING, &show_actual_refresh_rate)) {
-        settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
-            "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
-            "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
-    }
-    imgui.NextColumn();
-
-    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-    if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
-        settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
-            "Requires NVAPI and a resolved display.\n"
-            "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
-    }
-    imgui.NextColumn();
-
-    bool show_refresh_rate_frame_time_stats = settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
-    if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
-        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
-            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
-    }
-    imgui.NextColumn();
     #endif
 
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
@@ -191,29 +155,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
             "which may add minor overhead when enabled.");
     }*/
 
-    if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
-        && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-        imgui.Columns(1);
-        imgui.TextColored(
-            ui::colors::TEXT_WARNING,
-            "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
-            "Refresh rate and refresh rate time graph may show no data.");
-        imgui.Columns(4, "overlay_checkboxes", false);
-    }
-
     imgui.Columns(1);
-    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()
-        || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
-        if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
-                             imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
-                "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
-                "polling defaults to 1 s and this setting is not used.");
-        }
-    }
 
     if (!nvapi_stats_available) {
         imgui.EndDisabled();
@@ -222,8 +164,6 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
 
 static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWrapper& imgui);
 static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui);
-static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui);
-
 static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWrapper& imgui) {
     std::string local_text;
     auto shared_text = ::g_perf_text_shared.load();
@@ -408,88 +348,6 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
         imgui.TextUnformatted(oss.str().c_str());
         imgui.SameLine();
         imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
-    }
-}
-
-static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui) {
-    bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
-
-    if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
-        if (is_monitoring) {
-            display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
-        } else {
-            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-        }
-    }
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
-            "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
-            "from the configured rate due to VRR, power management, or other factors.");
-    }
-
-    imgui.SameLine();
-
-    const char* status_str = is_monitoring ? "Active" : "Inactive";
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
-
-    if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
-    }
-
-    if (g_got_device_name.load()) {
-        auto device_name_ptr = g_dxgi_output_device_name.load();
-        if (device_name_ptr != nullptr) {
-            imgui.Spacing();
-            imgui.Text("DXGI Output Device:");
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
-        } else {
-            imgui.Spacing();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
-        }
-    } else {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
-    }
-
-    double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-    size_t sample_count = 0;
-    double min_hz = 0.0;
-    double max_hz = 0.0;
-    double sum_hz = 0.0;
-    display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
-        if (rate_hz > 0.0) {
-            if (sample_count == 0) {
-                min_hz = max_hz = rate_hz;
-            } else {
-                min_hz = (std::min)(min_hz, rate_hz);
-                max_hz = (std::max)(max_hz, rate_hz);
-            }
-            sum_hz += rate_hz;
-            ++sample_count;
-        }
-    });
-    double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
-
-    if (sample_count > 0) {
-        imgui.Spacing();
-        imgui.Text("Measured Refresh Rate:");
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
-
-        imgui.Indent();
-        imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
-        imgui.Text("Min: %.1f Hz", min_hz);
-        imgui.Text("Max: %.1f Hz", max_hz);
-        imgui.Text("Samples: %zu", sample_count);
-        imgui.Unindent();
-
-        imgui.Spacing();
-        DrawRefreshRateFrameTimesGraph(imgui, true);
     }
 }
 
@@ -882,16 +740,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Indent();
         DrawImportantInfo_FrameTimeGraphContent(imgui);
         imgui.Unindent();
-        imgui.Spacing();
-
-        g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
-        ui::colors::PushHeader3Colors(&imgui);
-        const bool refresh_rate_monitor_open =
-            imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None);
-        ui::colors::PopCollapsingHeaderColors(&imgui);
-        if (refresh_rate_monitor_open) {
-            DrawImportantInfo_RefreshRateMonitorContent(imgui);
-        }
     }
     imgui.Unindent();
 }

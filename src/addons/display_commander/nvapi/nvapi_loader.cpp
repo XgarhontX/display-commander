@@ -17,7 +17,6 @@ using NvAPI_QueryInterface_pfn = void*(__cdecl*)(NvU32);
 static constexpr NvU32 ID_Initialize = 0x0150e828;
 static constexpr NvU32 ID_GetErrorMessage = 0x6c2d048c;
 static constexpr NvU32 ID_SYS_GetDriverAndBranchVersion = 0x2926aaad;
-static constexpr NvU32 ID_DISP_GetAdaptiveSyncData = 0xb73d1ee9;
 static constexpr NvU32 ID_DISP_GetDisplayIdByDisplayName = 0xae457190;
 static constexpr NvU32 ID_Disp_GetVRRInfo = 0xdf8fda57;
 static constexpr NvU32 ID_EnumPhysicalGPUs = 0xe5ac921f;
@@ -101,7 +100,6 @@ bool Load() {
     g_ptrs.GetErrorMessage = Query<NvAPI_GetErrorMessage_pfn>(query, ID_GetErrorMessage);
     g_ptrs.SYS_GetDriverAndBranchVersion =
         Query<NvAPI_SYS_GetDriverAndBranchVersion_pfn>(query, ID_SYS_GetDriverAndBranchVersion);
-    g_ptrs.DISP_GetAdaptiveSyncData = Query<NvAPI_DISP_GetAdaptiveSyncData_pfn>(query, ID_DISP_GetAdaptiveSyncData);
     g_ptrs.DISP_GetDisplayIdByDisplayName =
         Query<NvAPI_DISP_GetDisplayIdByDisplayName_pfn>(query, ID_DISP_GetDisplayIdByDisplayName);
     g_ptrs.Disp_GetVRRInfo = Query<NvAPI_Disp_GetVRRInfo_pfn>(query, ID_Disp_GetVRRInfo);

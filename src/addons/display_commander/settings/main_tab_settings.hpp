@@ -116,7 +116,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_native_fps;
     ui::new_ui::BoolSetting show_refresh_rate;
     ui::new_ui::BoolSetting show_vrr_status;
-    ui::new_ui::BoolSetting show_actual_refresh_rate;
     ui::new_ui::BoolSetting vrr_debug_mode;
     ui::new_ui::BoolSetting show_flip_status;
     ui::new_ui::BoolSetting show_display_commander_ui;
@@ -128,9 +127,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_frame_time_stats;
     ui::new_ui::BoolSetting show_native_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_timeline_bar;
-    ui::new_ui::BoolSetting show_refresh_rate_frame_times;
-    ui::new_ui::IntSetting refresh_rate_monitor_poll_ms;  // Only used when show_refresh_rate_frame_times is true
-    ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
     /** Show DXGI-based VRR status in performance overlay (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
      * VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_vrr_status;

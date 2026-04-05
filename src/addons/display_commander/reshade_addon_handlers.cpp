@@ -4,8 +4,6 @@
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
 #include "globals.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
-#include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
@@ -27,13 +25,6 @@
 #include <shlobj.h>
 
 namespace {
-void OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded() {
-    if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
-        || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-    }
-}
-
 void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime) {
     static bool initialized_with_hwnd = false;
     if (initialized_with_hwnd) {
@@ -227,7 +218,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
     LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
 
-    OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded();
     OnInitEffectRuntime_InitWithHwndOnce(runtime);
 
     OverrideReShadeSettings(runtime);

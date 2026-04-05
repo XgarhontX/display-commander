@@ -80,16 +80,10 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 imgui.TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
             }
 
-            // Refresh rate on same line: "Refresh rate: XXX" (actual NVAPI smoothed alpha 0.02, else selected display)
-            static double s_smoothed_actual_hz = 0.0;
-            constexpr double k_alpha = 0.02;
-            double raw_actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+            // Refresh rate on same line from selected display's configured rate (display cache)
             double refresh_hz = 0.0;
-            if (raw_actual_hz > 0.0) {
-                s_smoothed_actual_hz = k_alpha * raw_actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
-                refresh_hz = s_smoothed_actual_hz;
-            } else if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())
-                       && !display_info[selected_index].current_refresh_rate.empty()) {
+            if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())
+                && !display_info[selected_index].current_refresh_rate.empty()) {
                 std::string rate_str = display_info[selected_index].current_refresh_rate;
                 try {
                     double parsed = std::stod(rate_str);
@@ -113,7 +107,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 imgui.SetTooltipEx(
                     "Render resolution: the resolution the game requested (before any modifications). "
                     "Matches Special K's render_x/render_y.\n"
-                    "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
+                    "Refresh rate: selected display's configured rate from the display list.");
             }
 
             // VRAM and RAM usage on one line under Render resolution

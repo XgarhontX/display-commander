@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.138 (2026-04-05)
+- [removal] [ui] [settings] **NVAPI actual refresh rate monitor removed** - The performance overlay no longer offers “actual” Hz from **NvAPI_DISP_GetAdaptiveSyncData**, the related time graph/stats, or the Important Info refresh-rate monitor section. **DXGI** measured refresh and VRR heuristics are unchanged; **NVAPI VRR status** (GetVRRInfo) in the overlay is unchanged. Saved keys for the removed toggles are ignored. **Details:** deleted `nvapi_actual_refresh_rate_monitor.*`, `refresh_rate_graph.cpp`; `nvapi_loader` no longer resolves `DISP_GetAdaptiveSyncData`.
+
 ## v0.13.137 (2026-04-05)
 - [removal] [ui] [settings] **Performance overlay: DLSS Render Preset show now SR/RR presets including driver overrides (DC full only)** -
 

@@ -9,7 +9,6 @@
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/swapchain_tab_settings.hpp"
@@ -38,8 +37,8 @@ namespace ui::new_ui {
 namespace {
 
 // Overlay label column (col 0): None = no label (value only in col 1). Short = compact token. Full = readable phrase.
-// Examples: Time / Local time, Play / Playtime, Present / Present FPS, NV VRR / VRR (NVAPI), Hz / Measured refresh,
-// VRR / VRR (estimate) — swap-chain heuristic row; tooltips name DXGI/GetFrameStatistics for advanced users.
+// Examples: Time / Local time, Play / Playtime, Present / Present FPS, NV VRR / VRR (NVAPI), Hz / Measured refresh
+// (DXGI), VRR / VRR (estimate) — swap-chain heuristic row; tooltips name DXGI/GetFrameStatistics for advanced users.
 const char* OverlayCol0Label(OverlayLabelMode m, const char* short_s, const char* full_s) {
     if (m == OverlayLabelMode::kNone) return nullptr;
     if (m == OverlayLabelMode::kShort) return short_s;
@@ -128,7 +127,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
@@ -307,10 +305,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
         ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
     }
-    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        ui::new_ui::DrawRefreshRateFrameTimesGraph(imgui, show_tooltips);
-    }
-
     // ----- Refresh / VRR: shared cache for NVAPI table row + debug overlay -----
     static dxgi::fps_limiter::RefreshRateStats cached_vrr_stats{};
     static LONGLONG last_valid_vrr_sample_ns = 0;
@@ -335,11 +329,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
     }
 
-    // ----- Table: refresh rates (NVAPI actual + measured from presents) + VRR summary rows -----
-    bool table2_any =
-        show_actual_refresh_rate || show_dxgi_refresh_rate || show_vrr_status || show_dxgi_vrr_status;
-    static double s_smoothed_actual_hz = 0.0;
-    double actual_hz_live = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+    // ----- Table: refresh rates (DXGI measured) + VRR summary rows -----
+    bool table2_any = show_dxgi_refresh_rate || show_vrr_status || show_dxgi_vrr_status;
     double dxgi_hz_live = 0.0;
     if (show_dxgi_refresh_rate) {
         dxgi_hz_live = dxgi::fps_limiter::GetSmoothedRefreshRate();
@@ -347,18 +338,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
     if (table2_any) {
         OverlayScalarTableBegin(imgui);
-        if (show_actual_refresh_rate) {
-            constexpr double k_alpha = 0.02;
-            if (actual_hz_live > 0.0) {
-                s_smoothed_actual_hz = k_alpha * actual_hz_live + (1.0 - k_alpha) * s_smoothed_actual_hz;
-                OverlayTableRow_Text(imgui, label_mode, "Act Hz", "Actual refresh", show_tooltips,
-                                     "Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).",
-                                     "%.1f Hz", s_smoothed_actual_hz);
-            } else {
-                OverlayTableRow_TextColored(imgui, label_mode, "Act Hz", "Actual refresh", ui::colors::TEXT_DIMMED,
-                                            show_tooltips, "Waiting for NVAPI display or samples.", "%s", "-- Hz");
-            }
-        }
         if (show_dxgi_refresh_rate) {
             if (dxgi_hz_live > 0.0) {
                 OverlayTableRow_Text(

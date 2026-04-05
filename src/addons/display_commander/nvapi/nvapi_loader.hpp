@@ -24,8 +24,6 @@ using NvAPI_Initialize_pfn = NvAPI_Status(__cdecl*)(void);
 using NvAPI_GetErrorMessage_pfn = NvAPI_Status(__cdecl*)(NvAPI_Status, NvAPI_ShortString);
 using NvAPI_SYS_GetDriverAndBranchVersion_pfn = NvAPI_Status(__cdecl*)(NvU32* pDriverVersion,
                                                                        NvAPI_ShortString pBuildBranchString);
-using NvAPI_DISP_GetAdaptiveSyncData_pfn = NvAPI_Status(__cdecl*)(NvU32 displayId,
-                                                                  NV_GET_ADAPTIVE_SYNC_DATA* pGetAdaptiveSyncData);
 using NvAPI_DISP_GetDisplayIdByDisplayName_pfn = NvAPI_Status(__cdecl*)(const char* displayName, NvU32* displayId);
 using NvAPI_Disp_GetVRRInfo_pfn = NvAPI_Status(__cdecl*)(NvU32 displayId, NV_GET_VRR_INFO* pVrrInfo);
 
@@ -75,7 +73,6 @@ struct NvApiPtrs {
     NvAPI_Initialize_pfn Initialize = nullptr;
     NvAPI_GetErrorMessage_pfn GetErrorMessage = nullptr;
     NvAPI_SYS_GetDriverAndBranchVersion_pfn SYS_GetDriverAndBranchVersion = nullptr;
-    NvAPI_DISP_GetAdaptiveSyncData_pfn DISP_GetAdaptiveSyncData = nullptr;
     NvAPI_DISP_GetDisplayIdByDisplayName_pfn DISP_GetDisplayIdByDisplayName = nullptr;
     NvAPI_Disp_GetVRRInfo_pfn Disp_GetVRRInfo = nullptr;
     NvAPI_EnumPhysicalGPUs_pfn EnumPhysicalGPUs = nullptr;

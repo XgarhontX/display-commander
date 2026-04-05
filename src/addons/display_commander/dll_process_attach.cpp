@@ -15,7 +15,6 @@
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "reshade_addon_handlers.hpp"
 #include "reshade_module_detection.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -632,8 +631,6 @@ void OnProcessDetach(HMODULE h_module) {
     StopGPUCompletionMonitoring();
 
     dxgi::fps_limiter::StopRefreshRateMonitoring();
-
-    display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
 
     if (g_reflexProvider) {
         g_reflexProvider->Shutdown();

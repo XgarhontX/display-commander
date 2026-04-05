@@ -325,14 +325,11 @@ static void Every1sVrrStatus() {
     g_continuous_monitoring_section.store("every1s_tasks:vrr_status", std::memory_order_release);
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
     LONGLONG now_ns = utils::get_now_ns();
     LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
     constexpr LONGLONG vrr_update_window_ns = 5 * utils::SEC_TO_NS;
     bool within_5s_of_switch = (last_switch_ns != 0 && (now_ns - last_switch_ns <= vrr_update_window_ns));
-    if ((show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times)
-        && within_5s_of_switch) {
+    if ((show_vrr_status || show_vrr_debug_mode) && within_5s_of_switch) {
         static LONGLONG last_nvapi_update_ns = 0;
         const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;
 

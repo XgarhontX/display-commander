@@ -16,7 +16,6 @@
 #include "settings/main_tab_settings.hpp"
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "swapchain_events.hpp"
 #include "ui/forkawesome.h"
 #include "ui/new_ui/settings_wrapper.hpp"

@@ -12,7 +12,6 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "settings/advanced_tab_settings.hpp"

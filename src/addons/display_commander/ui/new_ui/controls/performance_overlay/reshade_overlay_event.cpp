@@ -7,7 +7,6 @@
 #include "ui/imgui_wrapper_reshade.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/timing.hpp"
 
@@ -144,19 +143,6 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     const LONGLONG overlay_allowed_after = g_performance_overlay_allowed_after_ns.load(std::memory_order_acquire);
     if (overlay_allowed_after == 0 || utils::get_now_ns() < overlay_allowed_after) {
         return;
-    }
-
-    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-    bool show_performance_overlay = settings::g_mainTabSettings.show_performance_overlay.GetValue();
-    if (show_performance_overlay && (show_actual_refresh_rate || show_refresh_rate_frame_times)) {
-        if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
-            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-        }
-    } else {
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
-            display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
-        }
     }
 
     if (!settings::g_mainTabSettings.show_performance_overlay.GetValue()) {
