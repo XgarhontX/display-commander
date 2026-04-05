@@ -591,10 +591,9 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             &enum_ctx);
         bool does_another_runtime_exists_for_same_hwnd = enum_ctx.found;
 
-        // Enable flip chain if enabled (experimental feature) - forces flip model
+        // DXGI flip upgrade (Advanced: Enable flip chain) — forces flip model
         if (!does_another_runtime_exists_for_same_hwnd && !is_flip
-            && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
-                || settings::g_advancedTabSettings.enable_flip_chain.GetValue())) {
+            && settings::g_advancedTabSettings.enable_flip_chain.GetValue()) {
             // Check if current present mode is NOT a flip model
 
             if (desc.back_buffer_count < 2) {

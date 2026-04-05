@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.141 (2026-04-05)
+- [removal] [settings] **Experimental `EnableFlipChainEnabled` removed** - DXGI flip-model upgrade on create-swapchain is controlled only by **Advanced** **Enable flip chain** (`EnableFlipChain`). The duplicate experimental ini key had no UI; old `DisplayCommander.Experimental` entries are ignored.
+
 ## v0.13.140 (2026-04-05)
 - [removal] [settings] **`show_flip_status` removed** - The unused PresentMon / flip-status placeholder setting and its dead Important Info UI (`#if 0`) are gone. There was no live overlay behavior tied to this key.
 
