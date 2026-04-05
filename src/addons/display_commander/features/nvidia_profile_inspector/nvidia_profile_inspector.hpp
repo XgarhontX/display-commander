@@ -89,7 +89,8 @@ inline MergedDlssRenderPresetText MergeDriverAndDcRenderPreset(bool is_rr,
     return out;
 }
 
-// Cached snapshot (default ~3 s TTL). Safe from UI threads; uses SRWLOCK for refresh + atomic shared_ptr.
+// Cached snapshot (sticky until InvalidateDriverDlssRenderPresetCache or force_refresh). Safe from UI threads;
+// uses SRWLOCK for refresh + atomic shared_ptr.
 std::shared_ptr<const DriverDlssRenderPresetSnapshot> GetDriverDlssRenderPresetSnapshot(bool force_refresh = false);
 
 void InvalidateDriverDlssRenderPresetCache();

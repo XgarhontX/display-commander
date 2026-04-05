@@ -118,7 +118,8 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Reads DLSS-SR and DLSS-RR render preset overrides from the NVIDIA driver profile for this "
-                "executable (same as NVIDIA Profile Inspector). Cached briefly.");
+                "executable (same as NVIDIA Profile Inspector). Result is cached until you press Refresh or "
+                "restart (avoids periodic DRS queries that could hitch the overlay).");
         }
         const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
             drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);

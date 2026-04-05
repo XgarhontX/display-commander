@@ -551,7 +551,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx(
                 "One overlay line for **DLSS-SR render preset**: NVIDIA **driver profile** (DRS) when it overrides the "
                 "default, otherwise your **Display Commander** combo value (or **Preset override off**). Tooltip lists "
-                "both. Cached briefly.");
+                "both. Driver data is read once per session until you use **Refresh driver preset info** in DLSS Control "
+                "or restart.");
         }
         imgui.NextColumn();
 
@@ -562,7 +563,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "One overlay line for **DLSS-RR render preset**: driver profile (DRS) when it overrides, else your DC "
-                "combo (or **Preset override off**). Tooltip lists both. Cached briefly.");
+                "combo (or **Preset override off**). Tooltip lists both. Driver data is cached until Refresh in DLSS "
+                "Control or restart.");
         }
         imgui.NextColumn();
 #endif

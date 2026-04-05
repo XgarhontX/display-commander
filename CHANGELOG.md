@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.146 (2026-04-05)
+- [bugfix] [ui] **Driver DLSS preset (DRS) cache no longer expires on a timer** - The NVIDIA driver profile read used for **SR preset (DRS+DC)** / **RR preset (DRS+DC)** in the overlay and DLSS UI was refreshed about every three seconds, which could cause brief stutter.
+
 ## v0.13.145 (2026-04-05)
 - [settings] [cleanup] **`default_settings.toml` template: global ReShade paths** - The file created under Display Commander AppData when missing now includes a commented example for **`ReShadeGlobalShadersTexturesPathsEnabled`** so users can default-on global shader/texture search paths for games that do not yet have the key.
   **Details:** `config/default_settings_file.cpp` `DEFAULT_SETTINGS_TEMPLATE`.

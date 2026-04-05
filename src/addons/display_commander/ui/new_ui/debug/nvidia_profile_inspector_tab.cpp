@@ -17,8 +17,8 @@ void DrawNvidiaProfileInspectorTab(display_commander::ui::IImGuiWrapper& imgui) 
     imgui.Spacing();
     imgui.TextWrapped(
         "Read-only NVIDIA driver profile (DRS) snapshot for this process: DLSS-SR and DLSS-RR **render preset** "
-        "overrides (same keys as NVIDIA Profile Inspector). Data is cached for a few seconds; use Refresh to force a "
-        "new query.");
+        "overrides (same keys as NVIDIA Profile Inspector). Data is cached until you Refresh, Query now (force), or "
+        "restart (no periodic re-query).");
     imgui.Spacing();
 
     if (imgui.Button("Refresh##nvpi_debug")) {

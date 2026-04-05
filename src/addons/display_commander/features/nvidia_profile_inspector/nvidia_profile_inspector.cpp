@@ -22,8 +22,6 @@ namespace display_commander::features::nvidia_profile_inspector {
 
 namespace {
 
-constexpr unsigned long long kCacheTtlMs = 3000ULL;
-
 SRWLOCK g_refresh_lock = SRWLOCK_INIT;
 std::atomic<unsigned long long> g_last_refresh_ms{0};
 std::atomic<std::shared_ptr<const DriverDlssRenderPresetSnapshot>> g_snapshot{};
@@ -226,7 +224,8 @@ std::shared_ptr<const DriverDlssRenderPresetSnapshot> BuildSnapshot() {
     return out;
 }
 
-bool ShouldServeCached(unsigned long long now_ms, bool force, std::shared_ptr<const DriverDlssRenderPresetSnapshot> cur) {
+// Sticky cache: serve until InvalidateDriverDlssRenderPresetCache() or force_refresh (no time-based expiry).
+bool ShouldServeCached(bool force, const std::shared_ptr<const DriverDlssRenderPresetSnapshot>& cur) {
     if (force) {
         return false;
     }
@@ -234,33 +233,26 @@ bool ShouldServeCached(unsigned long long now_ms, bool force, std::shared_ptr<co
         return false;
     }
     const unsigned long long last = g_last_refresh_ms.load(std::memory_order_relaxed);
-    if (last == 0ULL) {
-        return false;
-    }
-    if (now_ms < last) {
-        return true;
-    }
-    return (now_ms - last) < kCacheTtlMs;
+    return last != 0ULL;
 }
 
 }  // namespace
 
 std::shared_ptr<const DriverDlssRenderPresetSnapshot> GetDriverDlssRenderPresetSnapshot(bool force_refresh) {
-    const unsigned long long now_ms = GetTickCount64();
     std::shared_ptr<const DriverDlssRenderPresetSnapshot> cur = g_snapshot.load(std::memory_order_acquire);
-    if (ShouldServeCached(now_ms, force_refresh, cur)) {
+    if (ShouldServeCached(force_refresh, cur)) {
         return cur;
     }
 
     ::utils::SRWLockExclusive lock(g_refresh_lock);
     cur = g_snapshot.load(std::memory_order_acquire);
-    if (ShouldServeCached(now_ms, force_refresh, cur)) {
+    if (ShouldServeCached(force_refresh, cur)) {
         return cur;
     }
 
     std::shared_ptr<const DriverDlssRenderPresetSnapshot> fresh = BuildSnapshot();
     g_snapshot.store(fresh, std::memory_order_release);
-    g_last_refresh_ms.store(now_ms, std::memory_order_relaxed);
+    g_last_refresh_ms.store(GetTickCount64(), std::memory_order_relaxed);
     return fresh;
 }
 
