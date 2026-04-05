@@ -24,6 +24,9 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.134 (2026-04-05)
+- [ui] [settings] **Hotkeys tab visible by default** - New installs and configs without `show_hotkeys_tab` now show the Hotkeys tab without turning on **Show All Tabs** or **Show Hotkeys Tab**. Existing saved `false` stays hidden. **Details:** `main_tab_settings.cpp`.
+
 ## v0.13.133 (2026-04-05)
 - [bugfix] [critical] **Crash fix: NGX parameter map** - SRWLOCK around `UnifiedParameterMap` so UI reads and hook writes no longer race; `get_all()` uses a snapshot. **Details:** `globals.hpp`.
 

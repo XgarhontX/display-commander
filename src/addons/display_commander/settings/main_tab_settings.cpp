@@ -161,7 +161,7 @@ MainTabSettings::MainTabSettings()
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
       log_level("log_level", 0, {"Log everything", "Info", "Warning", "Error Only"}, "DisplayCommander"),
       show_games_tab("show_games_tab", false, "DisplayCommander"),
-      show_hotkeys_tab("show_hotkeys_tab", false, "DisplayCommander"),
+      show_hotkeys_tab("show_hotkeys_tab", true, "DisplayCommander"),
       show_advanced_tab("show_advanced_tab", false, "DisplayCommander"),
       show_important_info_tab("show_important_info_tab", false, "DisplayCommander"),
       show_controller_tab("show_controller_tab", false, "DisplayCommander"),
