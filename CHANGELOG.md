@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.143 (2026-04-05)
+- [cleanup] [build] **Remove `-NoModules` script switch** - Lite builds use **`-DcLite`** only in **`bd.ps1`**, **`bd_core.ps1`**, and **`build_display_commander.ps1`** (same as **`-DDC_NO_MODULES=ON`**). CMake and the **`DC_NO_MODULES`** preprocessor macro are unchanged.
+
+## v0.13.142 (2026-04-05)
+- [cleanup] [build] **`-DcLite` build switch** - **`bd.ps1`**, **`bd_core.ps1`**, and **`build_display_commander.ps1`** use **`-DcLite`** for Display Commander Lite (same as **`-DDC_NO_MODULES=ON`**). Superseded by v0.13.143: **`-NoModules`** was removed instead of kept as an alias.
+
 ## v0.13.141 (2026-04-05)
 - [removal] [settings] **Experimental `EnableFlipChainEnabled` removed** - DXGI flip-model upgrade on create-swapchain is controlled only by **Advanced** **Enable flip chain** (`EnableFlipChain`). The duplicate experimental ini key had no UI; old `DisplayCommander.Experimental` entries are ignored.
 
@@ -165,9 +171,9 @@ Planned:
 - [new feature] [build] **Display Commander Lite on GitHub** - There is now an optional **Lite** download on GitHub if you do not need in-game **audio** or **controller** features. It works the same way as the normal addon (including using it as a renamed game DLL if you already do that). Pick **64-bit** or **32-bit** to match your game: **`zzz_display_commander_lite.addon64`** or **`zzz_display_commander_lite.addon32`** on [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) or [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). The main **README** also has download links.
 
 ## v0.13.102 (2026-04-01)
-- [cleanup] [ui] **ReShade tab omitted in Lite** - The **ReShade** tab (add-on manager UI) is not registered when **`DC_NO_MODULES`** / **`-NoModules`** is used, so Display Commander Lite matches a slimmer overlay without that panel.
+- [cleanup] [ui] **ReShade tab omitted in Lite** - The **ReShade** tab (add-on manager UI) is not registered when **`DC_NO_MODULES`** is enabled (e.g. **`-DcLite`** in build scripts), so Display Commander Lite matches a slimmer overlay without that panel.
 - [new feature] [build] **Display Commander Lite on latest_build and nightly** - CI builds **`DC_NO_MODULES`** as **Lite** and uploads **`zzz_display_commander_lite.addon64`** / **`.addon32`** next to the full addons on the [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) and [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly) releases. Lite omits built-in Audio and Controller modules; version string matches the full build.
-- [compatibility] [settings] **`DC_NO_MODULES` + API proxy restored** - **`DC_NO_MODULES`** / **`-NoModules`** again compiles **`proxy_dll/*.cpp`** and links the full **`exports.def`**, so the same binary can be used as a renamed **d3d11** / **dxgi** / etc. proxy. **`InstallRealDXGIMinHookHooks`** is no longer a no-op stub in that configuration. **`exports_addon_only.def`** remains in the tree for reference only (not used by default). Supersedes the v0.13.86 note that NoModules used **`exports_addon_only.def`** and omitted proxy sources.
+- [compatibility] [settings] **`DC_NO_MODULES` + API proxy restored** - With **`DC_NO_MODULES`** enabled, the build again compiles **`proxy_dll/*.cpp`** and links the full **`exports.def`**, so the same binary can be used as a renamed **d3d11** / **dxgi** / etc. proxy. **`InstallRealDXGIMinHookHooks`** is no longer a no-op stub in that configuration. **`exports_addon_only.def`** remains in the tree for reference only (not used by default). Supersedes the v0.13.86 note that Lite **`DC_NO_MODULES`** used **`exports_addon_only.def`** and omitted proxy sources.
 - [bugfix] **PCLStats not working in injected reflex** - Fixed sending PCLStats while using injected reflex.
 - [clenanup] [ui] **Cleaned up UI elements from advanved tab** - Removed unneeded debug information from advanced tab.
 - [new feature] [ui] **Debug Reflex / PCLStats tab (build-gated)** - Added a **Debug Reflex / PCLStats** tab when building with `bd.ps1 -DebugTabs` (`DEBUG_TABS` / `DISPLAY_COMMANDER_DEBUG_TABS`). It shows Reflex provider status, NVAPI latency summary, injected Reflex marker/sleep counters, PCLStats init count and last-init time, per-marker **PCLStatsEvent** ETW emit counts, and a refreshable recent latency frame table. **Details:** `EmitPclStatsMarker` in `reflex_provider.cpp` centralizes ETW writes and counters; `ReflexManager::SetMarker` mirrors markers to ETW when **PCL stats for injected reflex** is on; `EnsurePCLStatsInitialized` is wired from that setting and from `ReflexProvider::SetMarker`.
@@ -235,7 +241,7 @@ Planned:
 - [cleanup] [settings] **Default overrides data layout** - **`default_overrides.cpp`** uses flat **`const`** row tables and **`strcmp`** scans instead of nested **`std::map`** / **`std::set`**, shrinking compile output for that TU (same per-exe defaults and UI display names).
 
 ## v0.13.85 (2026-04-01)
-- [cleanup] [settings] **`-NoModules` build** - **`bd.ps1` / `bd_core.ps1` / `build_display_commander.ps1`** accept **`-NoModules`**, which configures **`-DDC_NO_MODULES=ON`**. CMake forces **built-in module registry off** and **external modules off** (overrides **`-MODULES`**). **`DC_INTERNAL_MODULES`** is wired from CMake (default on); **`module_registry.cpp`** registers audio/controller/example_dummy only when **`DC_INTERNAL_MODULES`** is on. Module object files still link; **`Initialize` / `OnEnabled`** are not run when nothing is registered.
+- [cleanup] [settings] **`-DcLite` build** - **`bd.ps1` / `bd_core.ps1` / `build_display_commander.ps1`** accept **`-DcLite`**, which configures **`-DDC_NO_MODULES=ON`**. CMake forces **built-in module registry off** and **external modules off** (overrides **`-MODULES`**). **`DC_INTERNAL_MODULES`** is wired from CMake (default on); **`module_registry.cpp`** registers audio/controller/example_dummy only when **`DC_INTERNAL_MODULES`** is on. Module object files still link; **`Initialize` / `OnEnabled`** are not run when nothing is registered.
 
 ## v0.13.84 (2026-04-01)
 - [cleanup] **Persisted audio mute restore** - Applying the saved **Mute** checkbox to the OS session now runs in **Audio module `Initialize`** (right after **`InitMainNewTab`** loads main tab settings via **`InitializeNewUI`**), instead of **`InitMainNewTab`** itself.

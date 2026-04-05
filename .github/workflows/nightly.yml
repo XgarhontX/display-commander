@@ -77,7 +77,7 @@ jobs:
           retention-days: 30 # Keep nightly builds for 30 days
 
   nightly-build-lite:
-    name: Nightly Lite NoModules (${{ matrix.arch }})
+    name: Nightly Lite DC_NO_MODULES (${{ matrix.arch }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -190,7 +190,7 @@ jobs:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
 
-            **Display Commander Lite** (`DC_NO_MODULES`): no built-in Audio/Controller modules; same rename-proxy exports as full.
+            **Display Commander Lite** (`DC_NO_MODULES`; local scripts: `-DcLite`): no built-in Audio/Controller modules; same rename-proxy exports as full.
             - `zzz_display_commander_lite.addon64`
             - `zzz_display_commander_lite.addon32`
 
