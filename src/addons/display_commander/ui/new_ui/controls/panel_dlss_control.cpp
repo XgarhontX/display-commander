@@ -1,6 +1,9 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "panels_internal.hpp"
 #include "dlss/dlss_info.hpp"
+#if !defined(DC_NO_MODULES)
+#include "../../../features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
+#endif
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
@@ -15,6 +18,9 @@
 #include "../settings_wrapper.hpp"
 
 #include <filesystem>
+#if !defined(DC_NO_MODULES)
+#include <memory>
+#endif
 #include <string>
 #include <system_error>
 #include <thread>
@@ -101,6 +107,38 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         const char* src_name = GetChosenFpsLimiterSiteName();
         imgui.Text("FPS limiter source: %s", src_name);
     }
+
+#if !defined(DC_NO_MODULES)
+    {
+        imgui.Spacing();
+        imgui.TextUnformatted("NVIDIA driver profile (DLSS render presets)");
+        if (imgui.Button("Refresh driver preset info##dlss_ctrl_nvpi")) {
+            display_commander::features::nvidia_profile_inspector::InvalidateDriverDlssRenderPresetCache();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Reads DLSS-SR and DLSS-RR render preset overrides from the NVIDIA driver profile for this "
+                "executable (same as NVIDIA Profile Inspector). Cached briefly.");
+        }
+        const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
+            drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
+        if (!drv || !drv->query_succeeded) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Driver preset query: %s",
+                              drv && !drv->error_message.empty() ? drv->error_message.c_str() : "unavailable");
+        } else if (!drv->has_profile) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "No NVIDIA profile contains this exe; SR/RR use global defaults.");
+        } else {
+            const ImVec4 warn_col(1.0f, 0.72f, 0.28f, 1.0f);
+            imgui.Text("Profile: %s", drv->profile_name.empty() ? "(unnamed)" : drv->profile_name.c_str());
+            imgui.TextColored(drv->sr_is_non_default_override ? warn_col : ui::colors::TEXT_DIMMED,
+                              "Driver SR preset: %s%s", drv->sr_display.c_str(),
+                              drv->sr_is_non_default_override ? "  (override)" : "");
+            imgui.TextColored(drv->rr_is_non_default_override ? warn_col : ui::colors::TEXT_DIMMED,
+                              "Driver RR preset: %s%s", drv->rr_display.c_str(),
+                              drv->rr_is_non_default_override ? "  (override)" : "");
+        }
+    }
+#endif
 
     DrawDLSSInfo(imgui, dlss_summary);
 

@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 134)
+set(DISPLAY_COMMANDER_VERSION_PATCH 135)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -25,6 +25,8 @@ if(DC_NO_MODULES)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/reshade_addons/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/features/nvidia_profile_inspector/.*\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/debug/nvidia_profile_inspector_tab\\.cpp$")
 else()
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/override_reshade_settings_stub\\.cpp$")
 endif()

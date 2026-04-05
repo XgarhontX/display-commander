@@ -132,6 +132,10 @@ MainTabSettings::MainTabSettings()
       show_dlss_status("show_dlss_status", false, "DisplayCommander"),
       show_dlss_quality_preset("show_dlss_quality_preset", false, "DisplayCommander"),
       show_dlss_render_preset("show_dlss_render_preset", false, "DisplayCommander"),
+#if !defined(DC_NO_MODULES)
+      show_driver_dlss_sr_preset("show_driver_dlss_sr_preset", false, "DisplayCommander"),
+      show_driver_dlss_rr_preset("show_driver_dlss_rr_preset", false, "DisplayCommander"),
+#endif
       show_fps_limiter_src("show_fps_limiter_src", false, "DisplayCommander"),
       show_playtime("show_playtime", false, "DisplayCommander"),
       show_overlay_vu_bars("show_overlay_vu_bars", false, "DisplayCommander"),
@@ -267,6 +271,10 @@ MainTabSettings::MainTabSettings()
         &show_dlss_status,
         &show_dlss_quality_preset,
         &show_dlss_render_preset,
+#if !defined(DC_NO_MODULES)
+        &show_driver_dlss_sr_preset,
+        &show_driver_dlss_rr_preset,
+#endif
         &show_fps_limiter_src,
         &show_playtime,
         &show_overlay_vu_bars,

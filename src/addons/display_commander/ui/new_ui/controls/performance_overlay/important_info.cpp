@@ -721,6 +721,30 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.EndDisabled();
         }
 
+#if !defined(DC_NO_MODULES)
+        bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
+        if (imgui.Checkbox("Drv SR preset", &show_driver_dlss_sr_preset)) {
+            settings::g_mainTabSettings.show_driver_dlss_sr_preset.SetValue(show_driver_dlss_sr_preset);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows DLSS-SR **render preset** from the NVIDIA **driver profile** (DRS / Profile Inspector), not NGX "
+                "runtime. Queries are cached briefly.");
+        }
+        imgui.NextColumn();
+
+        bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
+        if (imgui.Checkbox("Drv RR preset", &show_driver_dlss_rr_preset)) {
+            settings::g_mainTabSettings.show_driver_dlss_rr_preset.SetValue(show_driver_dlss_rr_preset);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows DLSS-RR **render preset** from the NVIDIA **driver profile** (DRS / Profile Inspector), not NGX "
+                "runtime. Queries are cached briefly.");
+        }
+        imgui.NextColumn();
+#endif
+
         imgui.Columns(1);
         imgui.Separator();
         imgui.TextUnformatted("GPU & memory");
