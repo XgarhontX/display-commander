@@ -9,6 +9,8 @@ Known issues:
 - Injected reflex is broken after cleanup.
 - DC's main UI when open lowers fps.
 - Crimson Desert (latency estimate doesn't match nvidia overlay PCL (AV)) @fuzzy833 FGx2
+- When disabling the cap with Reflex Limiter set, it gets greyed out and stays enabled @Yuzo
+- Redesign hotkeys tab, "..." is confusing.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
@@ -23,8 +25,9 @@ Planned:
 - FG rate counter
 
 ## v0.13.132 (2026-04-04)
-- [hooks] [ui] **Streamline slUpgradeInterface: class counters on Debug NGX** - **DEBUG_TABS** **Debug NGX** shows per-session counts for which COM type matched after each call (**IDXGIFactory**, **IDXGISwapChain**, **ID3D11Device**, **ID3D12Device**, **unknown**), plus non-**Ok** results and **Ok** with null interface. **Details:** `GetSlUpgradeInterfaceClassCount*`, `CountSlUpgradeInterfaceUpgradedInterface`, `streamline_hooks.cpp`; `ngx_counters_tab.cpp`.
-- [new feature] [ui] [hooks] **Debug NGX: Streamline slUpgradeInterface call count** - With **DEBUG_TABS**, **Debug NGX** shows how many times the game called **`slUpgradeInterface`** this session (Streamline manual hooking / proxy upgrade path). **Details:** `GetSlUpgradeInterfaceCallCount`, `slUpgradeInterface` row in `kStreamlineLoaderHooks`, `streamline_hooks.cpp`; display in `ngx_counters_tab.cpp`.
+- [hooks] **Streamline proxy DXGI** - After **`slUpgradeInterface`** returns a DXGI factory or swap chain, Display Commander installs MinHook vtable detours on the Streamline proxy: factory **`CreateSwapChain`**, **`CreateSwapChainForHwnd`**, **`CreateSwapChainForCoreWindow`**, **`CreateSwapChainForComposition`**, then hooks new swap chains for **`Present` / `Present1`** so the FPS limiter can use the Streamline proxy call sites when enabled. Details: `features/streamline/streamline_proxy_dxgi.*`, wiring in `streamline_hooks.cpp`; shares **`g_dxgi_present_nested_depth`** with main DXGI detours.
+- [ui] **Debug NGX: Streamline proxy DXGI detour counts** - **Debug NGX** tab lists per-detour call totals (e.g. **`IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour`**) and a reset button. Details: `streamline_proxy_dxgi.*`, `ngx_counters_tab.cpp`.
+- [hooks] [ui] **Streamline fps limiter** - WIP.
 - [cleanup] **DPI management source layout** - **Disable DPI scaling** logic now lives under **`features/dpi/`** (`dpi_management.hpp` / `.cpp`) so always-on features can be grouped by folder; behavior unchanged.
 - [cleanup] **ScreensaverMode enum names** - `kDisableWhenFocused` / `kDisable` renamed to **`kInForeground`** / **`kAlways`** to match UI; config integers 0..2 unchanged.
 - [ui] [settings] **Screensaver / sleep mode labels** - Radio labels are **Default**, **In foreground**, and **Always** (aligned with common three-way Main tab wording; behavior unchanged).

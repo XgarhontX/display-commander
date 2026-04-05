@@ -1,4 +1,5 @@
 #include "streamline_hooks.hpp"
+#include "../../features/streamline/streamline_proxy_dxgi.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
@@ -366,6 +367,18 @@ sl::Result slUpgradeInterface_Detour(void** baseInterface) {
 
     const sl::Result result = slUpgradeInterface_Original(baseInterface);
     CountSlUpgradeInterfaceUpgradedInterface(result, baseInterface);
+    if (result == sl::Result::eOk && baseInterface != nullptr && *baseInterface != nullptr) {
+        IUnknown* const u = static_cast<IUnknown*>(*baseInterface);
+        Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
+        if (SUCCEEDED(u->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
+            (void)display_commander::features::streamline::HookStreamlineProxyFactory(u);
+        } else {
+            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+            if (SUCCEEDED(u->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
+                (void)display_commander::features::streamline::HookStreamlineProxySwapchain(dxgi_swapchain.Get());
+            }
+        }
+    }
     return result;
 }
 

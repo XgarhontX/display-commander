@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "ngx_counters_tab.hpp"
+#include "../../../features/streamline/streamline_proxy_dxgi.hpp"
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../../hooks/nvidia/streamline_hooks.hpp"
@@ -101,6 +102,30 @@ void DrawNGXCountersTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(::ui::colors::TEXT_DIMMED,
                       "Counts update when sl.interposer.dll is loaded and Streamline hooks run; types are from "
                       "QueryInterface after each slUpgradeInterface (factory, swapchain, D3D11, D3D12, else unknown).");
+    imgui.Spacing();
+    imgui.TextUnformatted("Streamline proxy DXGI detours (entry count per detour)");
+    if (imgui.Button("Reset proxy DXGI detour counts")) {
+        display_commander::features::streamline::ResetStreamlineProxyDxgiDetourCallCounts();
+    }
+    constexpr int kSlProxyDetourCols = 2;
+    if (imgui.BeginTable("sl_proxy_dxgi_detour_counts", kSlProxyDetourCols,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        imgui.TableSetupColumn("Calls", ImGuiTableColumnFlags_WidthFixed, 88.0f);
+        imgui.TableSetupColumn("Detour");
+        imgui.TableHeadersRow();
+        using display_commander::features::streamline::GetStreamlineProxyDxgiDetourCallCount;
+        using display_commander::features::streamline::GetStreamlineProxyDxgiDetourCounterLabel;
+        using display_commander::features::streamline::StreamlineProxyDxgiDetourCounter;
+        for (int i = 0; i < static_cast<int>(StreamlineProxyDxgiDetourCounter::Count_); ++i) {
+            const auto kind = static_cast<StreamlineProxyDxgiDetourCounter>(i);
+            imgui.TableNextRow();
+            imgui.TableNextColumn();
+            imgui.Text("%" PRIu64, static_cast<unsigned long long>(GetStreamlineProxyDxgiDetourCallCount(kind)));
+            imgui.TableNextColumn();
+            imgui.TextUnformatted(GetStreamlineProxyDxgiDetourCounterLabel(kind));
+        }
+        imgui.EndTable();
+    }
     imgui.Unindent();
 
     imgui.Spacing();

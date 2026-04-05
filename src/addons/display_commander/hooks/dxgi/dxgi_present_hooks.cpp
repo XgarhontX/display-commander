@@ -338,7 +338,7 @@ void HandlePresentAfter(bool frame_generation_aware) {
     ::OnPresentUpdateAfter2(frame_generation_aware);
 }
 
-static std::atomic<int> in_present_call(0);
+std::atomic<int> g_dxgi_present_nested_depth{0};
 
 // VSync override: combo index 0=No override(-1), 1=Force ON(1), 2=1/2(2), 3=1/3(3), 4=1/4(4), 5=FORCED OFF(0). Returns
 // -1 if no override.
@@ -355,7 +355,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(This, &data);
     }
 
-    if (in_present_call.load() > 0) {
+    if (g_dxgi_present_nested_depth.load() > 0) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
     // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
@@ -450,17 +450,17 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain1) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
-    in_present_call.fetch_add(1);
+    g_dxgi_present_nested_depth.fetch_add(1);
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
         auto res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
 
-        in_present_call.fetch_sub(1);
+        g_dxgi_present_nested_depth.fetch_sub(1);
         return res;
     }
 
     auto res = IDXGISwapChain_Present1_Original(This, effective_interval, PresentFlags, pPresentParameters);
-    in_present_call.fetch_sub(1);
+    g_dxgi_present_nested_depth.fetch_sub(1);
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGISwapChain1::Present1", res, &s_err_count);

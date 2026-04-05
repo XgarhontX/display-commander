@@ -8,6 +8,8 @@
 
 #include <Windows.h>
 
+#include <atomic>
+
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <dxgi1_4.h>
@@ -24,6 +26,9 @@
  */
 
 namespace display_commanderhooks::dxgi {
+
+/** Present / Present1 nesting depth shared with Streamline proxy swapchain detours (`features/streamline`). */
+extern std::atomic<int> g_dxgi_present_nested_depth;
 
 using IDXGISwapChain_Present_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT SyncInterval, UINT Flags);
 
