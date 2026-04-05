@@ -2,6 +2,8 @@
 #include "ngx_counters_tab.hpp"
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
+#include "../../../hooks/nvidia/streamline_hooks.hpp"
+#include "../../ui_colors.hpp"
 #include "../../../utils/timing.hpp"
 
 // Libraries <ReShade> / <imgui>
@@ -78,6 +80,33 @@ bool NameMatchesFilter(const std::string& name, const char* filter_cstr) {
 
 void DrawNGXCountersTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
+    imgui.TextColored(ImVec4{0.85f, 0.85f, 0.85f, 1.0f}, "Streamline loader");
+    imgui.Indent();
+    imgui.Text("slUpgradeInterface calls: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceCallCount()));
+    imgui.Text("  IDXGIFactory: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassCountFactory()));
+    imgui.Text("  IDXGISwapChain: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassCountSwapChain()));
+    imgui.Text("  ID3D11Device: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassCountD3D11Device()));
+    imgui.Text("  ID3D12Device: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassCountD3D12Device()));
+    imgui.Text("  unknown (QI): %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassCountUnknown()));
+    imgui.Text("  non-Ok result (no QI): %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassifyNonOkCount()));
+    imgui.Text("  Ok but null iface: %" PRIu64,
+               static_cast<unsigned long long>(GetSlUpgradeInterfaceClassifyNullIfaceCount()));
+    imgui.TextColored(::ui::colors::TEXT_DIMMED,
+                      "Counts update when sl.interposer.dll is loaded and Streamline hooks run; types are from "
+                      "QueryInterface after each slUpgradeInterface (factory, swapchain, D3D11, D3D12, else unknown).");
+    imgui.Unindent();
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
     imgui.TextWrapped(
         "Session-only frame generation tweaks apply on D3D11/D3D12 EvaluateFeature for the tracked frame-generation "
         "handle, using that call's parameter object.");

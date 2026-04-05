@@ -1,9 +1,16 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "dpi_management.hpp"
-#include "../utils/logging.hpp"
+#include "../../utils/logging.hpp"
 
+// Libraries <standard C++>
+#include <string>
+
+// Libraries <Windows.h> — before other Windows headers
+#include <Windows.h>
+
+// Libraries <Windows>
 #include <shlwapi.h>
 #include <winreg.h>
-#include <string>
 
 #pragma comment(lib, "shlwapi.lib")
 

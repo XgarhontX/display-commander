@@ -8,10 +8,20 @@
 #include "../../utils/timing.hpp"
 #include "../hook_suppression_manager.hpp"
 
-#include <MinHook.h>
+// Libraries <standard C++>
 #include <atomic>
 #include <cstdint>
 #include <cstring>
+
+#include <MinHook.h>
+
+#include <Windows.h>
+
+// Libraries <Windows>
+#include <d3d11.h>
+#include <d3d12.h>
+#include <dxgi.h>
+#include <wrl/client.h>
 
 // Streamline base (sl_dlss.h requires sl.h for Boolean, SL_STRUCT, etc.)
 #include "sl.h"
@@ -24,6 +34,7 @@
 
 // Loader exports from sl.interposer.dll — hooked via kStreamlineLoaderHooks (sl_core_api.h PFun_*).
 using slInit_pfn = sl::Result (*)(const sl::Preferences& pref, uint64_t sdkVersion);
+using slUpgradeInterface_pfn = sl::Result (*)(void** baseInterface);
 using slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 using slGetNativeInterface_pfn = sl::Result (*)(void* proxyInterface, void** baseInterface);
 using slGetFeatureFunction_pfn = sl::Result (*)(sl::Feature feature, const char* functionName, void*& function);
@@ -37,12 +48,14 @@ using slSetData_pfn = sl::Result (*)(const sl::BaseStructure* inputs, sl::Comman
 using slDLSSGGetState_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state, const sl::DLSSGOptions* options);
 
 static slInit_pfn slInit_Original = nullptr;
+static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
 static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
 static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 
 // Forward declarations for table-driven hook install
 static sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion);
+static sl::Result slUpgradeInterface_Detour(void** baseInterface);
 static sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 static sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
 static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function);
@@ -50,6 +63,7 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
 /** Table-driven install for sl.interposer.dll exports. Order matches StreamlineLoaderHook enum. */
 enum class StreamlineLoaderHook : std::size_t {
     slInit = 0,
+    slUpgradeInterface,
     slIsFeatureSupported,
     slGetNativeInterface,
     slGetFeatureFunction,
@@ -64,6 +78,9 @@ static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::s
     {.name = "slInit",
      .detour = reinterpret_cast<LPVOID>(&slInit_Detour),
      .original = reinterpret_cast<LPVOID*>(&slInit_Original)},
+    {.name = "slUpgradeInterface",
+     .detour = reinterpret_cast<LPVOID>(&slUpgradeInterface_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original)},
     {.name = "slIsFeatureSupported",
      .detour = reinterpret_cast<LPVOID>(&slIsFeatureSupported_Detour),
      .original = reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original)},
@@ -91,6 +108,47 @@ static std::atomic<bool> g_slSetData_hook_installed{false};
 
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
+static std::atomic<uint64_t> g_sl_upgrade_interface_call_count{0};
+
+static std::atomic<uint64_t> g_sl_upgrade_qi_factory{0};
+static std::atomic<uint64_t> g_sl_upgrade_qi_swapchain{0};
+static std::atomic<uint64_t> g_sl_upgrade_qi_d3d11{0};
+static std::atomic<uint64_t> g_sl_upgrade_qi_d3d12{0};
+static std::atomic<uint64_t> g_sl_upgrade_qi_unknown{0};
+static std::atomic<uint64_t> g_sl_upgrade_classify_non_ok{0};
+static std::atomic<uint64_t> g_sl_upgrade_classify_null_iface{0};
+
+// After slUpgradeInterface returns, count which DXGI/D3D interface the upgraded pointer exposes (QI order matches
+// historical slUpgradeInterface_Detour: factory, swapchain, D3D11 device, D3D12 device, else unknown).
+static void CountSlUpgradeInterfaceUpgradedInterface(sl::Result result, void** baseInterface) {
+    if (result != sl::Result::eOk) {
+        g_sl_upgrade_classify_non_ok.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    if (baseInterface == nullptr || *baseInterface == nullptr) {
+        g_sl_upgrade_classify_null_iface.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+
+    IUnknown* const unk = static_cast<IUnknown*>(*baseInterface);
+
+    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+    Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+
+    if (SUCCEEDED(unk->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
+        g_sl_upgrade_qi_factory.fetch_add(1, std::memory_order_relaxed);
+    } else if (SUCCEEDED(unk->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
+        g_sl_upgrade_qi_swapchain.fetch_add(1, std::memory_order_relaxed);
+    } else if (SUCCEEDED(unk->QueryInterface(IID_PPV_ARGS(&d3d11_device))) && d3d11_device != nullptr) {
+        g_sl_upgrade_qi_d3d11.fetch_add(1, std::memory_order_relaxed);
+    } else if (SUCCEEDED(unk->QueryInterface(IID_PPV_ARGS(&d3d12_device))) && d3d12_device != nullptr) {
+        g_sl_upgrade_qi_d3d12.fetch_add(1, std::memory_order_relaxed);
+    } else {
+        g_sl_upgrade_qi_unknown.fetch_add(1, std::memory_order_relaxed);
+    }
+}
 
 // Helpers to log DLSS options
 static const char* DLSSModeStr(sl::DLSSMode m) {
@@ -295,6 +353,20 @@ sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
     }
 
     return sl::Result::eErrorNotInitialized;
+}
+
+sl::Result slUpgradeInterface_Detour(void** baseInterface) {
+    CALL_GUARD_NO_TS();
+
+    g_sl_upgrade_interface_call_count.fetch_add(1, std::memory_order_relaxed);
+
+    if (slUpgradeInterface_Original == nullptr) {
+        return sl::Result::eErrorNotInitialized;
+    }
+
+    const sl::Result result = slUpgradeInterface_Original(baseInterface);
+    CountSlUpgradeInterfaceUpgradedInterface(result, baseInterface);
+    return result;
 }
 
 sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
@@ -642,3 +714,35 @@ bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
 
 // Get last SDK version from slInit calls
 uint64_t GetLastStreamlineSDKVersion() { return g_last_sdk_version.load(); }
+
+uint64_t GetSlUpgradeInterfaceCallCount() {
+    return g_sl_upgrade_interface_call_count.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassCountFactory() {
+    return g_sl_upgrade_qi_factory.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassCountSwapChain() {
+    return g_sl_upgrade_qi_swapchain.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassCountD3D11Device() {
+    return g_sl_upgrade_qi_d3d11.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassCountD3D12Device() {
+    return g_sl_upgrade_qi_d3d12.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassCountUnknown() {
+    return g_sl_upgrade_qi_unknown.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassifyNonOkCount() {
+    return g_sl_upgrade_classify_non_ok.load(std::memory_order_relaxed);
+}
+
+uint64_t GetSlUpgradeInterfaceClassifyNullIfaceCount() {
+    return g_sl_upgrade_classify_null_iface.load(std::memory_order_relaxed);
+}

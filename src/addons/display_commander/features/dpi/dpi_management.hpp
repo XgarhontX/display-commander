@@ -1,6 +1,8 @@
+// Source Code <Display Commander> // DPI feature slice (always built); see features/dpi/
 #pragma once
 
-#include <windows.h>
+// Libraries <Windows.h>
+#include <Windows.h>
 
 namespace display_commander::display::dpi {
 

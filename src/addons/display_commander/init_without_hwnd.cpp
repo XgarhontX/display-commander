@@ -4,7 +4,7 @@
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
 #include "display/display_initial_state.hpp"
-#include "display/dpi_management.hpp"
+#include "features/dpi/dpi_management.hpp"
 #include "dll_boot_logging.hpp"
 #include "globals.hpp"
 #include "hooks/loadlibrary_hooks.hpp"

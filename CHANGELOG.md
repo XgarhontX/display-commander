@@ -23,6 +23,9 @@ Planned:
 - FG rate counter
 
 ## v0.13.132 (2026-04-04)
+- [hooks] [ui] **Streamline slUpgradeInterface: class counters on Debug NGX** - **DEBUG_TABS** **Debug NGX** shows per-session counts for which COM type matched after each call (**IDXGIFactory**, **IDXGISwapChain**, **ID3D11Device**, **ID3D12Device**, **unknown**), plus non-**Ok** results and **Ok** with null interface. **Details:** `GetSlUpgradeInterfaceClassCount*`, `CountSlUpgradeInterfaceUpgradedInterface`, `streamline_hooks.cpp`; `ngx_counters_tab.cpp`.
+- [new feature] [ui] [hooks] **Debug NGX: Streamline slUpgradeInterface call count** - With **DEBUG_TABS**, **Debug NGX** shows how many times the game called **`slUpgradeInterface`** this session (Streamline manual hooking / proxy upgrade path). **Details:** `GetSlUpgradeInterfaceCallCount`, `slUpgradeInterface` row in `kStreamlineLoaderHooks`, `streamline_hooks.cpp`; display in `ngx_counters_tab.cpp`.
+- [cleanup] **DPI management source layout** - **Disable DPI scaling** logic now lives under **`features/dpi/`** (`dpi_management.hpp` / `.cpp`) so always-on features can be grouped by folder; behavior unchanged.
 - [cleanup] **ScreensaverMode enum names** - `kDisableWhenFocused` / `kDisable` renamed to **`kInForeground`** / **`kAlways`** to match UI; config integers 0..2 unchanged.
 - [ui] [settings] **Screensaver / sleep mode labels** - Radio labels are **Default**, **In foreground**, and **Always** (aligned with common three-way Main tab wording; behavior unchanged).
 - [removal] [ui] [settings] **Auto-hide Windows taskbar** - Removed the Main tab control and `taskbar_hide_mode` setting. Details: `TaskbarHideMode` removed from globals; `main_tab_settings`; template inst in `settings_wrapper.cpp`. Legacy `taskbar_hide_mode` in config is ignored.
@@ -176,7 +179,7 @@ Planned:
 - [removal] [settings] [ui] **`DllsToLoadBefore` removed** - Advanced tab no longer offers **DLLs to Load Before Display Commander**, and startup no longer waits for a comma/semicolon-separated list of module names (**`GetModuleHandleW`** polling). The **`DllLoadingDelayMs`** slider is unchanged. Old config keys are ignored.
 
 ## v0.13.91 (2026-04-01)
-- [removal] [hooks] **DPI API detours removed** - Deleted **`dpi_hooks.cpp` / `dpi_hooks.hpp`** (MinHook on **`GetDpiForSystem`**, **`GetDpiForWindow`**, **`GetSystemDpiForProcess`**, thread/process DPI awareness context). **Advanced → Disable DPI scaling** still uses **`display/dpi_management`** (AppCompat + **`SetProcessDpiAwareness`** / per-monitor context) without intercepting those APIs for the whole process.
+- [removal] [hooks] **DPI API detours removed** - Deleted **`dpi_hooks.cpp` / `dpi_hooks.hpp`** (MinHook on **`GetDpiForSystem`**, **`GetDpiForWindow`**, **`GetSystemDpiForProcess`**, thread/process DPI awareness context). **Advanced → Disable DPI scaling** still uses **`features/dpi/dpi_management`** (AppCompat + **`SetProcessDpiAwareness`** / per-monitor context) without intercepting those APIs for the whole process.
 
 ## v0.13.90 (2026-04-01)
 - [cleanup] [hooks] [experimental] **Time Slowdown declarations in private header** - Public **`hooks/system/timeslowdown_hooks.hpp`** keeps only QPC **`_Original`** pointers and **`LoadQPCEnabledModulesFromSettings`** (main addon). Extended timer typedefs, **`TimerHookType` / `TimerHookIdentifier`**, remaining **`_Original`** pointers, and module entry points live in **`external-private/.../timeslowdown/timeslowdown_hooks_private.hpp`**, included by the private **`timeslowdown_hooks.cpp`** / **`timeslowdown_module.cpp`**.
