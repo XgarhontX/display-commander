@@ -620,6 +620,17 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         imgui.Columns(1);
+        bool show_animation_error_nvapi = settings::g_mainTabSettings.show_overlay_nvapi_latency_jitter_abs.GetValue();
+        if (imgui.Checkbox("Animation error", &show_animation_error_nvapi)) {
+            settings::g_mainTabSettings.show_overlay_nvapi_latency_jitter_abs.SetValue(show_animation_error_nvapi);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Computes animation error from frame-to-frame average changes in the NVAPI Reflex latency estimate "
+                "(overlay line). Requires Reflex latency reporting (NvAPI_D3D_GetLatency); not Intel PresentMon "
+                "MsAnimationError.");
+        }
+
         imgui.Separator();
         imgui.TextUnformatted("Misc");
         imgui.Columns(4, "overlay_checkboxes", false);

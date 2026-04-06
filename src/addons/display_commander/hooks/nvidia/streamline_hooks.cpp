@@ -367,6 +367,7 @@ sl::Result slUpgradeInterface_Detour(void** baseInterface) {
 
     const sl::Result result = slUpgradeInterface_Original(baseInterface);
     CountSlUpgradeInterfaceUpgradedInterface(result, baseInterface);
+    /*
     if (result == sl::Result::eOk && baseInterface != nullptr && *baseInterface != nullptr) {
         IUnknown* const u = static_cast<IUnknown*>(*baseInterface);
         Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
@@ -378,7 +379,7 @@ sl::Result slUpgradeInterface_Detour(void** baseInterface) {
                 (void)display_commander::features::streamline::HookStreamlineProxySwapchain(dxgi_swapchain.Get());
             }
         }
-    }
+    }*/
     return result;
 }
 

@@ -16,6 +16,75 @@ PCLSTATS_DEFINE()
 // Static member initialization
 bool ReflexProvider::_is_pcl_initialized = false;
 
+namespace {
+
+using NvapiFrameReport = NV_LATENCY_RESULT_PARAMS_V1::FrameReport;
+
+bool AccumulateLatencyMetricsFromParams(const NV_LATENCY_RESULT_PARAMS_V1& params, ReflexProvider::NvapiLatencyMetrics& out_metrics) {
+    constexpr int kMaxReports = 64;
+    double sum_pc_latency_ms = 0.0;
+    double sum_gpu_ms = 0.0;
+    int valid_count = 0;
+    uint64_t max_frame_id = 0;
+
+    for (int i = 0; i < kMaxReports; ++i) {
+        const auto& fr = params.frameReport[i];
+        if (fr.frameID == 0) {
+            continue;
+        }
+        if (fr.gpuRenderEndTime <= fr.inputSampleTime) {
+            continue;
+        }
+
+        const double pc_latency_us = fr.inputSampleTime != 0 ?
+            static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime) :
+            static_cast<double>(fr.gpuRenderEndTime - fr.simStartTime);
+        const double pc_latency_ms = pc_latency_us / 1000.0;
+        const double gpu_ms = static_cast<double>(fr.gpuFrameTimeUs) / 1000.0;
+
+        sum_pc_latency_ms += pc_latency_ms;
+        sum_gpu_ms += gpu_ms;
+        ++valid_count;
+
+        const uint64_t fid = static_cast<uint64_t>(fr.frameID);
+        if (fid > max_frame_id) {
+            max_frame_id = fid;
+        }
+    }
+
+    if (valid_count == 0) {
+        return false;
+    }
+
+    out_metrics.pc_latency_ms = sum_pc_latency_ms / static_cast<double>(valid_count);
+    out_metrics.gpu_frame_time_ms = sum_gpu_ms / static_cast<double>(valid_count);
+    out_metrics.frame_id = max_frame_id;
+    return true;
+}
+
+/** Same formula as performance overlay "Lat." row (including DLSS-G FG term). */
+bool ComputeOsdLatencyEstimateMs(const NvapiFrameReport& fr, int dlss_fg_mode, double& out_ms) {
+    if (fr.frameID == 0) {
+        return false;
+    }
+    if (fr.gpuRenderEndTime <= fr.inputSampleTime) {
+        return false;
+    }
+    const double pc_latency_us = fr.inputSampleTime != 0 ?
+        static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime) :
+        static_cast<double>(fr.gpuRenderEndTime - fr.simStartTime);
+    const double pc_latency_ms = pc_latency_us / 1000.0;
+    const double gpu_ms = static_cast<double>(fr.gpuFrameTimeUs) / 1000.0;
+    double estimate = pc_latency_ms + gpu_ms / 2.0;
+    if (dlss_fg_mode >= 2) {
+        estimate += (gpu_ms * static_cast<double>(dlss_fg_mode - 1)) / (static_cast<double>(dlss_fg_mode) * 2.0);
+    }
+    out_ms = estimate;
+    return true;
+}
+
+}  // namespace
+
 ReflexProvider::ReflexProvider() = default;
 ReflexProvider::~ReflexProvider() = default;
 
@@ -158,58 +227,62 @@ bool ReflexProvider::GetLatencyMetrics(NvapiLatencyMetrics& out_metrics) {
         return false;
     }
 
-#if defined(_M_AMD64) || defined(__x86_64__)
     NV_LATENCY_RESULT_PARAMS_V1 params = {};
     params.version = NV_LATENCY_RESULT_PARAMS_VER1;
     if (!reflex_manager_.GetLatency(reinterpret_cast<NV_LATENCY_RESULT_PARAMS*>(&params))) {
         return false;
     }
+    return AccumulateLatencyMetricsFromParams(params, out_metrics);
+}
 
-    // Compute average over all valid frame reports to smooth jitter.
-    constexpr int kMaxReports = 64;
-    double sum_pc_latency_ms = 0.0;
-    double sum_gpu_ms = 0.0;
-    int valid_count = 0;
-    uint64_t max_frame_id = 0;
+bool ReflexProvider::GetLatencyParamsV1(NV_LATENCY_RESULT_PARAMS_V1& out_params) {
+    if (!IsInitialized()) {
+        return false;
+    }
+    out_params = {};
+    out_params.version = NV_LATENCY_RESULT_PARAMS_VER1;
+    return reflex_manager_.GetLatency(reinterpret_cast<NV_LATENCY_RESULT_PARAMS*>(&out_params));
+}
 
-    for (int i = 0; i < kMaxReports; ++i) {
+bool ReflexProvider::MetricsFromLatencyParams(const NV_LATENCY_RESULT_PARAMS_V1& params, NvapiLatencyMetrics& out_metrics) {
+    return AccumulateLatencyMetricsFromParams(params, out_metrics);
+}
+
+bool ReflexProvider::FillNewestFrameDerivedForOverlay(const NV_LATENCY_RESULT_PARAMS_V1& params, int dlss_fg_mode,
+                                                      NvapiReflexNewestFrameDerived& out) {
+    out = {};
+    int best_i = -1;
+    uint64_t best_id = 0;
+    for (int i = 0; i < 64; ++i) {
         const auto& fr = params.frameReport[i];
         if (fr.frameID == 0) {
             continue;
         }
-        if (fr.gpuRenderEndTime <= fr.inputSampleTime) {
-            continue;
-        }
-
-        // NVAPI latency timestamps are in microseconds (same domain as gpuFrameTimeUs).
-        // Convert input->GPU-end delta from µs to ms to match gpuFrameTimeUs/1000.
-        const double pc_latency_us = fr.inputSampleTime != 0 ?
-            static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime) : static_cast<double>(fr.gpuRenderEndTime - fr.simStartTime);
-        const double pc_latency_ms = pc_latency_us / 1000.0;
-        const double gpu_ms = static_cast<double>(fr.gpuFrameTimeUs) / 1000.0;
-
-        sum_pc_latency_ms += pc_latency_ms;
-        sum_gpu_ms += gpu_ms;
-        ++valid_count;
-
         const uint64_t fid = static_cast<uint64_t>(fr.frameID);
-        if (fid > max_frame_id) {
-            max_frame_id = fid;
+        if (best_i < 0 || fid >= best_id) {
+            best_id = fid;
+            best_i = i;
         }
     }
-
-    if (valid_count == 0) {
+    if (best_i < 0) {
         return false;
     }
-
-    out_metrics.pc_latency_ms = sum_pc_latency_ms / static_cast<double>(valid_count);
-    out_metrics.gpu_frame_time_ms = sum_gpu_ms / static_cast<double>(valid_count);
-    out_metrics.frame_id = max_frame_id;
+    const auto& fr = params.frameReport[best_i];
+    out.frame_id = static_cast<uint64_t>(fr.frameID);
+    if (fr.simEndTime > fr.simStartTime) {
+        out.sim_duration_valid = true;
+        out.sim_duration_ms = static_cast<double>(fr.simEndTime - fr.simStartTime) / 1000.0;
+    }
+    if (fr.gpuActiveRenderTimeUs > 0) {
+        out.gpu_active_valid = true;
+        out.gpu_active_render_ms = static_cast<double>(fr.gpuActiveRenderTimeUs) / 1000.0;
+    }
+    double latency_estimate_ms = 0.0;
+    if (ComputeOsdLatencyEstimateMs(fr, dlss_fg_mode, latency_estimate_ms)) {
+        out.osd_latency_valid = true;
+        out.osd_latency_estimate_ms = latency_estimate_ms;
+    }
     return true;
-#else
-    (void)out_metrics;
-    return false;
-#endif
 }
 
 bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_frames, std::size_t max_frames) {
@@ -218,7 +291,6 @@ bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_
         return false;
     }
 
-#if defined(_M_AMD64) || defined(__x86_64__)
     NV_LATENCY_RESULT_PARAMS_V1 params = {};
     params.version = NV_LATENCY_RESULT_PARAMS_VER1;
     if (!reflex_manager_.GetLatency(reinterpret_cast<NV_LATENCY_RESULT_PARAMS*>(&params))) {
@@ -263,7 +335,4 @@ bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_
         out_frames.resize(max_frames);
     }
     return true;
-#else
-    return false;
-#endif
 }

@@ -56,6 +56,23 @@ class ReflexProvider {
     bool GetLatencyMetrics(NvapiLatencyMetrics& out_metrics);
     bool GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_frames, std::size_t max_frames = 10);
 
+    /** Fills raw NVAPI latency buffer (one NvAPI_D3D_GetLatency call). */
+    bool GetLatencyParamsV1(NV_LATENCY_RESULT_PARAMS_V1& out_params);
+    /** PC latency + GPU frame time averages from an already-fetched NVAPI buffer (no extra driver call). */
+    static bool MetricsFromLatencyParams(const NV_LATENCY_RESULT_PARAMS_V1& params, NvapiLatencyMetrics& out_metrics);
+    /** Newest frame by frameID: sim duration, GPU active time, OSD latency estimate (matches overlay Lat. + FG). */
+    struct NvapiReflexNewestFrameDerived {
+        uint64_t frame_id = 0;
+        bool sim_duration_valid = false;
+        double sim_duration_ms = 0.0;
+        bool gpu_active_valid = false;
+        double gpu_active_render_ms = 0.0;
+        bool osd_latency_valid = false;
+        double osd_latency_estimate_ms = 0.0;
+    };
+    static bool FillNewestFrameDerivedForOverlay(const NV_LATENCY_RESULT_PARAMS_V1& params, int dlss_fg_mode,
+                                                 NvapiReflexNewestFrameDerived& out);
+
     static void EnsurePCLStatsInitialized();
     static bool IsPCLStatsInitialized();
 

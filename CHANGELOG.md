@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+
+
+## v0.13.150 (2026-04-05)
+- [ui] [settings] **Animation error on main Performance Overlay** -Added showing animation error, next to latency error on performance overlay.
+- [ui] [features] **Enabled showing latency stats on 32-bit as well**
+
 ## v0.13.149 (2026-04-06)
 - [hooks] **Vulkan support** - improved Vulkan support for DLSS/Frame generation features.
 

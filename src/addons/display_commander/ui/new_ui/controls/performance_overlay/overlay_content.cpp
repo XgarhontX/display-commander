@@ -21,6 +21,7 @@
 
 // Libraries <Standard C++>
 #include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #if !defined(DC_LITE)
@@ -150,6 +151,10 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_overlay_ram = settings::g_mainTabSettings.show_overlay_ram.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
+    bool show_overlay_nvapi_sim_duration = settings::g_mainTabSettings.show_overlay_nvapi_sim_duration.GetValue();
+    bool show_overlay_nvapi_gpu_active_ms = settings::g_mainTabSettings.show_overlay_nvapi_gpu_active_ms.GetValue();
+    bool show_overlay_nvapi_latency_jitter_abs =
+        settings::g_mainTabSettings.show_overlay_nvapi_latency_jitter_abs.GetValue();
 
     const bool show_clock_setting = settings::g_mainTabSettings.show_clock.GetValue();
     const bool show_playtime_setting = settings::g_mainTabSettings.show_playtime.GetValue();
@@ -598,14 +603,25 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     // ----- Table: latency + CPU + volume -----
-    bool table4_any = show_gpu_measurement || show_cpu_usage || show_volume;
+    bool table4_any = show_gpu_measurement || show_cpu_usage || show_volume || show_overlay_nvapi_sim_duration
+        || show_overlay_nvapi_gpu_active_ms || show_overlay_nvapi_latency_jitter_abs;
     if (table4_any) {
         OverlayScalarTableBegin(imgui);
+        const bool want_pm_debug_overlay = show_overlay_nvapi_sim_duration || show_overlay_nvapi_gpu_active_ms
+            || show_overlay_nvapi_latency_jitter_abs;
+        const bool need_nvapi_latency_params =
+            g_reflexProvider != nullptr && (show_gpu_measurement || want_pm_debug_overlay);
+        NV_LATENCY_RESULT_PARAMS_V1 nv_latency_params{};
+        bool have_nv_latency_params = false;
+        if (need_nvapi_latency_params) {
+            have_nv_latency_params = g_reflexProvider->GetLatencyParamsV1(nv_latency_params);
+        }
+
         if (show_gpu_measurement) {
             bool shown = false;
-            if (g_reflexProvider) {
+            if (have_nv_latency_params) {
                 ReflexProvider::NvapiLatencyMetrics metrics{};
-                if (g_reflexProvider->GetLatencyMetrics(metrics)) {
+                if (ReflexProvider::MetricsFromLatencyParams(nv_latency_params, metrics)) {
                     shown = true;
                     double pcl_latency_ms_estimate = metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0;
                     const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
@@ -625,6 +641,67 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
                     OverlayTableRow_Text(imgui, label_mode, "Lat.", "Latency", show_tooltips, nullptr, "%.1f ms",
                                          latency_ms);
+                }
+            }
+        }
+
+        if (want_pm_debug_overlay && have_nv_latency_params) {
+            const DLSSGSummaryLite dlss_lite_pm = GetDLSSGSummaryLite();
+            const int fg_mode_pm = dlss_lite_pm.fg_mode;
+            ReflexProvider::NvapiReflexNewestFrameDerived derived{};
+            if (ReflexProvider::FillNewestFrameDerivedForOverlay(nv_latency_params, fg_mode_pm, derived)) {
+                constexpr double k_pm_ema_alpha = 0.02;
+                static double s_ema_sim_ms = 0.0;
+                static bool s_ema_sim_inited = false;
+                static double s_ema_gpu_active_ms = 0.0;
+                static bool s_ema_gpu_inited = false;
+                static double s_ema_jitter_ms = 0.0;
+                static bool s_ema_jitter_inited = false;
+                static uint64_t s_last_jitter_frame_id = 0;
+                static double s_prev_latency_L = 0.0;
+                static bool s_have_prev_latency_L = false;
+
+                if (show_overlay_nvapi_sim_duration && derived.sim_duration_valid) {
+                    s_ema_sim_ms = s_ema_sim_inited ?
+                        (1.0 - k_pm_ema_alpha) * s_ema_sim_ms + k_pm_ema_alpha * derived.sim_duration_ms :
+                        derived.sim_duration_ms;
+                    s_ema_sim_inited = true;
+                    OverlayTableRow_Text(imgui, label_mode, "SimΔ", "Reflex sim duration", show_tooltips,
+                                         "NVAPI Reflex: simulation_end − simulation_start on the newest completed "
+                                         "frame (µs domain). Rolling average; not PresentMon MsCPUBusy.",
+                                         "%.2f ms", s_ema_sim_ms);
+                }
+                if (show_overlay_nvapi_gpu_active_ms && derived.gpu_active_valid) {
+                    s_ema_gpu_active_ms = s_ema_gpu_inited ?
+                        (1.0 - k_pm_ema_alpha) * s_ema_gpu_active_ms + k_pm_ema_alpha * derived.gpu_active_render_ms :
+                        derived.gpu_active_render_ms;
+                    s_ema_gpu_inited = true;
+                    OverlayTableRow_Text(imgui, label_mode, "GPU act", "Reflex GPU active", show_tooltips,
+                                         "NVAPI gpuActiveRenderTimeUs (newest frame): driver-reported GPU busy time "
+                                         "excluding idles. Rolling average; not PresentMon MsGPUBusy (ETW).",
+                                         "%.2f ms", s_ema_gpu_active_ms);
+                }
+                if (show_overlay_nvapi_latency_jitter_abs) {
+                    if (derived.osd_latency_valid && derived.frame_id != s_last_jitter_frame_id) {
+                        if (s_have_prev_latency_L) {
+                            const double j =
+                                std::fabs(derived.osd_latency_estimate_ms - s_prev_latency_L);
+                            s_ema_jitter_ms = s_ema_jitter_inited ?
+                                (1.0 - k_pm_ema_alpha) * s_ema_jitter_ms + k_pm_ema_alpha * j :
+                                j;
+                            s_ema_jitter_inited = true;
+                        }
+                        s_prev_latency_L = derived.osd_latency_estimate_ms;
+                        s_have_prev_latency_L = true;
+                        s_last_jitter_frame_id = derived.frame_id;
+                    }
+                    if (s_ema_jitter_inited) {
+                        OverlayTableRow_Text(
+                            imgui, label_mode, "AnimErr", "Animation error", show_tooltips,
+                            "When frame_id advances: absolute change vs previous overlay latency estimate (same formula "
+                            "as Lat. row). Rolling average; not PresentMon MsAnimationError.",
+                            "%.2f ms", s_ema_jitter_ms);
+                    }
                 }
             }
         }

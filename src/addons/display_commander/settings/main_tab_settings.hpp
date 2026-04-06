@@ -137,6 +137,12 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
     /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) in the performance overlay. */
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
+    /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_sim_duration;
+    /** Overlay: rolling avg GPU active render time (NVAPI gpuActiveRenderTimeUs, newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_gpu_active_ms;
+    /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_latency_jitter_abs;
     ui::new_ui::BoolSetting show_fg_mode;
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;
