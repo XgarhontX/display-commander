@@ -71,12 +71,18 @@ class ReflexProvider {
         /** renderSubmitEndTime − renderSubmitStartTime (µs → ms). */
         bool render_submit_phase_valid = false;
         double render_submit_phase_ms = 0.0;
-        /** presentStartTime − renderSubmitEndTime (µs → ms). */
+        /** presentStartTime − renderSubmitStartTime (µs → ms), signed; both > 0. */
+        bool rs_start_to_present_start_valid = false;
+        double rs_start_to_present_start_ms = 0.0;
+        /** presentStartTime − renderSubmitEndTime (µs → ms), signed; valid only when both > 0. */
         bool rs_end_to_present_start_valid = false;
         double rs_end_to_present_start_ms = 0.0;
         /** presentEndTime − presentStartTime (µs → ms). */
         bool present_phase_valid = false;
         double present_phase_ms = 0.0;
+        /** renderSubmitEndTime − presentEndTime (µs → ms), signed; both > 0 (label: present_end -> render_submit_end). */
+        bool present_end_to_rs_end_valid = false;
+        double present_end_to_rs_end_ms = 0.0;
         bool gpu_active_valid = false;
         double gpu_active_render_ms = 0.0;
         bool osd_latency_valid = false;

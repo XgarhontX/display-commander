@@ -33,6 +33,9 @@ MainTabSettings::MainTabSettings()
       fps_limit("fps_limit", 0.0f, 0.0f, 1000.0f, "DisplayCommander", true),
       fps_limit_background("fps_limit_background", 60.0f, 0.0f, 1000.0f, "DisplayCommander", true),
       background_fps_enabled("background_fps_enabled", false, "DisplayCommander"),
+      fps_limiter_fg2_enabled("fps_limiter_fg2_enabled", false, "DisplayCommander"),
+      fps_limiter_fg2_target_boost_percent("fps_limiter_fg2_target_boost_percent", 0.3f, -90.0f, 690.0f,
+                                           "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       inject_reflex("inject_reflex", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
@@ -50,7 +53,7 @@ MainTabSettings::MainTabSettings()
       pcl_stats_enabled("pcl_stats_enabled", true, "DisplayCommander"),
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
       reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
-                                           {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
+                                           {"Game default", "1", "2", "3", "4", "5", "6",}, "DisplayCommander"),
       native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing),
                                {"Low latency mode - pace game simulation thread only (bad frame pacing)",
                                 "DCPaceLock(q=1) (recommended, low latency, good frame pacing)",
@@ -58,7 +61,8 @@ MainTabSettings::MainTabSettings()
                                 "DCPaceLock(q=3) (+2 frame time latency penalty, use if q=2 is not good enough)",
                                 "Pace native rendered frames only (pre-FG, stable at latency penalty)",
                                 "Pace generated Frames",
-                                "Custom (configure manually)"},
+                                "Custom (configure manually)",
+                                "Low latency mode - experimental",},
                                "DisplayCommander"),
       use_streamline_proxy_fps_limiter("use_streamline_proxy_fps_limiter", false, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
@@ -124,11 +128,16 @@ MainTabSettings::MainTabSettings()
       show_overlay_nvapi_sim_duration("show_overlay_nvapi_sim_duration", false, "DisplayCommander"),
       show_overlay_nvapi_sim_end_to_rs_start("show_overlay_nvapi_sim_end_to_rs_start", false, "DisplayCommander"),
       show_overlay_nvapi_rs_submit_duration("show_overlay_nvapi_rs_submit_duration", false, "DisplayCommander"),
+      show_overlay_nvapi_rs_start_to_present_start("show_overlay_nvapi_rs_start_to_present_start", false,
+                                                   "DisplayCommander"),
       show_overlay_nvapi_rs_end_to_present_start("show_overlay_nvapi_rs_end_to_present_start", false,
                                                  "DisplayCommander"),
       show_overlay_nvapi_present_phase_duration("show_overlay_nvapi_present_phase_duration", false, "DisplayCommander"),
+      show_overlay_nvapi_present_end_to_rs_end("show_overlay_nvapi_present_end_to_rs_end", false, "DisplayCommander"),
       show_overlay_nvapi_gpu_active_ms("show_overlay_nvapi_gpu_active_ms", false, "DisplayCommander"),
       show_overlay_nvapi_latency_jitter_abs("show_overlay_nvapi_latency_jitter_abs", false, "DisplayCommander"),
+      show_overlay_nvapi_setlatencymarker_threads("show_overlay_nvapi_setlatencymarker_threads", false,
+                                                  "DisplayCommander"),
       show_fg_mode("show_fg_mode", false, "DisplayCommander"),
       show_overlay_resolution("show_dlss_internal_resolution", false, "DisplayCommander"),
       show_dlss_status("show_dlss_status", false, "DisplayCommander"),
@@ -204,6 +213,8 @@ MainTabSettings::MainTabSettings()
         &fps_limit,
         &fps_limit_background,
         &background_fps_enabled,
+        &fps_limiter_fg2_enabled,
+        &fps_limiter_fg2_target_boost_percent,
         &suppress_reflex_sleep,
         &inject_reflex,
         &onpresent_sync_low_latency_ratio,
@@ -264,10 +275,13 @@ MainTabSettings::MainTabSettings()
         &show_overlay_nvapi_sim_duration,
         &show_overlay_nvapi_sim_end_to_rs_start,
         &show_overlay_nvapi_rs_submit_duration,
+        &show_overlay_nvapi_rs_start_to_present_start,
         &show_overlay_nvapi_rs_end_to_present_start,
         &show_overlay_nvapi_present_phase_duration,
+        &show_overlay_nvapi_present_end_to_rs_end,
         &show_overlay_nvapi_gpu_active_ms,
         &show_overlay_nvapi_latency_jitter_abs,
+        &show_overlay_nvapi_setlatencymarker_threads,
         &show_fg_mode,
         &show_overlay_resolution,
         &show_dlss_status,
@@ -336,6 +350,17 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = true;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = false;
+            break;
+        case FpsLimiterPreset::kLowLatencyNativePacingV2:
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 0;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = true;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = true;
             break;
         case FpsLimiterPreset::kDCPaceLockQ1:
             out.limit_real_frames = true;
@@ -345,6 +370,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = false;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kDCPaceLockQ2:
             out.limit_real_frames = true;
@@ -354,6 +380,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = false;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kDCPaceLockQ3:
             out.limit_real_frames = true;
@@ -363,6 +390,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = false;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kPaceGenerated:
             out.limit_real_frames = false;
@@ -372,6 +400,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = false;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kPaceGeneratedSafe:
             out.limit_real_frames = false;
@@ -381,6 +410,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.native_pacing_sim_start_only = false;
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = true;
+            out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kCustom:
             // No overrides; caller should use config values

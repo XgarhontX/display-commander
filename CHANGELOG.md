@@ -26,8 +26,8 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 
-## Unreleased
-- [ui] **Reflex sleep toggle moved under Advanced** - In FPS Limiter -> Reflex, **Suppress Reflex Sleep** is now grouped inside an **Advanced** tree node to keep the main Reflex section cleaner while preserving the same behavior.
+## v0.13.164 (2026-04-07)
+- [ui] **Added experimental fps limiter** -- Added "low latency mode - experimental", seems to work well in Death Stranding 2, Wuthering Waves, Crimson Desert
 
 ## v0.13.163 (2026-04-07)
 - [bugfix] [ui] **Native FPS now works even when FPS Counter is off** - You can enable **Native FPS** independently, so the native Reflex-based FPS line still appears even if the regular **FPS Counter** line is disabled.
@@ -73,8 +73,19 @@ Planned:
 - [ui] **Performance overlay SR/RR preset line** - When the NGX stack-default letter is not known for the loaded DLL version, the overlay no longer shows **(UPDATEME)**; the hover tooltip explains that the letter is not mapped yet.
 - [ui] **Performance overlay DLSS status** - **DLSS Status** line now shows only **On** or **Off** (no RR / DLSS-G suffix; use **FG Mode**, **DLSS Quality**, or driver preset lines for detail).
 
+## v0.13.153 (2026-04-06)
+- [ui] [settings] [hooks] [experimental] **Experimental fps limiter** -
+
 ## v0.13.152 (2026-04-05)
+- [ui] [hooks] [experimental] **Debug FPS limiter: configurable NVAPI marker mapping** - The Debug FPS limiter tab now lets you change the first three NVAPI marker IDs used by the limiter path during runtime, so you can quickly test pacing behavior without rebuilding or editing config files.
+  **Details:** Added runtime-only controls (with reset-to-defaults) in `ui/new_ui/debug/fps_limiter_debug_tab.cpp`; NVAPI marker mapping now reads from shared runtime globals/helper in `globals.*` and is consumed by `hooks/nvidia/nvapi_hooks.cpp`.
+- [ui] [settings] [hooks] **Overlay: SetLatencyMarker detour thread IDs** - Debug PresentMon tab adds a toggle for seven overlay rows: last thread ID per NVAPI marker type 0..6 (`SIMULATION_START`..`INPUT_SAMPLE`) recorded in `NvAPI_D3D_SetLatencyMarker` detour. Ini key `show_overlay_nvapi_setlatencymarker_threads`. Table can show without NVAPI GetLatency.
+- [ui] [settings] **Reflex overlay: rs_start→present_start, present_end→rs_end** - Two more optional NVAPI newest-frame lines (signed ms, both timestamps non-zero): `render_submit_start -> present_start`, `present_end -> render_submit_end`. Debug PresentMon tab toggles; ini keys `show_overlay_nvapi_rs_start_to_present_start`, `show_overlay_nvapi_present_end_to_rs_end`.
+- [ui] **Performance overlay: NVAPI debug after modules** - Reflex phase / GPU active / animation-error overlay lines render in their own table after `DrawEnabledModulesInOverlay`, following the same idea as debug tabs after module tabs (`overlay_content.cpp`).
+- [ui] **Debug tabs after module tabs** - With `DISPLAY_COMMANDER_DEBUG_TABS`, the tab bar order is now Main → Advanced → Hotkeys → module tabs (same as public builds), then all Debug * tabs at the end (`InitializeNewUI` in `new_ui_tabs.cpp`).
+- [bugfix] [ui] **Reflex phase overlay: render_submit_end -> present_start** - Uses signed `(present_start − render_submit_end)` in ms when both NVAPI timestamps are non-zero (can be negative). Phase overlay labels use `sim_start -> sim_end`-style text.
 - [ui] [settings] **Internal code changes needed to develop new fps limiter**
+- [docs] **Community: Display Commander Discord** - README now links to the project Display Commander Discord: [discord.gg/huyYjqcu]
 
 ## v0.13.151 (2026-04-05)
 - [ui] **Performance overlay: add show Resolution** - Removed "show DLSS Resolution" in favor of **Resolution** (internal→backbuffer when DLSS is on, backbuffer-only otherwise). Important Info places the toggle under **FPS & core display**, not **DLSS / NGX**.

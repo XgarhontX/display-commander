@@ -44,6 +44,10 @@ class MainTabSettings {
     /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as
      * foreground. Default off. */
     ui::new_ui::BoolSetting background_fps_enabled;
+    /** Second On Present Sync pacer for DLSS-G generated frames (DebugTabs builds only). */
+    ui::new_ui::BoolSetting fps_limiter_fg2_enabled;
+    /** Extra target FPS for FG2 limiter as percent of main cap (0-10). Default 1%. */
+    ui::new_ui::FloatSetting fps_limiter_fg2_target_boost_percent;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
     ui::new_ui::BoolSetting inject_reflex;
@@ -143,14 +147,20 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_overlay_nvapi_sim_end_to_rs_start;
     /** Overlay: rolling avg render submit start → end (NVAPI newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_rs_submit_duration;
+    /** Overlay: rolling avg render submit start → present start (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_rs_start_to_present_start;
     /** Overlay: rolling avg render submit end → present start (NVAPI newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_rs_end_to_present_start;
     /** Overlay: rolling avg present start → present end (NVAPI newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_present_phase_duration;
+    /** Overlay: rolling avg present end → render submit end (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_present_end_to_rs_end;
     /** Overlay: rolling avg GPU active render time (NVAPI gpuActiveRenderTimeUs, newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_active_ms;
     /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_latency_jitter_abs;
+    /** Overlay: last thread ID per first 7 NvAPI_D3D_SetLatencyMarker types (detour). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_setlatencymarker_threads;
     ui::new_ui::BoolSetting show_fg_mode;
     /** Overlay: render resolution; DLSS on shows internal->backbuffer, else tracked swapchain/backbuffer size. Ini:
      * show_dlss_internal_resolution. */
@@ -265,6 +275,7 @@ struct NativeReflexPresetOverrides {
     bool native_pacing_sim_start_only;
     bool delay_present_start_after_sim_enabled;
     bool safe_mode_fps_limiter;
+    bool fps_limiter_fg2_enabled;
 };
 
 /** Fills override values for the given preset. Used at runtime when native Reflex is active; does not write config. */

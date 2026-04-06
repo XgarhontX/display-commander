@@ -308,7 +308,31 @@ void InitializeNewUI() {
         },
         true);  // Hotkeys tab: visibility gated by show_hotkeys_tab (default on)
 
+    const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
+    for (const modules::ModuleDescriptor& module : modules_list) {
+        if (!module.has_tab || module.tab_id.empty()) {
+            continue;
+        }
+        if (g_tab_manager.HasTab(module.tab_id)) {
+            continue;
+        }
+        g_tab_manager.AddTab(
+            module.tab_name, module.tab_id,
+            [module_id = module.id](reshade::api::effect_runtime* runtime) {
+                try {
+                    display_commander::ui::ImGuiWrapperReshade wrapper;
+                    modules::DrawModuleTabById(module_id, wrapper, runtime);
+                } catch (const std::exception& e) {
+                    LogError("Error drawing module tab '%s': %s", module_id.c_str(), e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing module tab '%s'", module_id.c_str());
+                }
+            },
+            module.is_advanced_tab);
+    }
+
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
+    // After module tabs so tab order matches public builds (Main, Advanced, Hotkeys, modules) then debug-only tabs.
     g_tab_manager.AddTab(
         "Debug Messages", "debug_messages",
         [](reshade::api::effect_runtime* runtime) {
@@ -446,29 +470,6 @@ void InitializeNewUI() {
         false);
 #endif
 #endif
-
-    const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
-    for (const modules::ModuleDescriptor& module : modules_list) {
-        if (!module.has_tab || module.tab_id.empty()) {
-            continue;
-        }
-        if (g_tab_manager.HasTab(module.tab_id)) {
-            continue;
-        }
-        g_tab_manager.AddTab(
-            module.tab_name, module.tab_id,
-            [module_id = module.id](reshade::api::effect_runtime* runtime) {
-                try {
-                    display_commander::ui::ImGuiWrapperReshade wrapper;
-                    modules::DrawModuleTabById(module_id, wrapper, runtime);
-                } catch (const std::exception& e) {
-                    LogError("Error drawing module tab '%s': %s", module_id.c_str(), e.what());
-                } catch (...) {
-                    LogError("Unknown error drawing module tab '%s'", module_id.c_str());
-                }
-            },
-            module.is_advanced_tab);
-    }
 }
 
 // Draw the new UI

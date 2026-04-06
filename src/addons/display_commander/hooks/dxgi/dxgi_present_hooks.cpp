@@ -358,6 +358,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     if (g_dxgi_present_nested_depth.load() > 0) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
+    if (ShouldActivateFg2Limiter()) {
+        HandleFpsLimiterFg2Pre();
+    }
     // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
     const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
     const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
@@ -384,6 +387,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         ::OnPresentFlags2(true, false);  // Called from present_detour
         RecordNativeFrameTime();
     }
+
+
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }

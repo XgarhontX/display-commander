@@ -413,6 +413,31 @@ bool IsNativeFramePacingInSync() {
     return false;
 }
 
+ReflexMarkerTypes GetNvapiReflexMarkerTypesForFpsLimiter() {
+    auto clamp_marker = [](int value) -> int {
+        const int min_marker = 0;
+        const int max_marker = static_cast<int>(kLatencyMarkerTypeCount) - 1;
+        return (std::max)(min_marker, (std::min)(value, max_marker));
+    };
+
+    ReflexMarkerTypes markers = {};
+    markers.simulation_start =
+        clamp_marker(g_nvapi_marker_simulation_start.load(std::memory_order_relaxed));
+    markers.present_start = clamp_marker(g_nvapi_marker_present_start.load(std::memory_order_relaxed));
+    markers.present_end = clamp_marker(g_nvapi_marker_present_end.load(std::memory_order_relaxed));
+    markers.sleep = static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP);
+    return markers;
+}
+
+void ResetNvapiReflexMarkerTypesForFpsLimiter() {
+    g_nvapi_marker_simulation_start.store(static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
+                                          std::memory_order_relaxed);
+    g_nvapi_marker_present_start.store(static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
+                                       std::memory_order_relaxed);
+    g_nvapi_marker_present_end.store(static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
+                                     std::memory_order_relaxed);
+}
+
 namespace {
 bool UsePresetOverrides() {
     if (!IsNativeFramePacingInSync()) return false;
@@ -489,6 +514,16 @@ bool GetEffectiveSafeModeFpsLimiter() {
         return out.safe_mode_fps_limiter;
     }
     return settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue();
+}
+
+bool GetEffectiveFpsLimiterFg2Enabled() {
+    if (UsePresetOverrides()) {
+        settings::NativeReflexPresetOverrides out{};
+        settings::GetNativeReflexPresetOverrides(
+            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
+        return out.fps_limiter_fg2_enabled;
+    }
+    return settings::g_mainTabSettings.fps_limiter_fg2_enabled.GetValue();
 }
 
 // Global Swapchain Tracking Manager instance
@@ -592,6 +627,10 @@ std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};
 std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0};  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex detected via SetLatencyMarker calls
 std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix] = {};
+std::atomic<uint32_t> g_nvapi_d3d_setlatencymarker_last_thread_id[kNvapiSetLatencyMarkerThreadTrackCount] = {};
+std::atomic<int> g_nvapi_marker_simulation_start{static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START)};
+std::atomic<int> g_nvapi_marker_present_start{static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1};
+std::atomic<int> g_nvapi_marker_present_end{static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2};
 std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id{0};
 std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_seen{0};
 std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_suppressions{0};

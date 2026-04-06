@@ -269,28 +269,41 @@ bool ReflexProvider::FillNewestFrameDerivedForOverlay(const NV_LATENCY_RESULT_PA
     }
     const auto& fr = params.frameReport[best_i];
     out.frame_id = static_cast<uint64_t>(fr.frameID);
-    if (fr.simEndTime > fr.simStartTime) {
+    if (fr.simEndTime > 0 && fr.simStartTime > 0) {
         out.sim_duration_valid = true;
         out.sim_duration_ms = static_cast<double>(fr.simEndTime - fr.simStartTime) / 1000.0;
     }
-    if (fr.simEndTime > 0 && fr.renderSubmitStartTime >= fr.simEndTime) {
+    if (fr.simEndTime > 0 && fr.renderSubmitStartTime > 0) {
         out.sim_end_to_render_submit_start_valid = true;
         out.sim_end_to_render_submit_start_ms =
             static_cast<double>(fr.renderSubmitStartTime - fr.simEndTime) / 1000.0;
     }
-    if (fr.renderSubmitStartTime > 0 && fr.renderSubmitEndTime >= fr.renderSubmitStartTime) {
+    if (fr.renderSubmitStartTime > 0 && fr.renderSubmitEndTime > 0) {
         out.render_submit_phase_valid = true;
         out.render_submit_phase_ms =
             static_cast<double>(fr.renderSubmitEndTime - fr.renderSubmitStartTime) / 1000.0;
     }
-    if (fr.renderSubmitEndTime > 0 && fr.presentStartTime >= fr.renderSubmitEndTime) {
-        out.rs_end_to_present_start_valid = true;
-        out.rs_end_to_present_start_ms =
-            static_cast<double>(fr.presentStartTime - fr.renderSubmitEndTime) / 1000.0;
+    if (fr.presentStartTime > 0 && fr.renderSubmitStartTime > 0) {
+        out.rs_start_to_present_start_valid = true;
+        const int64_t d_rs_pr_us = static_cast<int64_t>(fr.presentStartTime)
+            - static_cast<int64_t>(fr.renderSubmitStartTime);
+        out.rs_start_to_present_start_ms = static_cast<double>(d_rs_pr_us) / 1000.0;
     }
-    if (fr.presentStartTime > 0 && fr.presentEndTime >= fr.presentStartTime) {
+    if (fr.presentStartTime > 0 && fr.renderSubmitEndTime > 0) {
+        out.rs_end_to_present_start_valid = true;
+        const int64_t d_us = static_cast<int64_t>(fr.presentStartTime)
+            - static_cast<int64_t>(fr.renderSubmitEndTime);
+        out.rs_end_to_present_start_ms = static_cast<double>(d_us) / 1000.0;
+    }
+    if (fr.presentStartTime > 0 && fr.presentEndTime > 0) {
         out.present_phase_valid = true;
         out.present_phase_ms = static_cast<double>(fr.presentEndTime - fr.presentStartTime) / 1000.0;
+    }
+    if (fr.presentEndTime > 0 && fr.renderSubmitEndTime > 0) {
+        out.present_end_to_rs_end_valid = true;
+        const int64_t d_pr_rs_us = static_cast<int64_t>(fr.renderSubmitEndTime)
+            - static_cast<int64_t>(fr.presentEndTime);
+        out.present_end_to_rs_end_ms = static_cast<double>(d_pr_rs_us) / 1000.0;
     }
     if (fr.gpuActiveRenderTimeUs > 0) {
         out.gpu_active_valid = true;

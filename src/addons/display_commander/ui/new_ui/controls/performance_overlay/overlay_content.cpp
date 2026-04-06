@@ -236,13 +236,19 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         settings::g_mainTabSettings.show_overlay_nvapi_sim_end_to_rs_start.GetValue();
     bool show_overlay_nvapi_rs_submit_duration =
         settings::g_mainTabSettings.show_overlay_nvapi_rs_submit_duration.GetValue();
+    bool show_overlay_nvapi_rs_start_to_present_start =
+        settings::g_mainTabSettings.show_overlay_nvapi_rs_start_to_present_start.GetValue();
     bool show_overlay_nvapi_rs_end_to_present_start =
         settings::g_mainTabSettings.show_overlay_nvapi_rs_end_to_present_start.GetValue();
     bool show_overlay_nvapi_present_phase_duration =
         settings::g_mainTabSettings.show_overlay_nvapi_present_phase_duration.GetValue();
+    bool show_overlay_nvapi_present_end_to_rs_end =
+        settings::g_mainTabSettings.show_overlay_nvapi_present_end_to_rs_end.GetValue();
     bool show_overlay_nvapi_gpu_active_ms = settings::g_mainTabSettings.show_overlay_nvapi_gpu_active_ms.GetValue();
     bool show_overlay_nvapi_latency_jitter_abs =
         settings::g_mainTabSettings.show_overlay_nvapi_latency_jitter_abs.GetValue();
+    bool show_overlay_nvapi_setlatencymarker_threads =
+        settings::g_mainTabSettings.show_overlay_nvapi_setlatencymarker_threads.GetValue();
 
     const bool show_clock_setting = settings::g_mainTabSettings.show_clock.GetValue();
     const bool show_playtime_setting = settings::g_mainTabSettings.show_playtime.GetValue();
@@ -628,24 +634,23 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         imgui.EndTable();
     }
 
-    // ----- Table: latency + CPU + volume -----
-    bool table4_any = show_gpu_measurement || show_cpu_usage || show_volume || show_overlay_nvapi_sim_duration
+    // ----- Latency / CPU / volume table (release-style), then module overlay, then NVAPI debug table (matches tab bar) -----
+    const bool want_nvapi_reflex_rolling_overlay = show_overlay_nvapi_sim_duration
         || show_overlay_nvapi_sim_end_to_rs_start || show_overlay_nvapi_rs_submit_duration
-        || show_overlay_nvapi_rs_end_to_present_start || show_overlay_nvapi_present_phase_duration
+        || show_overlay_nvapi_rs_start_to_present_start || show_overlay_nvapi_rs_end_to_present_start
+        || show_overlay_nvapi_present_phase_duration || show_overlay_nvapi_present_end_to_rs_end
         || show_overlay_nvapi_gpu_active_ms || show_overlay_nvapi_latency_jitter_abs;
-    if (table4_any) {
+    const bool need_nvapi_latency_params =
+        g_reflexProvider != nullptr && (show_gpu_measurement || want_nvapi_reflex_rolling_overlay);
+    NV_LATENCY_RESULT_PARAMS_V1 nv_latency_params{};
+    bool have_nv_latency_params = false;
+    if (need_nvapi_latency_params) {
+        have_nv_latency_params = g_reflexProvider->GetLatencyParamsV1(nv_latency_params);
+    }
+
+    const bool table4_public_any = show_gpu_measurement || show_cpu_usage || show_volume;
+    if (table4_public_any) {
         OverlayScalarTableBegin(imgui);
-        const bool want_pm_debug_overlay = show_overlay_nvapi_sim_duration || show_overlay_nvapi_sim_end_to_rs_start
-            || show_overlay_nvapi_rs_submit_duration || show_overlay_nvapi_rs_end_to_present_start
-            || show_overlay_nvapi_present_phase_duration || show_overlay_nvapi_gpu_active_ms
-            || show_overlay_nvapi_latency_jitter_abs;
-        const bool need_nvapi_latency_params =
-            g_reflexProvider != nullptr && (show_gpu_measurement || want_pm_debug_overlay);
-        NV_LATENCY_RESULT_PARAMS_V1 nv_latency_params{};
-        bool have_nv_latency_params = false;
-        if (need_nvapi_latency_params) {
-            have_nv_latency_params = g_reflexProvider->GetLatencyParamsV1(nv_latency_params);
-        }
 
         if (show_gpu_measurement) {
             bool shown = false;
@@ -675,118 +680,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             }
         }
 
-        if (want_pm_debug_overlay && have_nv_latency_params) {
-            const DLSSGSummaryLite dlss_lite_pm = GetDLSSGSummaryLite();
-            const int fg_mode_pm = dlss_lite_pm.fg_mode;
-            ReflexProvider::NvapiReflexNewestFrameDerived derived{};
-            if (ReflexProvider::FillNewestFrameDerivedForOverlay(nv_latency_params, fg_mode_pm, derived)) {
-                constexpr double k_pm_ema_alpha = 0.02;
-                static double s_ema_sim_ms = 0.0;
-                static bool s_ema_sim_inited = false;
-                static double s_ema_sim_to_rs_ms = 0.0;
-                static bool s_ema_sim_to_rs_inited = false;
-                static double s_ema_rs_phase_ms = 0.0;
-                static bool s_ema_rs_phase_inited = false;
-                static double s_ema_rs_to_pr_ms = 0.0;
-                static bool s_ema_rs_to_pr_inited = false;
-                static double s_ema_present_phase_ms = 0.0;
-                static bool s_ema_present_phase_inited = false;
-                static double s_ema_gpu_active_ms = 0.0;
-                static bool s_ema_gpu_inited = false;
-                static double s_ema_jitter_ms = 0.0;
-                static bool s_ema_jitter_inited = false;
-                static uint64_t s_last_jitter_frame_id = 0;
-                static double s_prev_latency_L = 0.0;
-                static bool s_have_prev_latency_L = false;
-
-                if (show_overlay_nvapi_sim_duration && derived.sim_duration_valid) {
-                    s_ema_sim_ms = s_ema_sim_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_sim_ms + k_pm_ema_alpha * derived.sim_duration_ms :
-                        derived.sim_duration_ms;
-                    s_ema_sim_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "SimΔ", "Reflex sim duration", show_tooltips,
-                                         "NVAPI Reflex: simulation_end − simulation_start on the newest completed "
-                                         "frame (µs domain). Rolling average; not PresentMon MsCPUBusy.",
-                                         "%.2f ms", s_ema_sim_ms);
-                }
-                if (show_overlay_nvapi_sim_end_to_rs_start && derived.sim_end_to_render_submit_start_valid) {
-                    s_ema_sim_to_rs_ms = s_ema_sim_to_rs_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_sim_to_rs_ms
-                            + k_pm_ema_alpha * derived.sim_end_to_render_submit_start_ms :
-                        derived.sim_end_to_render_submit_start_ms;
-                    s_ema_sim_to_rs_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "Sim→RS", "Sim end → render submit start", show_tooltips,
-                                         "NVAPI Reflex: renderSubmitStartTime − simulationEndTime on the newest "
-                                         "completed frame (µs domain). Rolling average; gap between sim end and GPU "
-                                         "submit start.",
-                                         "%.2f ms", s_ema_sim_to_rs_ms);
-                }
-                if (show_overlay_nvapi_rs_submit_duration && derived.render_submit_phase_valid) {
-                    s_ema_rs_phase_ms = s_ema_rs_phase_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_rs_phase_ms + k_pm_ema_alpha * derived.render_submit_phase_ms :
-                        derived.render_submit_phase_ms;
-                    s_ema_rs_phase_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "RSΔ", "Render submit duration", show_tooltips,
-                                         "NVAPI Reflex: renderSubmitEndTime − renderSubmitStartTime on the newest "
-                                         "completed frame (µs domain). Rolling average.",
-                                         "%.2f ms", s_ema_rs_phase_ms);
-                }
-                if (show_overlay_nvapi_rs_end_to_present_start && derived.rs_end_to_present_start_valid) {
-                    s_ema_rs_to_pr_ms = s_ema_rs_to_pr_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_rs_to_pr_ms
-                            + k_pm_ema_alpha * derived.rs_end_to_present_start_ms :
-                        derived.rs_end_to_present_start_ms;
-                    s_ema_rs_to_pr_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "RS→Pr", "RS end → present start", show_tooltips,
-                                         "NVAPI Reflex: presentStartTime − renderSubmitEndTime on the newest completed "
-                                         "frame (µs domain). Rolling average.",
-                                         "%.2f ms", s_ema_rs_to_pr_ms);
-                }
-                if (show_overlay_nvapi_present_phase_duration && derived.present_phase_valid) {
-                    s_ema_present_phase_ms = s_ema_present_phase_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_present_phase_ms
-                            + k_pm_ema_alpha * derived.present_phase_ms :
-                        derived.present_phase_ms;
-                    s_ema_present_phase_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "PrΔ", "Present phase", show_tooltips,
-                                         "NVAPI Reflex: presentEndTime − presentStartTime on the newest completed "
-                                         "frame (µs domain). Rolling average.",
-                                         "%.2f ms", s_ema_present_phase_ms);
-                }
-                if (show_overlay_nvapi_gpu_active_ms && derived.gpu_active_valid) {
-                    s_ema_gpu_active_ms = s_ema_gpu_inited ?
-                        (1.0 - k_pm_ema_alpha) * s_ema_gpu_active_ms + k_pm_ema_alpha * derived.gpu_active_render_ms :
-                        derived.gpu_active_render_ms;
-                    s_ema_gpu_inited = true;
-                    OverlayTableRow_Text(imgui, label_mode, "GPU act", "Reflex GPU active", show_tooltips,
-                                         "NVAPI gpuActiveRenderTimeUs (newest frame): driver-reported GPU busy time "
-                                         "excluding idles. Rolling average; not PresentMon MsGPUBusy (ETW).",
-                                         "%.2f ms", s_ema_gpu_active_ms);
-                }
-                if (show_overlay_nvapi_latency_jitter_abs) {
-                    if (derived.osd_latency_valid && derived.frame_id != s_last_jitter_frame_id) {
-                        if (s_have_prev_latency_L) {
-                            const double j =
-                                std::fabs(derived.osd_latency_estimate_ms - s_prev_latency_L);
-                            s_ema_jitter_ms = s_ema_jitter_inited ?
-                                (1.0 - k_pm_ema_alpha) * s_ema_jitter_ms + k_pm_ema_alpha * j :
-                                j;
-                            s_ema_jitter_inited = true;
-                        }
-                        s_prev_latency_L = derived.osd_latency_estimate_ms;
-                        s_have_prev_latency_L = true;
-                        s_last_jitter_frame_id = derived.frame_id;
-                    }
-                    if (s_ema_jitter_inited) {
-                        OverlayTableRow_Text(
-                            imgui, label_mode, "AnimErr", "Animation error", show_tooltips,
-                            "When frame_id advances: absolute change vs previous overlay latency estimate (same formula "
-                            "as Lat. row). Rolling average; not PresentMon MsAnimationError.",
-                            "%.2f ms", s_ema_jitter_ms);
-                    }
-                }
-            }
-        }
         if (show_cpu_usage) {
             LONGLONG cpu_time_ns =
                 ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
@@ -838,6 +731,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                      "Game volume | system volume.", "%.0f%% / %.0f%%", current_volume, system_volume);
             }
         }
+
         imgui.EndTable();
     }
 
@@ -902,6 +796,174 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     modules::DrawEnabledModulesInOverlay(imgui);
+
+    if ((want_nvapi_reflex_rolling_overlay && have_nv_latency_params)
+        || show_overlay_nvapi_setlatencymarker_threads) {
+        OverlayScalarTableBegin(imgui);
+        const DLSSGSummaryLite dlss_lite_pm = GetDLSSGSummaryLite();
+        const int fg_mode_pm = dlss_lite_pm.fg_mode;
+        ReflexProvider::NvapiReflexNewestFrameDerived derived{};
+        if (want_nvapi_reflex_rolling_overlay && have_nv_latency_params
+            && ReflexProvider::FillNewestFrameDerivedForOverlay(nv_latency_params, fg_mode_pm, derived)) {
+            constexpr double k_pm_ema_alpha = 0.02;
+            static double s_ema_sim_ms = 0.0;
+            static bool s_ema_sim_inited = false;
+            static double s_ema_sim_to_rs_ms = 0.0;
+            static bool s_ema_sim_to_rs_inited = false;
+            static double s_ema_rs_phase_ms = 0.0;
+            static bool s_ema_rs_phase_inited = false;
+            static double s_ema_rs_start_to_pr_ms = 0.0;
+            static bool s_ema_rs_start_to_pr_inited = false;
+            static double s_ema_rs_to_pr_ms = 0.0;
+            static bool s_ema_rs_to_pr_inited = false;
+            static double s_ema_present_phase_ms = 0.0;
+            static bool s_ema_present_phase_inited = false;
+            static double s_ema_pr_end_to_rs_end_ms = 0.0;
+            static bool s_ema_pr_end_to_rs_end_inited = false;
+            static double s_ema_gpu_active_ms = 0.0;
+            static bool s_ema_gpu_inited = false;
+            static double s_ema_jitter_ms = 0.0;
+            static bool s_ema_jitter_inited = false;
+            static uint64_t s_last_jitter_frame_id = 0;
+            static double s_prev_latency_L = 0.0;
+            static bool s_have_prev_latency_L = false;
+
+            if (show_overlay_nvapi_sim_duration && derived.sim_duration_valid) {
+                s_ema_sim_ms = s_ema_sim_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_sim_ms + k_pm_ema_alpha * derived.sim_duration_ms :
+                    derived.sim_duration_ms;
+                s_ema_sim_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "sim_start -> sim_end", "sim_start -> sim_end", show_tooltips,
+                                     "Rolling average, newest frame, NvAPI GetLatency (µs domain).",
+                                     "%.2f ms", s_ema_sim_ms);
+            }
+            if (show_overlay_nvapi_sim_end_to_rs_start && derived.sim_end_to_render_submit_start_valid) {
+                s_ema_sim_to_rs_ms = s_ema_sim_to_rs_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_sim_to_rs_ms
+                        + k_pm_ema_alpha * derived.sim_end_to_render_submit_start_ms :
+                    derived.sim_end_to_render_submit_start_ms;
+                s_ema_sim_to_rs_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "sim_end -> render_submit_start",
+                                     "sim_end -> render_submit_start", show_tooltips,
+                                     "Rolling average, newest frame, NvAPI GetLatency (µs domain).",
+                                     "%.2f ms", s_ema_sim_to_rs_ms);
+            }
+            if (show_overlay_nvapi_rs_submit_duration && derived.render_submit_phase_valid) {
+                s_ema_rs_phase_ms = s_ema_rs_phase_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_rs_phase_ms + k_pm_ema_alpha * derived.render_submit_phase_ms :
+                    derived.render_submit_phase_ms;
+                s_ema_rs_phase_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "render_submit_start -> render_submit_end",
+                                     "render_submit_start -> render_submit_end", show_tooltips,
+                                     "Rolling average, newest frame, NvAPI GetLatency (µs domain).",
+                                     "%.2f ms", s_ema_rs_phase_ms);
+            }
+            if (show_overlay_nvapi_rs_start_to_present_start && derived.rs_start_to_present_start_valid) {
+                s_ema_rs_start_to_pr_ms = s_ema_rs_start_to_pr_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_rs_start_to_pr_ms
+                        + k_pm_ema_alpha * derived.rs_start_to_present_start_ms :
+                    derived.rs_start_to_present_start_ms;
+                s_ema_rs_start_to_pr_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "render_submit_start -> present_start",
+                                     "render_submit_start -> present_start", show_tooltips,
+                                     "present_start − render_submit_start (µs→ms), signed when both set. Rolling avg, "
+                                     "NvAPI GetLatency.",
+                                     "%.2f ms", s_ema_rs_start_to_pr_ms);
+            }
+            if (show_overlay_nvapi_rs_end_to_present_start && derived.rs_end_to_present_start_valid) {
+                s_ema_rs_to_pr_ms = s_ema_rs_to_pr_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_rs_to_pr_ms
+                        + k_pm_ema_alpha * derived.rs_end_to_present_start_ms :
+                    derived.rs_end_to_present_start_ms;
+                s_ema_rs_to_pr_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "render_submit_end -> present_start",
+                                     "render_submit_end -> present_start", show_tooltips,
+                                     "present_start − render_submit_end (µs→ms), signed when both set. Rolling avg, "
+                                     "NvAPI GetLatency.",
+                                     "%.2f ms", s_ema_rs_to_pr_ms);
+            }
+            if (show_overlay_nvapi_present_phase_duration && derived.present_phase_valid) {
+                s_ema_present_phase_ms = s_ema_present_phase_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_present_phase_ms
+                        + k_pm_ema_alpha * derived.present_phase_ms :
+                    derived.present_phase_ms;
+                s_ema_present_phase_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "present_start -> present_end", "present_start -> present_end",
+                                     show_tooltips,
+                                     "Rolling average, newest frame, NvAPI GetLatency (µs domain).",
+                                     "%.2f ms", s_ema_present_phase_ms);
+            }
+            if (show_overlay_nvapi_present_end_to_rs_end && derived.present_end_to_rs_end_valid) {
+                s_ema_pr_end_to_rs_end_ms = s_ema_pr_end_to_rs_end_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_pr_end_to_rs_end_ms
+                        + k_pm_ema_alpha * derived.present_end_to_rs_end_ms :
+                    derived.present_end_to_rs_end_ms;
+                s_ema_pr_end_to_rs_end_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "present_end -> render_submit_end",
+                                     "present_end -> render_submit_end", show_tooltips,
+                                     "render_submit_end − present_end (µs→ms), signed when both set. Rolling avg, "
+                                     "NvAPI GetLatency.",
+                                     "%.2f ms", s_ema_pr_end_to_rs_end_ms);
+            }
+            if (show_overlay_nvapi_gpu_active_ms && derived.gpu_active_valid) {
+                s_ema_gpu_active_ms = s_ema_gpu_inited ?
+                    (1.0 - k_pm_ema_alpha) * s_ema_gpu_active_ms + k_pm_ema_alpha * derived.gpu_active_render_ms :
+                    derived.gpu_active_render_ms;
+                s_ema_gpu_inited = true;
+                OverlayTableRow_Text(imgui, label_mode, "GPU act", "Reflex GPU active", show_tooltips,
+                                     "NVAPI gpuActiveRenderTimeUs (newest frame): driver-reported GPU busy time "
+                                     "excluding idles. Rolling average; not PresentMon MsGPUBusy (ETW).",
+                                     "%.2f ms", s_ema_gpu_active_ms);
+            }
+            if (show_overlay_nvapi_latency_jitter_abs) {
+                if (derived.osd_latency_valid && derived.frame_id != s_last_jitter_frame_id) {
+                    if (s_have_prev_latency_L) {
+                        const double j = std::fabs(derived.osd_latency_estimate_ms - s_prev_latency_L);
+                        s_ema_jitter_ms = s_ema_jitter_inited ?
+                            (1.0 - k_pm_ema_alpha) * s_ema_jitter_ms + k_pm_ema_alpha * j :
+                            j;
+                        s_ema_jitter_inited = true;
+                    }
+                    s_prev_latency_L = derived.osd_latency_estimate_ms;
+                    s_have_prev_latency_L = true;
+                    s_last_jitter_frame_id = derived.frame_id;
+                }
+                if (s_ema_jitter_inited) {
+                    OverlayTableRow_Text(
+                        imgui, label_mode, "AnimErr", "Animation error", show_tooltips,
+                        "When frame_id advances: absolute change vs previous overlay latency estimate (same formula "
+                        "as Lat. row). Rolling average; not PresentMon MsAnimationError.",
+                        "%.2f ms", s_ema_jitter_ms);
+                }
+            }
+        }
+        if (show_overlay_nvapi_setlatencymarker_threads) {
+            static constexpr const char* k_marker_tid_short[kNvapiSetLatencyMarkerThreadTrackCount] = {
+                "m sim_s", "m sim_e", "m rs_s", "m rs_e", "m pr_s", "m pr_e", "m in_sm"};
+            static constexpr const char* k_marker_tid_full[kNvapiSetLatencyMarkerThreadTrackCount] = {
+                "SetLatencyMarker: sim_start (TID)", "SetLatencyMarker: sim_end (TID)",
+                "SetLatencyMarker: render_submit_start (TID)", "SetLatencyMarker: render_submit_end (TID)",
+                "SetLatencyMarker: present_start (TID)", "SetLatencyMarker: present_end (TID)",
+                "SetLatencyMarker: input_sample (TID)"};
+            for (size_t i = 0; i < kNvapiSetLatencyMarkerThreadTrackCount; ++i) {
+                const uint32_t tid =
+                    g_nvapi_d3d_setlatencymarker_last_thread_id[i].load(std::memory_order_relaxed);
+                char value_buf[48];
+                if (tid != 0) {
+                    std::snprintf(value_buf, sizeof(value_buf), "%u (0x%X)", tid, tid);
+                } else {
+                    value_buf[0] = '-';
+                    value_buf[1] = '-';
+                    value_buf[2] = '\0';
+                }
+                OverlayTableRow_Text(imgui, label_mode, k_marker_tid_short[i], k_marker_tid_full[i], show_tooltips,
+                                     "Last thread ID seen in NvAPI_D3D_SetLatencyMarker detour for this marker type "
+                                     "(SIMULATION_START..INPUT_SAMPLE).",
+                                     "%s", value_buf);
+            }
+        }
+        imgui.EndTable();
+    }
 }
 
 }  // namespace ui::new_ui

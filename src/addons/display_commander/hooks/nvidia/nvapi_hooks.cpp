@@ -267,13 +267,12 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         g_nvapi_d3d_last_global_frame_id_by_marker_type[marker_type].store(
             g_global_frame_id.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
+    if (marker_type >= 0 && marker_type < static_cast<int>(kNvapiSetLatencyMarkerThreadTrackCount)) {
+        g_nvapi_d3d_setlatencymarker_last_thread_id[static_cast<size_t>(marker_type)].store(
+            static_cast<uint32_t>(GetCurrentThreadId()), std::memory_order_relaxed);
+    }
 
-    const ReflexMarkerTypes nvapi_markers = {
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
-        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
-    };
+    const ReflexMarkerTypes nvapi_markers = GetNvapiReflexMarkerTypesForFpsLimiter();
     #ifdef FIX_REFLEX
     NV_LATENCY_MARKER_TYPE marker_type_org = pSetLatencyMarkerParams->markerType;
     if (pSetLatencyMarkerParams->markerType <= NV_LATENCY_MARKER_TYPE::PRESENT_END) {
@@ -506,12 +505,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
     auto res= NvAPI_D3D_Sleep_Original(pDev);
 
     #ifdef USE_REFLEX_SLEEP
-    const ReflexMarkerTypes nvapi_markers = {
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
-        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
-        static_cast<int>(DCLatencyMarkers::REFLEX_SLEEP),
-    };
+    const ReflexMarkerTypes nvapi_markers = GetNvapiReflexMarkerTypesForFpsLimiter();
 
     uint64_t frame_id = g_latency_marker_buffer_per_type[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load(std::memory_order_relaxed) + 1;
     ProcessReflexMarkerFpsLimiter(

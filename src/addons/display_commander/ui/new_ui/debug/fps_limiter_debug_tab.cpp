@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 // Libraries <standard C++>
+#include <algorithm>
 #include <cinttypes>
 #include <cstdio>
 #include <string>
@@ -65,6 +66,43 @@ void DrawFpsLimiterDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
         "GetDLSSGSummaryLite() is sampled when this tab draws; target FPS and fg_mode-at-pre are updated inside "
         "HandleFpsLimiterPre each present. If fg_mode is 0 but effective target is half of native, the limiter path "
         "may still be pacing for a lower cap (compare modes and call rates). DEBUG_TABS / bd.ps1 -DebugTabs.");
+    imgui.Spacing();
+
+    imgui.Separator();
+    imgui.Spacing();
+    imgui.TextUnformatted("NVAPI marker mapping (runtime only)");
+    imgui.TextUnformatted("Affects NVAPI FPS limiter mapping only. Resets on restart.");
+
+    auto draw_marker_input = [&](const char* label, std::atomic<int>& marker_value) {
+        int value = marker_value.load(std::memory_order_relaxed);
+        if (ImGui::InputInt(label, &value, 1, 1)) {
+            const int min_marker = 0;
+            const int max_marker = static_cast<int>(kLatencyMarkerTypeCount) - 1;
+            value = (std::max)(min_marker, (std::min)(value, max_marker));
+            marker_value.store(value, std::memory_order_relaxed);
+        }
+    };
+
+    draw_marker_input("simulation_start marker", g_nvapi_marker_simulation_start);
+    draw_marker_input("present_start marker", g_nvapi_marker_present_start);
+    draw_marker_input("present_end marker", g_nvapi_marker_present_end);
+
+    if (imgui.Button("Reset NVAPI marker defaults")) {
+        ResetNvapiReflexMarkerTypesForFpsLimiter();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Restores defaults used before runtime configurability:\n"
+            "simulation_start=SIMULATION_START, present_start=PRESENT_START-1, present_end=PRESENT_END-2.");
+    }
+
+    const ReflexMarkerTypes marker_snapshot = GetNvapiReflexMarkerTypesForFpsLimiter();
+    const bool has_duplicate_markers = marker_snapshot.simulation_start == marker_snapshot.present_start
+                                       || marker_snapshot.simulation_start == marker_snapshot.present_end
+                                       || marker_snapshot.present_start == marker_snapshot.present_end;
+    if (has_duplicate_markers) {
+        imgui.TextUnformatted("Warning: duplicate marker IDs can reduce pacing accuracy.");
+    }
     imgui.Spacing();
 
     const DLSSGSummaryLite lite = GetDLSSGSummaryLite();

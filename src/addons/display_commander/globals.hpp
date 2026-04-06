@@ -345,7 +345,8 @@ enum class FpsLimiterPreset : std::uint8_t {
     kDCPaceLockQ3 = 3,  // DCPaceLock(q=3)
     kPaceGenerated = 4,           // Pace generated frames
     kPaceGeneratedSafe = 5,       // Pace generated (safe) - Reshade APIs fallback
-    kCustom = 6                   // Custom (configure manually)
+    kCustom = 6,                   // Custom (configure manually)
+    kLowLatencyNativePacingV2 = 7,  // Pace real frames Low-latency (native frame pacing) - experimental
 };
 
 enum class InputBlockingMode : std::uint8_t {
@@ -679,6 +680,11 @@ struct ReflexMarkerTypes {
     int sleep;
 };
 
+/** Build NVAPI marker mapping snapshot for FPS limiter path (runtime-configurable first 3 values). */
+ReflexMarkerTypes GetNvapiReflexMarkerTypesForFpsLimiter();
+/** Reset runtime NVAPI marker mapping to defaults used before configurability was added. */
+void ResetNvapiReflexMarkerTypesForFpsLimiter();
+
 /** Shared Reflex latency-marker handling (NVAPI and Vulkan NVLL). Calls NotifyGameSetLatencyMarkerCall, runs FPS
  * limiter logic, and optionally forwards the marker via the callback. Returns 0 on success; callback returns 0 on
  * success. marker_types supplies the API-specific values for SIMULATION_START, PRESENT_START, PRESENT_END. */
@@ -700,6 +706,7 @@ bool GetEffectiveUseStreamlineProxyFpsLimiter();
 bool GetEffectiveNativePacingSimStartOnly();
 bool GetEffectiveDelayPresentStartAfterSimEnabled();
 bool GetEffectiveSafeModeFpsLimiter();
+bool GetEffectiveFpsLimiterFg2Enabled();
 
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
@@ -911,6 +918,14 @@ extern std::atomic<bool> g_native_reflex_detected;             // Native Reflex 
 constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;
 /** For each of the first 6 marker types (0..5), last g_global_frame_id when we received that marker (0 = not yet). */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix];
+/** NvAPI_D3D_SetLatencyMarker detour: last calling thread ID for markerType 0..6 (SIMULATION_START..INPUT_SAMPLE). 0 =
+ * never seen. */
+constexpr size_t kNvapiSetLatencyMarkerThreadTrackCount = 7;
+extern std::atomic<uint32_t> g_nvapi_d3d_setlatencymarker_last_thread_id[kNvapiSetLatencyMarkerThreadTrackCount];
+/** Runtime-configurable NVAPI marker mapping used by FPS limiter path (Debug FPS limiter tab; not persisted). */
+extern std::atomic<int> g_nvapi_marker_simulation_start;
+extern std::atomic<int> g_nvapi_marker_present_start;
+extern std::atomic<int> g_nvapi_marker_present_end;
 /** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id;
 /** Number of nvapi_QueryInterface calls with NvAPI_D3D12_SetFlipConfig ID (0xF3148C42) in this session. */

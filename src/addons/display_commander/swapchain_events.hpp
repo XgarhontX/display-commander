@@ -47,6 +47,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swa
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
 void OnPresentUpdateAfter2(bool frame_generation_aware = false);
 void OnPresentFlags2(bool from_present_detour = true, bool frame_generation_aware = false);
+bool ShouldActivateFg2Limiter();
+void HandleFpsLimiterFg2Pre();
 
 // ============================================================================
 // POWER SAVING HELPER FUNCTIONS

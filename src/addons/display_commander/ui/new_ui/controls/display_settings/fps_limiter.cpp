@@ -387,6 +387,38 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
     imgui.Indent();
     DrawDisplaySettings_FpsLimiterAdvanced(imgui, fps_limiter_checkbox_column_gutter);
+    {
+        #if DISPLAY_COMMANDER_DEBUG_TABS
+        const DLSSGSummaryLite fg2_lite = GetDLSSGSummaryLite();
+        const bool fg2_dlss_g = fg2_lite.fg_mode >= 2;
+        const bool fg2_ui_ok = enabled && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+                               && static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue())
+                                      == FrameTimeMode::kPresent;
+        {
+            imgui.Spacing();
+            {
+                bool fg2_on = settings::g_mainTabSettings.fps_limiter_fg2_enabled.GetValue();
+                if (imgui.Checkbox("Experimental setting", &fg2_on)) {
+                    settings::g_mainTabSettings.fps_limiter_fg2_enabled.SetValue(fg2_on);
+                   // LogInfo("2nd FPS limiter (FG): %s", fg2_on ? "on" : "off");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "DebugTabs-only: secondary pre-only pacer for generated frames on top of main limiter.");
+                }
+                imgui.SameLine();
+                imgui.SetNextItemWidth(220.f);
+                if (SliderFloatSetting(settings::g_mainTabSettings.fps_limiter_fg2_target_boost_percent,
+                                       "FG target boost", "%.1f %%", imgui)) {
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Secondary limiter target = main FPS limit x (1 + this%%). 0%% = same cap as main; up to 10%%.");
+                }
+            }
+        }
+        #endif
+    }
     imgui.Unindent();
 
     // After Reflex / advanced FPS UI so FPS Limiter Mode sits next to Reflex without a debug header in between.
@@ -594,7 +626,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     } else {
         // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-        if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kCustom)) {
+        if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacingV2)) {
             settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(FpsLimiterPreset::kDCPaceLockQ2);
         }
         FpsLimiterPreset preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();

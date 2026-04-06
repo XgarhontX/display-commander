@@ -1326,6 +1326,61 @@ float GetDelayBiasFromRatio(int ratio_index) {
     return ratio_index * 0.125f;
 }
 
+static std::atomic<LONGLONG> g_fg2_onpresent_sync_frame_start_ns{0};
+
+bool ShouldActivateFg2Limiter() {
+    if (!GetEffectiveFpsLimiterFg2Enabled()) {
+        return false;
+    }
+   // if (static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue()) != FrameTimeMode::kPresent) {
+  //      return false;
+  //  }
+  //  if (!s_fps_limiter_enabled.load(std::memory_order_relaxed)
+  //      || s_fps_limiter_mode.load(std::memory_order_relaxed) != FpsLimiterMode::kOnPresentSync) {
+  //      return false;
+  //  }
+    // Restrict FG2 to the real-frame pacing presets.
+//    if (settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()
+ //       > static_cast<int>(FpsLimiterPreset::kDCPaceLockQ3)) {
+   //     return false;
+ //   }
+    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+    return lite.fg_mode >= 2;
+}
+
+void HandleFpsLimiterFg2Pre() {
+    if (!ShouldActivateFg2Limiter()) {
+        return;
+    }
+    const auto start_time_ns = utils::get_now_ns();
+    CALL_GUARD(start_time_ns);
+    if (g_global_frame_id.load(std::memory_order_relaxed) < kFpsLimiterWarmupFrames) {
+        return;
+    }
+    const float base_limit = GetTargetFps();
+    if (base_limit <= 0.0f) {
+        return;
+    }
+    float pct = settings::g_mainTabSettings.fps_limiter_fg2_target_boost_percent.GetValue();
+   // pct = (std::max)(0.f, (std::min)(10.f, pct));
+    const float target_fps = base_limit * (1.0f + pct / 100.0f);
+    if (target_fps < 10.0f) {
+        return;
+    }
+    const LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / target_fps);
+    const LONGLONG previous_frame_start_ns = g_fg2_onpresent_sync_frame_start_ns.load(std::memory_order_relaxed);
+    const LONGLONG ideal_frame_start_ns = (std::max)(start_time_ns, previous_frame_start_ns + frame_time_ns);
+    if (ideal_frame_start_ns > start_time_ns) {
+        LONGLONG wait_target_ns = ideal_frame_start_ns;
+        constexpr LONGLONG k_fps_limiter_max_wait_ns = 100 * utils::NS_TO_MS;
+        if (wait_target_ns - start_time_ns > k_fps_limiter_max_wait_ns) {
+            wait_target_ns = start_time_ns + k_fps_limiter_max_wait_ns;
+        }
+        utils::wait_until_ns(wait_target_ns);
+    }
+    g_fg2_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns, std::memory_order_relaxed);
+}
+
 void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware = false) {
     auto start_time_ns = utils::get_now_ns();
     CALL_GUARD(start_time_ns);

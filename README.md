@@ -10,6 +10,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **Community**: [Display Commander Discord](https://discord.gg/mHMaF6nZ) — help, updates, and discussion.
 
+
 ## 📥 Latest Builds
 
 | Architecture | Download |
