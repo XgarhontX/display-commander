@@ -41,6 +41,10 @@ uint32_t GetNGXCounterValue(NGXCounterKind kind);
 int GetDebugDLSSGMultiFrameCountOverride();
 void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count);
 
+/** Debug-only DLSSG.MultiFrameCountMax (cap) on the same EvaluateFeature path: -1 = game default, 0–5 same numeric mapping as multiplier. */
+int GetDebugDLSSGMultiFrameCountMaxOverride();
+void SetDebugDLSSGMultiFrameCountMaxOverride(int multiframe_count_max);
+
 /** Debug-only frame-gen operating mode on the same EvaluateFeature path (D3D11/D3D12/Vulkan): -1 = game default, 0 = off, 1 = on, 2 = auto. */
 int GetDebugDLSSGModeOverride();
 void SetDebugDLSSGModeOverride(int mode);
@@ -49,7 +53,7 @@ void SetDebugDLSSGModeOverride(int mode);
 int GetDebugDLSSGEnableInterpOverride();
 void SetDebugDLSSGEnableInterpOverride(int enable_interp);
 
-/** How many times FG debug overrides were pushed on EvaluateFeature (D3D11/D3D12/Vulkan; at least one of multiplier/mode/interpolation). */
+/** How many times FG debug overrides were pushed on EvaluateFeature (D3D11/D3D12/Vulkan; at least one of multiplier/max/mode/interpolation). */
 uint64_t GetDebugDLSSGEvaluateOverrideApplyCount();
 /** Monotonic ns timestamp of last such push; 0 if never. */
 uint64_t GetDebugDLSSGEvaluateOverrideLastApplyTimeNs();

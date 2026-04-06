@@ -27,6 +27,9 @@ Planned:
 
 
 
+## v0.13.152 (2026-04-05)
+- [ui] [hooks] ** cap frame generation (dev build only)** - Added setting max FG rate to dev build as well as FG rate.
+
 ## v0.13.151 (2026-04-05)
 - [ui] **Performance overlay: add show Resolution** - Removed "show DLSS Resolution" in favor of **Resolution** (internal→backbuffer when DLSS is on, backbuffer-only otherwise). Important Info places the toggle under **FPS & core display**, not **DLSS / NGX**.
 

@@ -99,6 +99,7 @@ static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 namespace {
 // Debug tab: session-only overrides for frame generation on D3D11/D3D12/Vulkan EvaluateFeature (-1 = use game values).
 std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
+std::atomic<int> s_debug_dlssg_mfc_max{-1};
 std::atomic<int> s_debug_dlssg_mode{-1};
 std::atomic<int> s_debug_dlssg_enable_interp{-1};
 
@@ -119,6 +120,17 @@ void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count) {
         return;
     }
     s_debug_dlssg_multiframe_mfc.store(multiframe_count, std::memory_order_relaxed);
+}
+
+int GetDebugDLSSGMultiFrameCountMaxOverride() {
+    return s_debug_dlssg_mfc_max.load(std::memory_order_relaxed);
+}
+
+void SetDebugDLSSGMultiFrameCountMaxOverride(int multiframe_count_max) {
+    if (multiframe_count_max < -1 || multiframe_count_max > 5) {
+        return;
+    }
+    s_debug_dlssg_mfc_max.store(multiframe_count_max, std::memory_order_relaxed);
 }
 
 int GetDebugDLSSGModeOverride() {
@@ -1462,7 +1474,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
 
 namespace {
 
-// Debug NGX tab: push multiplier/mode onto the same NVSDK_NGX_Parameter object the game passes to EvaluateFeature.
+// Debug NGX tab: push multiplier/max/mode onto the same NVSDK_NGX_Parameter object the game passes to EvaluateFeature.
 void ApplyDebugDLSSGParameterOverridesForEvaluate(NVSDK_NGX_Parameter* param,
                                                   const NVSDK_NGX_Handle* feature_handle) {
     CALL_GUARD_NO_TS();
@@ -1481,6 +1493,14 @@ void ApplyDebugDLSSGParameterOverridesForEvaluate(NVSDK_NGX_Parameter* param,
         const unsigned int v = static_cast<unsigned int>(mfc_override);
         NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
         g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
+        any_applied = true;
+    }
+
+    const int mfc_max_override = s_debug_dlssg_mfc_max.load(std::memory_order_relaxed);
+    if (mfc_max_override >= 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+        const unsigned int v = static_cast<unsigned int>(mfc_max_override);
+        NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCountMax, v);
+        g_ngx_parameters.update_uint("DLSSG.MultiFrameCountMax", v);
         any_applied = true;
     }
 

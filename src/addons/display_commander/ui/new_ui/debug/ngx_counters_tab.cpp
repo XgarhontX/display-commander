@@ -136,14 +136,27 @@ void DrawNGXCountersTab(display_commander::ui::IImGuiWrapper& imgui) {
         "Session-only frame generation tweaks apply on D3D11/D3D12 EvaluateFeature for the tracked frame-generation "
         "handle, using that call's parameter object.");
     imgui.Spacing();
+    static const char* kMfcLabels[] = {"Default", "1x", "2x", "3x", "4x", "5x", "6x"};
+    constexpr int kMfcLabelCount = static_cast<int>(sizeof(kMfcLabels) / sizeof(kMfcLabels[0]));
     imgui.TextUnformatted("Multiplier (1x–6x)");
     {
-        static const char* kMfcLabels[] = {"Default", "1x", "2x", "3x", "4x", "5x", "6x"};
-        constexpr int kMfcLabelCount = static_cast<int>(sizeof(kMfcLabels) / sizeof(kMfcLabels[0]));
         const int stored = GetDebugDLSSGMultiFrameCountOverride();
         int combo_idx = (stored < 0) ? 0 : (stored + 1);
         if (imgui.Combo("##debug_ngx_mfc", &combo_idx, kMfcLabels, kMfcLabelCount)) {
             SetDebugDLSSGMultiFrameCountOverride((combo_idx <= 0) ? -1 : (combo_idx - 1));
+        }
+    }
+    imgui.TextUnformatted("Max multiplier (DLSSG.MultiFrameCountMax)");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Session cap in NGX units (same mapping as Multiplier). NVIDIA: max generated frames the feature allows "
+            "(e.g. 3 for 4x).");
+    }
+    {
+        const int stored_max = GetDebugDLSSGMultiFrameCountMaxOverride();
+        int combo_max_idx = (stored_max < 0) ? 0 : (stored_max + 1);
+        if (imgui.Combo("##debug_ngx_mfc_max", &combo_max_idx, kMfcLabels, kMfcLabelCount)) {
+            SetDebugDLSSGMultiFrameCountMaxOverride((combo_max_idx <= 0) ? -1 : (combo_max_idx - 1));
         }
     }
     imgui.TextUnformatted("Operating mode");
