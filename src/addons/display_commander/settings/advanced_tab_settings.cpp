@@ -23,7 +23,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       prevent_minimize("PreventMinimize", true, "DisplayCommander"),
       flush_command_queue_before_sleep("FlushCommandQueueBeforeSleep", true, "DisplayCommander"),
       enqueue_gpu_completion("EnqueueGpuCompletion", true, "DisplayCommander"),
-      hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
 
@@ -78,7 +77,7 @@ void AdvancedTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &flush_command_queue_before_sleep,
-            &enqueue_gpu_completion, &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
+            &enqueue_gpu_completion, &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
 
             &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
@@ -99,7 +98,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
     return {&continue_rendering,
             &flush_command_queue_before_sleep,
             &enqueue_gpu_completion,
-            &hide_hdr_capabilities,
             &enable_flip_chain,
             &auto_colorspace,
             &enable_hotkeys,

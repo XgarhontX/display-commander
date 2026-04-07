@@ -75,53 +75,7 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_GET_HDR_CAPABILITIES].fetch_add(1);
 
-    // Log the call (first few times only)
-    static int log_count = 0;
-    if (log_count < 3) {
-        LogInfo("NVAPI HDR Capabilities called - DisplayId: %u hide_hdr_capabilities: %d", displayId,
-                settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
-        log_count++;
-    }
-
-    if (settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
-        // Hide HDR capabilities by returning a modified structure
-        if (pHdrCapabilities != nullptr) {
-            // Call original function first to get the real capabilities
-            NvAPI_Status result = NVAPI_OK;
-            if (NvAPI_Disp_GetHdrCapabilities_Original != nullptr) {
-                result = NvAPI_Disp_GetHdrCapabilities_Original(displayId, pHdrCapabilities);
-            } else {
-                result = NVAPI_NO_IMPLEMENTATION;
-            }
-
-            // If we got valid data, modify it to hide HDR capabilities
-            if (result == NVAPI_OK) {
-                // Set all HDR-related flags to false
-                pHdrCapabilities->isST2084EotfSupported = 0;
-                pHdrCapabilities->isTraditionalHdrGammaSupported = 0;
-                pHdrCapabilities->isTraditionalSdrGammaSupported = 1;  // Keep SDR support
-                pHdrCapabilities->isHdr10PlusSupported = 0;
-                pHdrCapabilities->isHdr10PlusGamingSupported = 0;
-                pHdrCapabilities->isDolbyVisionSupported = 0;
-
-                // Set driver to not expand HDR parameters
-                pHdrCapabilities->driverExpandDefaultHdrParameters = 0;
-
-                static int hdr_hidden_count = 0;
-                if (hdr_hidden_count < 3) {
-                    LogInfo("NVAPI HDR hiding: Modified HDR capabilities for DisplayId: %u", displayId);
-                    hdr_hidden_count++;
-                }
-            }
-
-            return result;
-        } else {
-            // If pHdrCapabilities is null, just return error
-            return NVAPI_NO_IMPLEMENTATION;
-        }
-    }
-
-    // HDR hiding disabled - call original function normally
+    // Call original function normally
     if (NvAPI_Disp_GetHdrCapabilities_Original != nullptr) {
         return NvAPI_Disp_GetHdrCapabilities_Original(displayId, pHdrCapabilities);
     }

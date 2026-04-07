@@ -490,26 +490,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
             LogDxgiErrorUpTo10("IDXGISwapChain3::CheckColorSpaceSupport", hr, &s_err_count);
         }
 
-        // Hide HDR capabilities if enabled
-        if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr
-            && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
-            bool is_hdr_colorspace = false;
-            switch (ColorSpace) {
-                case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
-                case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
-                case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020:
-                case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709:
-                case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
-                    is_hdr_colorspace = true;
-                    break;
-                default: break;
-            }
-
-            if (is_hdr_colorspace) {
-                *pColorSpaceSupport = 0;
-            }
-        }
-
         return hr;
     }
 

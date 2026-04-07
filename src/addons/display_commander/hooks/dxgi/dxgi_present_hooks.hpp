@@ -22,7 +22,7 @@
  * Present / Present1 (VSync override, FPS limiter, timing),
  * fullscreen state (exclusive fullscreen prevention),
  * ResizeBuffers / ResizeTarget / ResizeBuffers1 (render resolution),
- * CheckColorSpaceSupport (HDR capability hiding). No stats-only / logging-only detours.
+ * CheckColorSpaceSupport. No stats-only / logging-only detours.
  */
 
 namespace display_commanderhooks::dxgi {

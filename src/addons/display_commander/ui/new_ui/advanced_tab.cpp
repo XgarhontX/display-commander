@@ -25,7 +25,6 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
 void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
                                     display_commander::ui::IImGuiWrapper& imgui);
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
-void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 
 void InitAdvancedTab() {
@@ -145,65 +144,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api, disp
             "When enabled, ApplyWindowChange will not be called automatically.\n"
             "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
             "Default: disabled (window changes are applied automatically).");
-    }
-
-    imgui.Unindent();
-}
-
-void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    // Hide HDR Capabilities
-    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
-                        "Hide display's HDR capabilities from game", imgui)) {
-        LogInfo("HDR hiding setting changed to: %s",
-                settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Tries to prevent the game from turning on its HDR.\n"
-            "Hides HDR capabilities from the game by intercepting CheckColorSpaceSupport and GetDesc calls,\n"
-            "so the game may use SDR mode instead.");
-    }
-
-    // Disable DPI Scaling checkbox
-    if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling", imgui)) {
-        bool enabled = settings::g_advancedTabSettings.disable_dpi_scaling.GetValue();
-        LogInfo("Disable DPI scaling setting changed to: %s", enabled ? "true" : "false");
-
-        if (enabled) {
-            display_commander::display::dpi::DisableDPIScaling();
-        } else {
-            display_commander::display::dpi::EnableDPIScaling();
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Makes the process DPI-aware to prevent Windows from bitmap-scaling the application.\n"
-            "Uses AppCompat registry for persistence across restarts.\n"
-            "Requires a game restart to take full effect.");
-    }
-
-    // Show upgrade status
-    if (s_d3d9e_upgrade_successful.load()) {
-        imgui.Indent();
-        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " D3D9 upgraded to D3D9Ex successfully");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
-                "Your game is now using the enhanced D3D9Ex API.");
-        }
-        imgui.Unindent();
-    } else if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
-               || settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
-        imgui.Indent();
-        imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Waiting for D3D9 device creation...");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "The upgrade will occur when the game creates a Direct3D 9 device.\n"
-                "If the game is not using D3D9, this setting has no effect.");
-        }
-        imgui.Unindent();
     }
 
     imgui.Unindent();
@@ -626,18 +566,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                 "- Incompatibility with some games\n\n"
                 "Use at your own risk!");
         }
-        imgui.Unindent();
-    }
-
-    // Unsupported/unfinished features
-    if (imgui.CollapsingHeader("Unsupported/unfinished features", wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-
-        // HDR and Display Settings (under unsupported)
-        if (imgui.CollapsingHeader("HDR and Display Settings", wrapper_flags::TreeNodeFlags_None)) {
-            DrawHdrDisplaySettings(api, imgui);
-        }
-
         imgui.Unindent();
     }
 }

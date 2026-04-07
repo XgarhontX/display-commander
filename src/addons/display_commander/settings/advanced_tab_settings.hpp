@@ -36,8 +36,7 @@ class AdvancedTabSettings {
      * latency/GPU timing. */
     BoolSetting enqueue_gpu_completion;
 
-    // HDR and Colorspace Settings
-    BoolSetting hide_hdr_capabilities;
+    // Colorspace Settings
     BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
 

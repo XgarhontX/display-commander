@@ -72,7 +72,6 @@ static const KeyDisplayName k_key_display_names[] = {
     {"ContinueRendering", "Continue Rendering in Background (Fake Fullscreen)"},
     {"PreventMinimize", "Prevent Minimize"},
     {"PreventAlwaysOnTop", "Prevent Always on Top"},
-    {"HideHDRCapabilities", "Hide HDR Capabilities"},
     {"EnableFlipChain", "Enable Flip Chain"},
     {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
     {"AutoColorspace", "Auto color space"},
