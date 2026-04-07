@@ -546,7 +546,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 
 #if !defined(DC_LITE)
         bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
-        if (imgui.Checkbox("SR preset (DRS+DC)", &show_driver_dlss_sr_preset)) {
+        if (imgui.Checkbox("SR preset", &show_driver_dlss_sr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_sr_preset.SetValue(show_driver_dlss_sr_preset);
         }
         if (imgui.IsItemHovered()) {
@@ -559,7 +559,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
-        if (imgui.Checkbox("RR preset (DRS+DC)", &show_driver_dlss_rr_preset)) {
+        if (imgui.Checkbox("RR preset", &show_driver_dlss_rr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_rr_preset.SetValue(show_driver_dlss_rr_preset);
         }
         if (imgui.IsItemHovered()) {

@@ -314,7 +314,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                 const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
                     false, drv_merge_ptr, true, sr_current_value);
                 imgui.TextColored(merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
-                                  "SR preset (DRS+DC): %s", merged.primary.c_str());
+                                  "SR preset: %s", merged.primary.c_str());
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx("%s", merged.tooltip.c_str());
                 }
@@ -348,7 +348,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                 const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
                     true, drv_merge_ptr, true, rr_current_value);
                 imgui.TextColored(merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
-                                  "RR preset (DRS+DC): %s", merged.primary.c_str());
+                                  "RR preset: %s", merged.primary.c_str());
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx("%s", merged.tooltip.c_str());
                 }

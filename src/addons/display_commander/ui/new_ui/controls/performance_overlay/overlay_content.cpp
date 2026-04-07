@@ -545,14 +545,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
         if (show_dlss_status) {
             if (any_dlss_active) {
-                std::string status_text = "On";
-                if (dlss_lite.ray_reconstruction_active) {
-                    status_text += " (RR)";
-                } else if (dlss_lite.dlss_g_active) {
-                    status_text += " (DLSS-G)";
-                }
                 OverlayTableRow_TextColored(imgui, label_mode, "DLSS", "DLSS", ui::colors::TEXT_SUCCESS, show_tooltips,
-                                            nullptr, "%s", status_text.c_str());
+                                            nullptr, "%s", "On");
             } else {
                 OverlayTableRow_TextColored(imgui, label_mode, "DLSS", "DLSS", ui::colors::TEXT_DIMMED, show_tooltips,
                                             nullptr, "%s", "Off");
@@ -592,7 +586,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 std::string sr_tip = merged.tooltip;
                 sr_tip += "\nNGX default preset for loaded nvngx_dlss.dll: ";
                 sr_tip += sr_ngx_letter;
-                OverlayTableRow_TextColored(imgui, label_mode, "SR pr", "SR preset (DRS+DC)", col, show_tooltips,
+                OverlayTableRow_TextColored(imgui, label_mode, "SR pr", "SR preset", col, show_tooltips,
                                             sr_tip.c_str(), "%s", sr_line.c_str());
             }
             if (show_driver_dlss_rr_preset) {
@@ -606,7 +600,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 std::string rr_tip = merged.tooltip;
                 rr_tip += "\nNGX default preset for loaded nvngx_dlssd.dll: ";
                 rr_tip += rr_ngx_letter;
-                OverlayTableRow_TextColored(imgui, label_mode, "RR pr", "RR preset (DRS+DC)", col, show_tooltips,
+                OverlayTableRow_TextColored(imgui, label_mode, "RR pr", "RR preset", col, show_tooltips,
                                             rr_tip.c_str(), "%s", rr_line.c_str());
             }
         }

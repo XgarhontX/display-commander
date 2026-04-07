@@ -27,6 +27,9 @@ Planned:
 
 
 
+## v0.13.153 (2026-04-06)
+- [ui] **Performance overlay DLSS status** - **DLSS Status** line now shows only **On** or **Off** (no RR / DLSS-G suffix; use **FG Mode**, **DLSS Quality**, or driver preset lines for detail).
+
 ## v0.13.152 (2026-04-05)
 - [ui] [settings] **Internal code changes needed to develop new fps limiter**
 
@@ -47,7 +50,7 @@ Planned:
 - [bugfix] [ui] **Frame Generation (DLSS-G) detection: fewer false positives** - Fixed logic for detecing whenever Frame Generation is on.
 
 ## v0.13.146 (2026-04-05)
-- [bugfix] [ui] **Driver DLSS preset (DRS) cache no longer expires on a timer** - The NVIDIA driver profile read used for **SR preset (DRS+DC)** / **RR preset (DRS+DC)** in the overlay and DLSS UI was refreshed about every three seconds, which could cause brief stutter.
+- [bugfix] [ui] **Driver DLSS preset (DRS) cache no longer expires on a timer** - The NVIDIA driver profile read used for **SR preset** / **RR preset** in the overlay and DLSS UI was refreshed about every three seconds, which could cause brief stutter.
 
 ## v0.13.145 (2026-04-05)
 - [settings] [cleanup] **`default_settings.toml` template: global ReShade paths** - The file created under Display Commander AppData when missing now includes a commented example for **`ReShadeGlobalShadersTexturesPathsEnabled`** so users can default-on global shader/texture search paths for games that do not yet have the key.

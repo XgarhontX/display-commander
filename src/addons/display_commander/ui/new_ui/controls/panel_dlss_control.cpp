@@ -146,7 +146,7 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
                     false, drv_ptr, preset_override_on_panel,
                     settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
             imgui.TextColored(merged_sr.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
-                              "SR preset (DRS+DC): %s", merged_sr.primary.c_str());
+                              "SR preset: %s", merged_sr.primary.c_str());
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("%s", merged_sr.tooltip.c_str());
             }
@@ -155,7 +155,7 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
                     true, drv_ptr, preset_override_on_panel,
                     settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
             imgui.TextColored(merged_rr.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
-                              "RR preset (DRS+DC): %s", merged_rr.primary.c_str());
+                              "RR preset: %s", merged_rr.primary.c_str());
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("%s", merged_rr.tooltip.c_str());
             }
