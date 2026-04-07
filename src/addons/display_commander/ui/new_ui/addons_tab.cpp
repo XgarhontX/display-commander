@@ -41,6 +41,7 @@ namespace {
 constexpr const char* kDisplayCommanderSection = "DisplayCommander";
 constexpr const char* kConfigKeyGlobalShadersPathsEnabled = "ReShadeGlobalShadersTexturesPathsEnabled";
 constexpr const char* kConfigKeyScreenshotPathEnabled = "ReShadeScreenshotPathEnabled";
+constexpr wchar_t kGlobalShadersMarkerFileName[] = L".DC_GLOBAL_SHADERS";
 
 bool GetLocalReShadeSettingBool(const char* key, bool default_value) {
     bool value = default_value;
@@ -118,6 +119,37 @@ bool IsGlobalShadersEnabled() {
 bool SetGlobalShadersEnabled(bool enabled) {
     SetLocalReShadeSettingBool(kConfigKeyGlobalShadersPathsEnabled, enabled, "ReShade global shaders/textures toggle");
     return true;
+}
+
+std::filesystem::path GetGlobalShadersMarkerPathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) return {};
+    return dc_root / kGlobalShadersMarkerFileName;
+}
+
+bool IsGlobalShadersMarkerEnabled() {
+    std::filesystem::path marker_path = GetGlobalShadersMarkerPathNoCreate();
+    if (marker_path.empty()) return false;
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
+bool SetGlobalShadersMarkerEnabled(bool enabled) {
+    std::filesystem::path marker_path = GetGlobalShadersMarkerPathNoCreate();
+    if (enabled) {
+        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
+        if (dc_root.empty()) return false;
+        marker_path = dc_root / kGlobalShadersMarkerFileName;
+        std::error_code ec;
+        std::filesystem::create_directories(dc_root, ec);
+        if (ec) return false;
+        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
+        return marker_file.good();
+    }
+    if (marker_path.empty()) return true;
+    std::error_code ec;
+    std::filesystem::remove(marker_path, ec);
+    return !ec;
 }
 
 std::filesystem::path GetDcConfigGlobalMarkerPathNoCreate() {
@@ -1176,22 +1208,24 @@ void DrawShadersHeader(display_commander::ui::IImGuiWrapper& imgui) {
                 kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled);
         }
 
-        bool all_games_enabled = IsPerGameFoldersEnabled();
-        if (imgui.Checkbox("Enable for all games (global config marker)", &all_games_enabled)) {
-            if (!SetPerGameFoldersEnabled(all_games_enabled)) {
-                all_games_enabled = IsPerGameFoldersEnabled();
+        bool all_games_enabled = IsGlobalShadersMarkerEnabled();
+        if (imgui.Checkbox("Enable for all games (global shaders marker)", &all_games_enabled)) {
+            if (!SetGlobalShadersMarkerEnabled(all_games_enabled)) {
+                all_games_enabled = IsGlobalShadersMarkerEnabled();
+            } else {
+                ApplyReShadeSettingsImmediately();
             }
         }
         if (imgui.IsItemHovered()) {
-            std::filesystem::path marker_path = GetDcConfigGlobalMarkerPathNoCreate();
+            std::filesystem::path marker_path = GetGlobalShadersMarkerPathNoCreate();
             if (marker_path.empty()) {
                 marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
-                              / L".DC_CONFIG_GLOBAL";
+                              / kGlobalShadersMarkerFileName;
             }
             imgui.SetTooltipEx(
-                "Applies Display Commander config routing to all games by toggling marker file:\n"
+                "Forces global shader/texture search paths for all games by toggling marker file:\n"
                 "%s\n"
-                "This is the same marker used by the Per game folders section.",
+                "Overrides per-game shader checkbox/config while marker exists.",
                 GetPathRelativeToDocuments(marker_path).c_str());
         }
 
