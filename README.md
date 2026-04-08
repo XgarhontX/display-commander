@@ -8,7 +8,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **Latest stable release**: [Latest Release](https://github.com/pmnoxx/display-commander/releases) - Compatible with ReShade 6.6.2
 
-**Community**: [Display Commander Discord](https://discord.gg/huyYjqcu) — help, updates, and discussion.
+**Community**: [Display Commander Discord](https://discord.gg/mHMaF6nZ) — help, updates, and discussion.
 
 ## 📥 Latest Builds
 
@@ -109,7 +109,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
 
 **Quick Support Links:**
-- **Display Commander Discord**: [discord.gg/huyYjqcu](https://discord.gg/huyYjqcu) — primary community for Display Commander (help, updates, feature discussion).
+- **Display Commander Discord**: [discord.gg/mHMaF6nZ](https://discord.gg/mHMaF6nZ) — primary community for Display Commander (help, updates, feature discussion).
 - **RenoDX Discord**: [Join our community](https://discord.com/invite/jz6ujVpgFB)
 - **Support Thread**: [Display Commander Support](https://discord.com/channels/1408098019194310818/1486668882776293558)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
