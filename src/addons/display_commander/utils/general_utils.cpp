@@ -573,6 +573,27 @@ std::string GetGameNameFromProcess() {
     return parent_name.empty() ? "Game" : parent_name;
 }
 
+std::filesystem::path GetGameInstallRootPathFromProcess() {
+    WCHAR buf[MAX_PATH];
+    if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {
+        return std::filesystem::path();
+    }
+    const std::filesystem::path exe_path(buf);
+    std::filesystem::path dir = exe_path.parent_path();
+    for (int depth = 0; depth < 64 && !dir.empty(); ++depth) {
+        const std::filesystem::path par = dir.parent_path();
+        const std::wstring seg = dir.filename().wstring();
+        if (!seg.empty() && !IsGenericGameInstallFolderSegment(seg)) {
+            return dir;
+        }
+        if (par == dir) {
+            break;
+        }
+        dir = par;
+    }
+    return exe_path.parent_path();
+}
+
 std::filesystem::path GetGameFolderFromProcess() {
     WCHAR buf[MAX_PATH];
     if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {

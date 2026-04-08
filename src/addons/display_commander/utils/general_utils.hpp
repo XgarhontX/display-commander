@@ -98,6 +98,10 @@ std::filesystem::path GetDisplayCommanderReshadeConfigsFolder();
 // Win64, Win32, Bin, x64, x86); falls back to exe stem. Empty on failure.
 std::string GetGameNameFromProcess();
 
+// Install root used with .DC_CONFIG_GLOBAL (same walk as GetGameNameFromProcess): e.g. ...\Steam\...\Wuthering Waves.
+// Falls back to the exe directory when every segment is generic. Empty on failure.
+std::filesystem::path GetGameInstallRootPathFromProcess();
+
 // Process exe's parent directory (game folder). Empty on failure.
 std::filesystem::path GetGameFolderFromProcess();
 

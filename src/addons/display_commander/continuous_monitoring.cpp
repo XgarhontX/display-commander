@@ -134,17 +134,50 @@ void TrySetGameWindowFromForeground() {
     g_last_swapchain_hwnd.store(fg, std::memory_order_release);
 }
 
+namespace {
+
+// When Continue rendering is on, some titles lose sync with the real Alt state after alt-tab; a single unhooked
+// Alt keydown can realign them. Down-only by design (no keyup). Uses physical L/R Alt via GetAsyncKeyState_Direct.
+void MaybeInjectForegroundAltDownOnContinueRendering() {
+    const SHORT left = display_commanderhooks::GetAsyncKeyState_Direct(VK_LMENU);
+    const SHORT right = display_commanderhooks::GetAsyncKeyState_Direct(VK_RMENU);
+    if ((left & 0x8000) != 0 || (right & 0x8000) != 0) {
+        return;
+    }
+    INPUT input{};
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = VK_LMENU;
+    input.ki.wScan = static_cast<WORD>(MapVirtualKey(static_cast<UINT>(VK_LMENU), MAPVK_VK_TO_VSC));
+    input.ki.dwFlags = 0;
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = 0;
+    const UINT sent = (display_commanderhooks::SendInput_Original != nullptr)
+                          ? display_commanderhooks::SendInput_Original(1, &input, sizeof(INPUT))
+                          : SendInput(1, &input, sizeof(INPUT));
+    if (sent == 1) {
+        LogInfo("[ForegroundAlt] injected VK_LMENU keydown after foreground (Continue rendering on)");
+    }
+}
+
+}  // namespace
+
 void check_is_background() {
     CALL_GUARD_NO_TS();
     HWND hwnd = g_last_swapchain_hwnd.load();
 
     // BACKGROUND DETECTION: Run at least once (no early return) so g_app_in_background and
     // g_last_foreground_background_switch_ns are set; downstream (e.g. NVAPI VRR cache) relies on this.
+    const bool prev_in_bg = g_app_in_background.load(std::memory_order_acquire);
     bool app_in_background = IsAppInBackground();
     static bool first_time = true;
 
-    if (app_in_background != g_app_in_background.load() || first_time) {
+    if (app_in_background != prev_in_bg || first_time) {
         first_time = false;
+
+        if (settings::g_advancedTabSettings.continue_rendering.GetValue() && prev_in_bg && !app_in_background) {
+            MaybeInjectForegroundAltDownOnContinueRendering();
+        }
+
         g_app_in_background.store(app_in_background);
         g_last_foreground_background_switch_ns.store(static_cast<LONGLONG>(utils::get_now_ns()),
                                                      std::memory_order_release);
