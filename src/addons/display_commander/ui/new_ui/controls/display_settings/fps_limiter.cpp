@@ -821,16 +821,19 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
             drawPclStatsCheckbox();
         }
     }
-    // Suppress Reflex Sleep checkbox
+    // Advanced reflex options
     imgui.Spacing();
-    if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
-        LogInfo("Suppress Reflex Sleep %s",
-                settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
-            "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+    if (imgui.TreeNodeEx("Advanced", ImGuiTreeNodeFlags_None)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
+            LogInfo("Suppress Reflex Sleep %s",
+                    settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
+                "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+        }
+        imgui.TreePop();
     }
 }
 

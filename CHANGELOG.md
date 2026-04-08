@@ -26,10 +26,11 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 
+## Unreleased
+- [ui] **Reflex sleep toggle moved under Advanced** - In FPS Limiter -> Reflex, **Suppress Reflex Sleep** is now grouped inside an **Advanced** tree node to keep the main Reflex section cleaner while preserving the same behavior.
 
 ## v0.13.163 (2026-04-07)
 - [bugfix] [ui] **Native FPS now works even when FPS Counter is off** - You can enable **Native FPS** independently, so the native Reflex-based FPS line still appears even if the regular **FPS Counter** line is disabled.
-  **Details:** performance overlay rendering path no longer requires `show_fps_counter` to show the `show_native_fps` row.
 
 ## v0.13.162 (2026-04-07)
 - [new feature] [settings] [compatibility] **Installer marker now reports resolved source and roots** - `.display_commander_installer_marker.json` now includes additional fields so installers can reliably tell which folder naming/path logic was used: game install root, derived games folder name, and whether the active config path came from default logic or from marker override.
