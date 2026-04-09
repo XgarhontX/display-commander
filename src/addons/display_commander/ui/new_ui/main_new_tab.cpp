@@ -230,6 +230,29 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
 }
 
+void ShowMainTabTopWarnings(display_commander::ui::IImGuiWrapper& imgui) {
+    // Config save failure warning at the top
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:config", std::memory_order_release);
+    auto config_save_failure_path = g_config_save_failure_path.load();
+    if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
+                          config_save_failure_path->c_str());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("The configuration file could not be saved. Check file permissions and disk space.");
+        }
+        imgui.Spacing();
+    }
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:vulkan1_not_loaded", std::memory_order_release);
+    static bool vulkan1loaded = (GetModuleHandleW(L"vulkan-1.dll") != nullptr);
+    if (!g_vulkan1_loaded_during_process_attach_init.load(std::memory_order_acquire) && vulkan1loaded) {
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING
+                          "Display Commander was loaded before Vulkan Layer got initialized, "
+                          "consider loading Display Commander as vulkan-1.dll or .addon64");
+    }
+}
+
 }  // anonymous namespace
 
 // Performance overlay / graphs / timeline implementations were extracted into:
@@ -479,18 +502,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Spacing();
     }
 
-    // Config save failure warning at the top
-    g_rendering_ui_section.store("ui:tab:main_new:warnings:config", std::memory_order_release);
-    auto config_save_failure_path = g_config_save_failure_path.load();
-    if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
-                          config_save_failure_path->c_str());
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("The configuration file could not be saved. Check file permissions and disk space.");
-        }
-        imgui.Spacing();
-    }
+    ShowMainTabTopWarnings(imgui);
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
     // LoadFromDllMain warning (config read once; requires restart to pick up ini changes)
