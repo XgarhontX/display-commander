@@ -30,6 +30,8 @@ struct ModuleDescriptor {
     std::string description;
     bool enabled = false;
     bool show_in_overlay = false;
+    /** When false, the module's top-level overlay tab is hidden (module may still run if enabled). */
+    bool show_tab = true;
     bool has_tab = false;
     std::string tab_name;
     std::string tab_id;
@@ -81,6 +83,7 @@ struct ModuleRegistrationSpec {
     ModuleDescriptor descriptor;
     bool default_enabled = false;
     bool default_show_in_overlay = false;
+    bool default_show_tab = true;
     ModuleInitializeCallback initialize_fn = nullptr;
     ModuleTickCallback tick_fn = nullptr;
     ModuleReshadePresentBeforeCallback reshade_present_before_fn = nullptr;
@@ -106,6 +109,8 @@ bool IsModuleEnabled(std::string_view module_id);
 bool SetModuleEnabled(std::string_view module_id, bool enabled);
 bool IsModuleOverlayEnabled(std::string_view module_id);
 bool SetModuleOverlayEnabled(std::string_view module_id, bool enabled);
+bool IsModuleTabShown(std::string_view module_id);
+bool SetModuleTabShown(std::string_view module_id, bool shown);
 bool IsModuleTabVisible(std::string_view tab_id);
 void TickEnabledModules();
 /** For each enabled module with `reshade_present_before_fn`, invoke it (ReShade present-before path). */

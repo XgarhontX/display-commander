@@ -117,6 +117,7 @@ void RegisterPublicModules() {
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
         entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
         entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -143,11 +144,12 @@ void RegisterPublicModules() {
         spec.descriptor.is_advanced_tab = false;
         spec.default_enabled = true;
         spec.default_show_in_overlay = false;
+        spec.default_show_tab = false;
         spec.initialize_fn = &audio::Initialize;
         spec.on_enabled_fn = &audio::OnEnabled;
         spec.draw_tab_fn = &audio::DrawTab;
         spec.draw_overlay_fn = &audio::DrawOverlay;
-        spec.draw_main_tab_inline_fn = &audio::DrawMainTabInline;
+        // Main-tab "Audio Control" is drawn only from optional panels (Show Audio Control), not beside Features.
         audio::FillHotkeys(&spec.hotkeys);
         audio::FillActions(&spec.actions);
 
@@ -156,6 +158,7 @@ void RegisterPublicModules() {
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
         entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
         entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -195,6 +198,7 @@ void RegisterPublicModules() {
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
         entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
         entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -226,6 +230,7 @@ void RegisterPrivateModules() {
         entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
         entry.descriptor.show_in_overlay =
             entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -394,6 +399,27 @@ bool SetModuleOverlayEnabled(std::string_view module_id, bool enabled) {
     return true;
 }
 
+bool IsModuleTabShown(std::string_view module_id) {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+    const ModuleEntry* entry = FindModuleEntryConst(module_id);
+    return (entry != nullptr) ? entry->descriptor.show_tab : false;
+}
+
+bool SetModuleTabShown(std::string_view module_id, bool shown) {
+    InitializeModuleRegistry();
+    utils::SRWLockExclusive lock(g_modules_lock);
+    ModuleEntry* entry = FindModuleEntry(module_id);
+    if (entry == nullptr) {
+        return false;
+    }
+    entry->descriptor.show_tab = shown;
+    if (entry->config_api) {
+        entry->config_api->SetBool("show_tab", shown);
+    }
+    return true;
+}
+
 bool IsModuleTabVisible(std::string_view tab_id) {
     InitializeModuleRegistry();
     utils::SRWLockShared lock(g_modules_lock);
@@ -402,7 +428,7 @@ bool IsModuleTabVisible(std::string_view tab_id) {
             continue;
         }
         if (entry.descriptor.tab_id == tab_id) {
-            return entry.descriptor.enabled;
+            return entry.descriptor.enabled && entry.descriptor.show_tab;
         }
     }
     return true;

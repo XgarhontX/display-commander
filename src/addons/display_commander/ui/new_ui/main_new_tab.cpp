@@ -407,6 +407,18 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.SetTooltipEx("%s", module.description.c_str());
             }
 
+            if (enabled && module.has_tab) {
+                imgui.SameLine();
+                bool show_tab = module.show_tab;
+                const std::string tab_label = "Tab##" + module.id;
+                if (imgui.Checkbox(tab_label.c_str(), &show_tab)) {
+                    modules::SetModuleTabShown(module.id, show_tab);
+                    LogInfo("Module '%s' tab %s", module.id.c_str(), show_tab ? "shown" : "hidden");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx("Show the %s tab in the overlay tab bar.", module.tab_name.c_str());
+                }
+            }
             if (enabled) {
                 imgui.SameLine();
                 bool show_overlay = module.show_in_overlay;

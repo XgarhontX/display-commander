@@ -738,8 +738,7 @@ void DrawOverlay(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawMainTabInline(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime) {
     (void)runtime;
-    // Main tab optional panel "Audio Control" already embeds the same settings (DrawTab); avoid a second header.
-    if (settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
+    if (!settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
         return;
     }
     imgui.Spacing();
