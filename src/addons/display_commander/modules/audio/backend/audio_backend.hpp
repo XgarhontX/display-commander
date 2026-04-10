@@ -58,3 +58,9 @@ struct AudioDeviceFormatInfo {
     std::string raw_format_utf8;            // Raw WAVEFORMATEX/WAVEFORMATEXTENSIBLE fields for tooltip
 };
 bool GetDefaultAudioDeviceFormatInfo(AudioDeviceFormatInfo* out);
+// Call only from a thread that has already initialized COM (e.g. STA via CoInitializeEx for the sampler worker).
+bool GetDefaultAudioDeviceFormatInfo_AssumeComInitialized(AudioDeviceFormatInfo* out);
+bool GetAudioMeterPeaksForUi_AssumeComInitialized(unsigned int* effective_meter_channel_count_out,
+                                                  std::vector<float>* peak_values_0_1_out);
+bool GetAllChannelVolumesForCurrentProcess_AssumeComInitialized(std::vector<float>* out_volumes_0_1,
+                                                                  unsigned int* channel_count_out);

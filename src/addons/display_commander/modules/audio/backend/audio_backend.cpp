@@ -1023,20 +1023,14 @@ static std::string FormatTagToDisplayString(DWORD tag) {
     }
 }
 
-bool GetDefaultAudioDeviceFormatInfo(AudioDeviceFormatInfo* out) {
+static bool GetDefaultAudioDeviceFormatInfo_Impl(AudioDeviceFormatInfo* out) {
     if (out == nullptr) {
         return false;
     }
     *out = AudioDeviceFormatInfo{};
 
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    const bool did_init = SUCCEEDED(hr);
-    if (!did_init && hr != RPC_E_CHANGED_MODE) {
-        LogWarn("CoInitializeEx failed for audio device format info");
-        return false;
-    }
-
     bool success = false;
+    HRESULT hr = S_OK;
     IMMDeviceEnumerator* device_enumerator = nullptr;
     IMMDevice* device = nullptr;
     IAudioClient* audio_client = nullptr;
@@ -1136,7 +1130,91 @@ bool GetDefaultAudioDeviceFormatInfo(AudioDeviceFormatInfo* out) {
     if (audio_client != nullptr) audio_client->Release();
     if (device != nullptr) device->Release();
     if (device_enumerator != nullptr) device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
+    return success;
+}
+
+bool GetDefaultAudioDeviceFormatInfo_AssumeComInitialized(AudioDeviceFormatInfo* out) {
+    return GetDefaultAudioDeviceFormatInfo_Impl(out);
+}
+
+bool GetDefaultAudioDeviceFormatInfo(AudioDeviceFormatInfo* out) {
+    if (out == nullptr) {
+        return false;
+    }
+
+    const HRESULT hr_init = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr_init);
+    if (!did_init && hr_init != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio device format info");
+        return false;
+    }
+
+    const bool success = GetDefaultAudioDeviceFormatInfo_Impl(out);
+
+    if (did_init && hr_init != RPC_E_CHANGED_MODE) CoUninitialize();
+
+    return success;
+}
+
+bool GetAudioMeterPeaksForUi_AssumeComInitialized(unsigned int* effective_meter_channel_count_out,
+                                                  std::vector<float>* peak_values_0_1_out) {
+    if (effective_meter_channel_count_out == nullptr || peak_values_0_1_out == nullptr) {
+        return false;
+    }
+    *effective_meter_channel_count_out = 0;
+    peak_values_0_1_out->clear();
+
+    HRESULT hr = S_OK;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioMeterInformation* meter = nullptr;
+    bool success = false;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr) break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr) break;
+        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&meter));
+        if (FAILED(hr) || meter == nullptr) break;
+        UINT32 meter_count = 0;
+        if (FAILED(meter->GetMeteringChannelCount(&meter_count)) || meter_count == 0) break;
+
+        peak_values_0_1_out->resize(static_cast<size_t>(meter_count));
+        hr = meter->GetChannelsPeakValues(meter_count, peak_values_0_1_out->data());
+        if (SUCCEEDED(hr)) {
+            *effective_meter_channel_count_out = static_cast<unsigned int>(meter_count);
+            success = true;
+            break;
+        }
+        if (meter_count > 6) {
+            peak_values_0_1_out->resize(6);
+            hr = meter->GetChannelsPeakValues(6, peak_values_0_1_out->data());
+            if (SUCCEEDED(hr)) {
+                *effective_meter_channel_count_out = 6;
+                success = true;
+                break;
+            }
+        }
+        if (meter_count > 2) {
+            peak_values_0_1_out->resize(2);
+            hr = meter->GetChannelsPeakValues(2, peak_values_0_1_out->data());
+            if (SUCCEEDED(hr)) {
+                *effective_meter_channel_count_out = 2;
+                success = true;
+                break;
+            }
+        }
+    } while (false);
+
+    if (meter != nullptr) meter->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+
+    if (!success) {
+        peak_values_0_1_out->clear();
+        *effective_meter_channel_count_out = 0;
+    }
     return success;
 }

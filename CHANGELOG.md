@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.169 (2026-04-10)
+- [bugfix] [ui] **Smoother Audio control and VU overlay** - Device info, level meters, and per-channel volume readouts are updated on a background thread instead of hammering Windows audio APIs every overlay frame, which reduces stutter when the Audio section or VU bars are open.
+
 ## v0.13.168 (2026-04-10)
 - [cleanup] [ui] **Debug tabs merged under one Debug tab** - When built with debug tabs enabled, the overlay shows a single **Debug** top-level tab; former debug panels are inner tabs so the tab bar stays shorter.
 

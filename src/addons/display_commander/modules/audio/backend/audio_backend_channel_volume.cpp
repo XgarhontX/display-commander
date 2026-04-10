@@ -11,7 +11,8 @@
 
 namespace {
 
-bool GetChannelVolumeControlForCurrentProcess(IChannelAudioVolume** out_volume, UINT* out_count) {
+bool GetChannelVolumeControlForCurrentProcess(IChannelAudioVolume** out_volume, UINT* out_count,
+                                              bool assume_com_initialized) {
     if (out_volume == nullptr || out_count == nullptr) {
         return false;
     }
@@ -19,11 +20,15 @@ bool GetChannelVolumeControlForCurrentProcess(IChannelAudioVolume** out_volume, 
     *out_count = 0;
 
     const DWORD target_pid = GetCurrentProcessId();
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    const bool did_init = SUCCEEDED(hr);
-    if (!did_init && hr != RPC_E_CHANGED_MODE) {
-        LogWarn("CoInitializeEx failed for channel volume");
-        return false;
+    HRESULT hr = S_OK;
+    bool did_init = false;
+    if (!assume_com_initialized) {
+        hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        did_init = SUCCEEDED(hr);
+        if (!did_init && hr != RPC_E_CHANGED_MODE) {
+            LogWarn("CoInitializeEx failed for channel volume");
+            return false;
+        }
     }
 
     bool success = false;
@@ -74,7 +79,7 @@ bool GetChannelVolumeControlForCurrentProcess(IChannelAudioVolume** out_volume, 
     if (session_manager != nullptr) session_manager->Release();
     if (device != nullptr) device->Release();
     if (device_enumerator != nullptr) device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+    if (!assume_com_initialized && did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     return success;
 }
@@ -85,7 +90,7 @@ bool GetChannelVolumeCountForCurrentProcess(unsigned int* channel_count_out) {
     if (channel_count_out == nullptr) return false;
     IChannelAudioVolume* pv = nullptr;
     UINT n = 0;
-    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n)) {
+    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n, false)) {
         return false;
     }
     *channel_count_out = n;
@@ -96,7 +101,7 @@ bool GetChannelVolumeCountForCurrentProcess(unsigned int* channel_count_out) {
 bool SetChannelVolumeForCurrentProcess(unsigned int channel_index, float volume_0_1) {
     IChannelAudioVolume* pv = nullptr;
     UINT n = 0;
-    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n)) {
+    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n, false)) {
         return false;
     }
     float clamped = (std::max)(0.0f, (std::min)(volume_0_1, 1.0f));
@@ -113,11 +118,34 @@ bool GetAllChannelVolumesForCurrentProcess(std::vector<float>* out_volumes_0_1) 
     out_volumes_0_1->clear();
     IChannelAudioVolume* pv = nullptr;
     UINT n = 0;
-    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n) || n == 0) {
+    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n, false) || n == 0) {
         return false;
     }
     out_volumes_0_1->resize(n);
     const bool ok = SUCCEEDED(pv->GetAllVolumes(n, out_volumes_0_1->data()));
     if (pv != nullptr) pv->Release();
+    return ok;
+}
+
+bool GetAllChannelVolumesForCurrentProcess_AssumeComInitialized(std::vector<float>* out_volumes_0_1,
+                                                                  unsigned int* channel_count_out) {
+    if (out_volumes_0_1 == nullptr || channel_count_out == nullptr) {
+        return false;
+    }
+    out_volumes_0_1->clear();
+    *channel_count_out = 0;
+    IChannelAudioVolume* pv = nullptr;
+    UINT n = 0;
+    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n, true) || n == 0) {
+        return false;
+    }
+    *channel_count_out = static_cast<unsigned int>(n);
+    out_volumes_0_1->resize(n);
+    const bool ok = SUCCEEDED(pv->GetAllVolumes(n, out_volumes_0_1->data()));
+    if (pv != nullptr) pv->Release();
+    if (!ok) {
+        out_volumes_0_1->clear();
+        *channel_count_out = 0;
+    }
     return ok;
 }
