@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 namespace utils {
 
@@ -22,8 +23,8 @@ const std::map<std::string, std::vector<std::string>> TRACKED_SETTINGS = {
      {"KeyEffects", "KeyFPS", "KeyFrametime", "KeyNextPreset", "KeyOverlay", "KeyPerformanceMode", "KeyPreviousPreset",
       "KeyReload", "KeyScreenshot"}},
     {"GENERAL",
-     {"EffectSearchPaths", "TextureSearchPaths", "NoEffectCache", "NoReloadOnInit", "PerformanceMode", "NoDebugInfo",
-      "LoadFromDllMain"}},
+     {"EffectSearchPaths", "TextureSearchPaths", "NoEffectCache", "NoReloadOnInit", "PerformanceMode", "NoDebugInfo"}},
+    {"ADDON", {"LoadFromDllMain"}},
     {"OVERLAY", {"ClockFormat", "ShowClock", "ShowFrameTime", "ShowFPS", "ShowForceLoadEffectsButton", "FPSPosition"}}};
 
 // Helper function to parse INI line
@@ -123,9 +124,9 @@ bool ReadCurrentReShadeSettings(ReShadeGlobalSettings& settings) {
 
             if ((g_reshade_module != nullptr)
                 && reshade::get_config_value(nullptr, section.c_str(), key.c_str(), buffer, &buffer_size)) {
-                // Special handling for EffectSearchPaths and TextureSearchPaths
+                // Special handling for EffectSearchPaths, TextureSearchPaths, LoadFromDllMain
                 // These are stored as null-terminated string arrays in ReShade
-                if (key == "EffectSearchPaths" || key == "TextureSearchPaths") {
+                if (key == "EffectSearchPaths" || key == "TextureSearchPaths" || key == "LoadFromDllMain") {
                     std::vector<std::string> paths;
                     const char* ptr = buffer;
                     while (*ptr != '\0' && ptr < buffer + buffer_size) {
@@ -152,16 +153,16 @@ bool WriteCurrentReShadeSettings(const ReShadeGlobalSettings& settings) {
     // Write all settings
     for (const auto& [section, keys_values] : settings.additional_settings) {
         for (const auto& [key, value] : keys_values) {
-            // Special handling for EffectSearchPaths and TextureSearchPaths
+            // Special handling for EffectSearchPaths, TextureSearchPaths, LoadFromDllMain
             // ReShade expects null-terminated string arrays for these
-            if (key == "EffectSearchPaths" || key == "TextureSearchPaths") {
+            if (key == "EffectSearchPaths" || key == "TextureSearchPaths" || key == "LoadFromDllMain") {
                 std::vector<std::string> paths = SplitPaths(value);
                 std::string combined;
                 for (const auto& path : paths) {
                     combined += path;
                     combined += '\0';
                 }
-                reshade::set_config_value(nullptr, section.c_str(), key.c_str(), combined.c_str());
+                reshade::set_config_value(nullptr, section.c_str(), key.c_str(), combined.c_str(), combined.size());
             } else {
                 // Regular string value
                 reshade::set_config_value(nullptr, section.c_str(), key.c_str(), value.c_str());
@@ -246,8 +247,8 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
         return false;
     }
 
-    // Write sections in a specific order: INPUT, GENERAL, OVERLAY
-    const std::vector<std::string> section_order = {"INPUT", "GENERAL", "OVERLAY"};
+    // Write sections in a specific order: INPUT, GENERAL, ADDON, OVERLAY
+    const std::vector<std::string> section_order = {"INPUT", "GENERAL", "ADDON", "OVERLAY"};
 
     for (const auto& section_name : section_order) {
         auto section_it = settings.additional_settings.find(section_name);

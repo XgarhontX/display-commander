@@ -171,23 +171,6 @@ bool IsScreenshotPathConfigEnabled() {
     return enabled;
 }
 
-void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* runtime) {
-    bool load_from_dll_main_set_once = false;
-    display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
-                                                load_from_dll_main_set_once);
-    if (!load_from_dll_main_set_once) {
-        int32_t current_reshade_value = 0;
-        reshade::get_config_value(runtime, "ADDON", "LoadFromDllMain", current_reshade_value);
-        LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
-        LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
-        display_commander::config::set_config_value("DisplayCommander", "LoadFromDllMainSetOnce", true);
-        display_commander::config::save_config("LoadFromDllMainSetOnce flag set");
-        LogInfo("ReShade settings override - LoadFromDllMainSetOnce flag saved to DisplayCommander config");
-    } else {
-        LogInfo("ReShade settings override - LoadFromDllMain already set to 0 previously, skipping");
-    }
-}
-
 void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime, bool enabled) {
 
     std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
@@ -312,7 +295,6 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
             reshade::set_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", kGameRoot);
         }
     }
-    OverrideReShadeSettings_LoadFromDllMainOnce(runtime);
     OverrideReShadeSettings_AddDisplayCommanderPaths(runtime, IsGlobalShadersPathsConfigEnabled());
 
     LogInfo("ReShade settings override completed successfully");

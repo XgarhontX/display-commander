@@ -26,6 +26,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.13.174 (2026-04-10)
+- [settings] [compatibility] **ReShade LoadFromDllMain for Auto Windows HDR** - With Auto enable Windows HDR on, Display Commander adds this add-on’s DLL name to ReShade’s early load list so the next launch can start sooner in the load order (restart required). The Main tab warning now matches ReShade’s list-style option instead of only `=1`.
 - [settings] **Auto Enable Windows HDR earlier** - DC now turns on the during DLL load, fixing issue in Death Stranding 2.
 
 ## v0.13.173 (2026-04-10)

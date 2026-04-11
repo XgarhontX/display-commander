@@ -6,6 +6,7 @@
 #include "display/display_initial_state.hpp"
 #include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "features/dpi/dpi_management.hpp"
+#include "features/reshade_config/load_from_dll_main.hpp"
 #include "dll_boot_logging.hpp"
 #include "globals.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -80,6 +81,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     InstallRealDXGIMinHookHooks();
     LogBootInitWithoutHwndStage("Early after InstallRealDXGIMinHookHooks");
     OverrideReShadeSettings(nullptr);
+    display_commander::features::reshade_config::MaybeMergeDisplayCommanderIntoReShadeLoadFromDllMainList(nullptr);
     LogBootInitWithoutHwndStage("Early after OverrideReShadeSettings");
 }
 
