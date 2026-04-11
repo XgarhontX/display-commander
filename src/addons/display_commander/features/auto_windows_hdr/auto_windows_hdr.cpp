@@ -1,12 +1,14 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Feature behavior is specified in docs/spec/features/auto_enable_windows_hdr.md
 #include "auto_windows_hdr.hpp"
+#include "display/display_cache.hpp"
 #include "display/hdr_control.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/logging.hpp"
 
 // Libraries <standard C++>
 #include <atomic>
+#include <string>
 
 // Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
@@ -31,7 +33,9 @@ void TryAutoEnableWindowsHdrForMonitor(HMONITOR monitor) {
         LogInfo("[Auto Enable Windows HDR] Display is HDR capable: %s, enabled: %s", supported ? "YES" : "NO",
                 enabled ? "YES" : "NO");
         if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
-            LogInfo("[Auto Enable Windows HDR] Successfully enabled Windows HDR for display");
+            const std::string display_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(monitor);
+            LogInfo("[Auto Enable Windows HDR] Successfully enabled Windows HDR for display: %s",
+                    display_id.c_str());
             s_hdr_auto_enabled_monitor.store(monitor);
             s_we_auto_enabled_hdr.store(true);
         }
