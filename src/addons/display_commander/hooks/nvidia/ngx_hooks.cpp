@@ -109,6 +109,11 @@ std::atomic<uint64_t> s_debug_dlssg_evaluate_override_last_ns{0};
 // Not defined in bundled nvsdk_ngx_defs_dlssg.h; int via SetI (matches sl::DLSSGMode: off=0, on=1, auto=2).
 static constexpr const char* kNgxDlssgParameterMode = "DLSSG.Mode";
 static constexpr const char* kNgxDlssgParameterEnableInterp = "DLSSG.EnableInterp";
+
+static void ClearMirroredDlssgModeAndEnableInterp() {
+    g_ngx_parameters.update_int(kNgxDlssgParameterMode, 0);
+    g_ngx_parameters.update_int(kNgxDlssgParameterEnableInterp, 0);
+}
 } // namespace
 
 int GetDebugDLSSGMultiFrameCountOverride() {
@@ -221,6 +226,7 @@ static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
                 uint32_t before = g_dlssg_enabled.fetch_sub(1);
                 if (before == 0) g_dlssg_enabled.fetch_add(1);
                 LogInfo("NGX DLSS Frame Generation disabled (count=%u)", g_dlssg_enabled.load());
+                ClearMirroredDlssgModeAndEnableInterp();
                 break;
             }
             case NVSDK_NGX_Feature_RayReconstruction: {
@@ -255,6 +261,8 @@ static void CleanupNGXHandleTracking() {
     g_dlss_was_active_once.store(false);
     g_dlssg_was_active_once.store(false);
     g_ray_reconstruction_was_active_once.store(false);
+
+    ClearMirroredDlssgModeAndEnableInterp();
 
     LogInfo("NGX handle tracking cleaned up");
 }
