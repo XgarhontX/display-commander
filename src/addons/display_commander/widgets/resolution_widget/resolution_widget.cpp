@@ -1205,7 +1205,6 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.Checkbox("Auto enable Windows HDR", &auto_hdr)) {
         settings::g_mainTabSettings.auto_enable_windows_hdr.SetValue(auto_hdr);
 
-
         if (display_commander::display::hdr_control::SetHdrForDisplayIndex(actual_display, auto_hdr)) {
             display_cache::g_displayCache.Refresh();
             needs_refresh_ = true;

@@ -1,6 +1,5 @@
-#include <MinHook.h>
-#include <Windows.h>
-#include <string>
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+#include "kernel_exit_hooks.hpp"
 #include "../../exit_handler.hpp"
 #include "../../globals.hpp"
 #include "../../nvapi/nvapi_init.hpp"
@@ -10,6 +9,13 @@
 #include "../../utils/timing.hpp"
 #include "../hook_suppression_manager.hpp"
 
+// Libraries <standard C++>
+#include <string>
+
+#include <MinHook.h>
+
+// Libraries <Windows.h> — before other Windows headers
+#include <Windows.h>
 namespace display_commanderhooks {
 
 // Function pointer types for process exit functions
@@ -187,10 +193,9 @@ void UninstallProcessExitHooks() {
         return;
     }
 
-    // Disable hooks
-    MH_DisableHook(MH_ALL_HOOKS);
+    MH_DisableHook(ExitProcess);
+    MH_DisableHook(TerminateProcess);
 
-    // Remove hooks
     MH_RemoveHook(ExitProcess);
     MH_RemoveHook(TerminateProcess);
 

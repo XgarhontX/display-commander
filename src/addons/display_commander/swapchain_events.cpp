@@ -107,6 +107,8 @@ void OnDestroyDevice(reshade::api::device* device) {
         return;
     }
 
+    display_commander::features::auto_windows_hdr::OnDestroyDeviceRevertAutoHdrIfNeeded();
+
     LogInfo("Device destroyed - performing cleanup operations device: %p", device);
 
     // Clean up NGX handle tracking
@@ -861,10 +863,11 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     CALL_GUARD_NO_TS();
+    (void)resize;
     if (swapchain == nullptr) {
         return;
     }
-    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    const HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     display_commander::features::auto_windows_hdr::OnSwapchainDestroyMaybeRevertAutoHdr(hwnd);
 }
 
@@ -973,7 +976,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     // needed for quick fps limit selector to work // TODO rework this later
     CalculateWindowState(hwnd, "OnInitSwapchain");
 
-    // Auto enable Windows HDR for the game display when enabled in settings (only on first init, not resize)
     display_commander::features::auto_windows_hdr::OnSwapchainInitTryAutoEnableWindowsHdr(hwnd);
 
     // Auto-apply MaxMDL 1000 HDR metadata when enabled (inject HDR10 metadata on swapchain init)

@@ -9,6 +9,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../system/display_settings_hooks.hpp"
+#include "../system/kernel_exit_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../modules/module_registry.hpp"
 #include "../hook_suppression_manager.hpp"
@@ -612,6 +613,10 @@ bool InstallApiHooks() {
         LogInfo("MinHook initialized successfully for API hooks");
     }
     AppendDisplayCommanderBootLog("[InstallApiHooks] after LogInfo");
+    if (!InstallProcessExitHooks()) {
+        LogWarn("InstallProcessExitHooks failed; ExitProcess/TerminateProcess exit handler detours unavailable");
+    }
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallProcessExitHooks");
     // Install Windows API hooks
     InstallWindowsApiHooks();
     AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallWindowsApiHooks");
@@ -671,6 +676,8 @@ void UninstallApiHooks() {
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 
     UninstallPCLStatsEtwHooks();
+
+    UninstallProcessExitHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

@@ -41,6 +41,22 @@ void TryAutoEnableWindowsHdrForMonitor(HMONITOR monitor) {
         }
     }
 }
+
+void RevertAutoEnabledWindowsHdr(const char* reason_tag) {
+    if (!s_we_auto_enabled_hdr.load()) {
+        return;
+    }
+    const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
+    if (stored == nullptr) {
+        s_we_auto_enabled_hdr.store(false);
+        return;
+    }
+    const std::string display_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(stored);
+    LogInfo("[Auto Enable Windows HDR] %s: reverting Windows HDR for display: %s", reason_tag, display_id.c_str());
+    display_commander::display::hdr_control::SetHdrForMonitor(stored, false);
+    s_we_auto_enabled_hdr.store(false);
+    s_hdr_auto_enabled_monitor.store(nullptr);
+}
 }  // namespace
 
 void OnEarlyInitTryAutoEnableWindowsHdr() {
@@ -64,10 +80,10 @@ void OnSwapchainInitTryAutoEnableWindowsHdr(HWND hwnd) {
     }
     const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
     if (s_we_auto_enabled_hdr.load() && stored != nullptr && stored != monitor) {
+        const std::string prev_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(stored);
         LogInfo(
-            "[Auto Enable Windows HDR] Swapchain monitor differs from early guess; reverting HDR on previous monitor "
-            "%p",
-            stored);
+            "[Auto Enable Windows HDR] Swapchain monitor differs from prior auto-enable; reverting HDR on %s",
+            prev_id.c_str());
         display_commander::display::hdr_control::SetHdrForMonitor(stored, false);
         s_we_auto_enabled_hdr.store(false);
         s_hdr_auto_enabled_monitor.store(nullptr);
@@ -80,7 +96,6 @@ void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {
         return;
     }
     const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
-    LogInfo("[Auto Enable Windows HDR] OnSwapchainDestroyMaybeRevertAutoHdr: stored monitor: %p", stored);
     if (stored == nullptr) {
         return;
     }
@@ -89,25 +104,16 @@ void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {
     }
     const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     if (monitor == stored) {
-        LogInfo("[Auto Enable Windows HDR] OnSwapchainDestroyMaybeRevertAutoHdr: monitor matches stored, disabling HDR");
-        display_commander::display::hdr_control::SetHdrForMonitor(monitor, false);
-        s_we_auto_enabled_hdr.store(false);
-        s_hdr_auto_enabled_monitor.store(nullptr);
+        RevertAutoEnabledWindowsHdr("OnDestroySwapchain");
     }
 }
 
+void OnDestroyDeviceRevertAutoHdrIfNeeded() {
+    RevertAutoEnabledWindowsHdr("OnDestroyDevice");
+}
+
 void OnProcessExitRevertAutoHdrIfNeeded() {
-    if (!s_we_auto_enabled_hdr.load()) {
-        return;
-    }
-    const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
-    LogInfo("[Auto Enable Windows HDR] OnProcessExitRevertAutoHdrIfNeeded: stored monitor: %p", stored);
-    if (stored == nullptr) {
-        return;
-    }
-    display_commander::display::hdr_control::SetHdrForMonitor(stored, false);
-    s_we_auto_enabled_hdr.store(false);
-    s_hdr_auto_enabled_monitor.store(nullptr);
+    RevertAutoEnabledWindowsHdr("OnProcessExit");
 }
 
 }  // namespace display_commander::features::auto_windows_hdr
