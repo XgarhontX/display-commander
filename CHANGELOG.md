@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.179 (2026-04-12)
+- [hooks] **DLSS .bin identification** - Only scan `.bin` modules for embedded `nvngx_*` strings when the file path is under `NVIDIA\NGX`, so unrelated binaries are not misclassified. Logic lives in `hooks/nvidia/dlss_bin_module_identification.*`; behavior is documented in `src/addons/display_commander/docs/specs/dlss_bin_module_identification.md`.
+
 ## v0.13.178 (2026-04-12)
 - [ui] **Performance overlay labels** - Renamed overlay background and frame chart sliders from “Transparency” to “Opacity” so the label matches the value (higher = more opaque).
 

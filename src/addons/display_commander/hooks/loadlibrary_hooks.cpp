@@ -20,6 +20,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
+#include "nvidia/dlss_bin_module_identification.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
 #include "nvidia/pclstats_etw_hooks.hpp"
@@ -1408,33 +1409,6 @@ std::vector<std::string> ReportMissedModulesOnExit() {
     return missed;
 }
 
-// Identify .bin module as DLSS / DLSS-G / DLSS-D by scanning for NGX DLL name strings (Special-K style).
-// Order: dlssg and dlssd first (more specific), then base dlss.
-static std::optional<DlssTrackedKind> IdentifyDlssBinKind(HMODULE hMod) {
-    MODULEINFO modInfo = {};
-    if (!GetModuleInformation(GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo)) || modInfo.SizeOfImage == 0) {
-        return std::nullopt;
-    }
-    const char* base = static_cast<const char*>(modInfo.lpBaseOfDll);
-    const size_t size = modInfo.SizeOfImage;
-    // Cap scan at 64 MiB to avoid long scans on huge images
-    const size_t scan_size = (size > 64 * 1024 * 1024) ? (64 * 1024 * 1024) : size;
-
-    auto find_str = [base, scan_size](const char* needle) -> bool {
-        const size_t nlen = std::strlen(needle);
-        if (nlen == 0 || nlen > scan_size) return false;
-        for (size_t i = 0; i + nlen <= scan_size; ++i) {
-            if (std::memcmp(base + i, needle, nlen) == 0) return true;
-        }
-        return false;
-    };
-
-    if (find_str("nvngx_dlssg")) return DlssTrackedKind::DLSSG;
-    if (find_str("nvngx_dlssd")) return DlssTrackedKind::DLSSD;
-    if (find_str("nvngx_dlss")) return DlssTrackedKind::DLSS;
-    return std::nullopt;
-}
-
 // Helper: get module path as UTF-8 string for SetDlssTracked
 static std::string GetModulePathUtf8(HMODULE hMod) {
     wchar_t path[MAX_PATH];
@@ -1488,8 +1462,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     modules::NotifyEnabledModulesOnLibraryLoaded(hModule, lowerModuleName.c_str());
 
-    // DLSS tracking: set global module/path for nvngx_dlss.dll, nvngx_dlssg.dll, nvngx_dlssd.dll, or .bin identified as
-    // such
+    // DLSS tracking: set global module/path for nvngx_dlss.dll, nvngx_dlssg.dll, nvngx_dlssd.dll, or NGX model .bin
+    // (identification rules: display_commander/docs/specs/dlss_bin_module_identification.md)
     {
         std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
         std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
@@ -1507,7 +1481,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule,
                     GetModulePathUtf8(hModule).c_str());
         } else if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, L".bin") == 0) {
-            // NVIDIA App override: identify .bin as DLSS/DLSS-G/DLSS-D by scanning for NGX DLL name strings
+            // NGX model .bin: hooks/nvidia/dlss_bin_module_identification.cpp; spec: display_commander/docs/specs/dlss_bin_module_identification.md
             std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
             if (kind.has_value()) {
                 g_dlss_from_nvidia_app_bin.store(true);

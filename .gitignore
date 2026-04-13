@@ -142,6 +142,8 @@ private_docs
 !src/addons/display_commander/res/effects/ReShade.fxh
 !src/addons/display_commander/res/effects/color.fxh
 
+!src/addons/display_commander/docs/specs/dlss_bin_module_identification.md
+
 
 #  git ls-files -ic --exclude-standard
 external-private/
