@@ -547,6 +547,16 @@ double RefreshRatePairSetting::GetHz() const {
     return static_cast<double>(numerator_) / static_cast<double>(denominator_);
 }
 
+namespace {
+
+/** Same vertical size as ImGui::GetFrameHeight() so icon-only reset controls align with sliders and glyphs are not clipped. */
+float ResetToDefaultButtonExtent(display_commander::ui::IImGuiWrapper& imgui) {
+    const ImGuiStyle& st = imgui.GetStyle();
+    return imgui.GetTextLineHeight() + (st.FramePadding.y * 2.0f);
+}
+
+}  // namespace
+
 // Wrapper function implementations
 
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format,
@@ -563,7 +573,8 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
         imgui.SameLine();
         imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -591,7 +602,8 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
         imgui.SameLine();
         imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -617,7 +629,8 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
     if (current != def) {
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -642,7 +655,8 @@ bool CheckboxSetting(OverrideBoolSetting& setting, const char* label, display_co
     if (current != def) {
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -674,7 +688,8 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -717,7 +732,8 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(label_text_color != nullptr ? 1 : stack_id);
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }
@@ -771,7 +787,8 @@ bool RadioSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* gr
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(count);
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+        const float reset_ext = ResetToDefaultButtonExtent(imgui);
+        if (imgui.Button(reinterpret_cast<const char*>(ICON_FK_UNDO), ImVec2(reset_ext, reset_ext))) {
             setting.SetValue(def);
             changed = true;
         }

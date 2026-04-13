@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.182 (2026-04-12)
+- [bugfix] [ui] **Reset-to-default control** - The undo icon next to sliders and other settings used a small button that could clip the ForkAwesome glyph at the top; it now uses a square button matching normal frame height so the icon stays fully visible.
+
 ## v0.13.181 (2026-04-12)
-- [bugfix] [ui] **Performance overlay corner offset** - Removed the fixed 10 px margin so horizontal and vertical spacing of 0 place the overlay at the top-left of the ReShade overlay area (no hidden inset).
+- [bugfix] [ui] **Performance overlay corner offset** - Margin is not aligned with top left without marging at 0px.
 
 ## v0.13.180 (2026-04-12)
 - [bugfix] **Auto Enable Windows HDR in Red Dead Redemption 2** - Fixed code that prevented RDR2 from starting when this feature is enabled (no HDR revert on swapchain/device destroy; exit still reverts).

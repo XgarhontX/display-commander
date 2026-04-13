@@ -143,6 +143,7 @@ private_docs
 !src/addons/display_commander/res/effects/color.fxh
 
 !src/addons/display_commander/docs/specs/dlss_bin_module_identification.md
+!src/addons/display_commander/docs/specs/settings_wrapper.md
 
 
 #  git ls-files -ic --exclude-standard
