@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.180 (2026-04-12)
+- [bugfix] **Auto Enable Windows HDR in Red Dead Redemption 2** - Fixed code that prevented RDR2 from starting when this feature is enabled (no HDR revert on swapchain/device destroy; exit still reverts).
+
 ## v0.13.179 (2026-04-12)
 - [hooks] **DLSS .bin identification** - Only scan `.bin` modules for embedded `nvngx_*` strings when the file path is under `NVIDIA\NGX`, so unrelated binaries are not misclassified. Logic lives in `hooks/nvidia/dlss_bin_module_identification.*`; behavior is documented in `src/addons/display_commander/docs/specs/dlss_bin_module_identification.md`.
 

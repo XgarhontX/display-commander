@@ -104,12 +104,14 @@ void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {
     }
     const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     if (monitor == stored) {
-        RevertAutoEnabledWindowsHdr("OnDestroySwapchain");
+        // Revert on swapchain destroy disabled — was breaking RDR2 startup with Auto Windows HDR enabled.
+        // RevertAutoEnabledWindowsHdr("OnDestroySwapchain");
     }
 }
 
 void OnDestroyDeviceRevertAutoHdrIfNeeded() {
-    RevertAutoEnabledWindowsHdr("OnDestroyDevice");
+    // Same as swapchain destroy: revert on device destroy disabled (RDR2).
+    // RevertAutoEnabledWindowsHdr("OnDestroyDevice");
 }
 
 void OnProcessExitRevertAutoHdrIfNeeded() {
