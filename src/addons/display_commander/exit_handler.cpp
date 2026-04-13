@@ -7,6 +7,7 @@
 #include <vector>
 #include "display/display_restore.hpp"
 #include "features/auto_windows_hdr/auto_windows_hdr.hpp"
+#include "features/presentmon/presentmon_minimal_etw.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -76,6 +77,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
 
     //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
+    display_commander::features::presentmon::ShutdownPresentMonEtw();
 
 #if defined(DC_EXTERNAL_MODULES)
     modules::presentmon_module::ShutdownPresentMonForProcessExit();

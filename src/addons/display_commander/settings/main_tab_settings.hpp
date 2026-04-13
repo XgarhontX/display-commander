@@ -89,6 +89,10 @@ class MainTabSettings {
     /** When true, NvAPI_QueryInterface passes through SetFlipConfig (0xF3148C42). When false, returns nullptr and
      * counts suppressions. Default true. */
     ui::new_ui::BoolSetting allow_nvapi_d3d12_setflipconfig;
+#if !defined(DC_LITE)
+    /** When true, start minimal Win32k ETW for PresentMon-style flip state (VSync & Tearing). Default off. */
+    ui::new_ui::BoolSetting present_mon_etw_enabled;
+#endif
 
     // Audio Settings
     ui::new_ui::BoolSetting audio_mute;

@@ -25,6 +25,14 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.183
+- [cleanup] [docs] **PresentMon minimal ETW UI** - Flip-state row lives in `presentmon_minimal_flip_state_row.*`; [docs/spec/presentmon-minimal-etw.md](docs/spec/presentmon-minimal-etw.md) documents the Main tab UI (layout, setting, tooltips, DC Lite).
+- [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.
+- [ui] **PresentMon ETW row** - **Flip state:** (status in parentheses) and the **Enabled** checkbox are on one line under VSync & Tearing.
+- [settings] [hooks] [compatibility] **PresentMon ETW opt-in** - Win32k ETW for the flip-state line is off by default; enable it with the **Enabled** checkbox next to **Flip state:** under VSync & Tearing. Full builds only; **DC Lite** omits the ETW implementation (stub only, no UI checkbox).
+- [bugfix] [hooks] **PresentMon ETW thread creation** - If starting the trace thread throws (e.g. resource limits), the error is caught so the game process is not terminated and the feature is marked unavailable instead.
+
+
 ## v0.13.182 (2026-04-12)
 - [bugfix] [ui] **Reset-to-default control** - The undo icon next to sliders and other settings used a small button that could clip the ForkAwesome glyph at the top; it now uses a square button matching normal frame height so the icon stays fully visible.
 

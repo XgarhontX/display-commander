@@ -27,9 +27,12 @@ if(DC_LITE)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/reshade_addons/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/features/nvidia_profile_inspector/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/debug/nvidia_profile_inspector_tab\\.cpp$")
+  # Full Win32k ETW (PresentMon-style) omitted in Lite; stub provides no-op symbols.
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/features/presentmon/presentmon_minimal_etw\\.cpp$")
 else()
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/override_reshade_settings_stub\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/audio_draw_main_tab_inline_lite_stub\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/features/presentmon/presentmon_minimal_etw_stub\\.cpp$")
 endif()
 
 if(DC_EXTERNAL_MODULES)
