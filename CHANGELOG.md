@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.187
+- [bugfix] [ui] **Display Commander not opening with hotkey** - Fixed bug when it was impossible to open Display Commander's UI through hotkey if the window was minimized by clicking on the header.
+
 ## v0.13.186
-- [settings] [compatibility] **ReShade overlay clock** - Display Commander does not change `OVERLAY.ShowClock` unless an empty marker file `%LocalAppData%\Programs\Display_Commander\.NO_RESHADE_CLOCK` exists; then overrides set the clock off so the ini matches that preference.
+- [settings] [compatibility] **ReShade overlay clock** - Display Commander does not change `OVERLAY.ShowClock` reshade setting anymore by default.
 - [ui] [removal] **DLSS info panel cleanup** - Removed the `Create.Flags` and `Auto Exposure` rows from the DLSS info UI to keep the panel focused on core status and preset controls.
 - [ui] [removal] **DLSS version line simplification** - Removed the bracketed supported-preset list (`[...]`) next to `DLSS DLL: X.Y.Z` in the DLSS info panel.
 - [ui] **DLSS DLL version alignment** - DLSS/DLSS-G/DLSS-D labels and version values now render in separate columns so all three rows line up cleanly.

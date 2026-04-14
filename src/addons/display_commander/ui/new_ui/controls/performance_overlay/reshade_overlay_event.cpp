@@ -100,8 +100,6 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
             last_saved_y = current_pos.y;
         }
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime, overlay_wrapper);
-    } else {
-        settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
     overlay_wrapper.End();
     if (!window_open) {
