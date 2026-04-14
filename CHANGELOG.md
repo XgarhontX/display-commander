@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.188
+- [bugfix] [settings] [compatibility] **Auto dock DC window within Reshade** - Rewritten code to auto change reshade's config to automatically dock DC.
+
 ## v0.13.187
 - [bugfix] [ui] **Display Commander not opening with hotkey** - Fixed bug when it was impossible to open Display Commander's UI through hotkey if the window was minimized by clicking on the header.
 

@@ -20,6 +20,16 @@
 
 namespace {
 constexpr wchar_t kNoReshadeClockMarkerFileName[] = L".NO_RESHADE_CLOCK";
+constexpr const char* kWindowPrefix = "[Window][";
+constexpr const char* kDcWindowHeader = "[Window][DC]";
+constexpr const char* kRenodxWindowHeader = "[Window][RenoDX]";
+constexpr const char* kDefaultDcWindowTemplate =
+    "[Window][DC],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
+constexpr const char* kDefaultRenodxWindowTemplate =
+    "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
+
+using WindowEntry = std::vector<std::string>;
+using WindowEntries = std::vector<WindowEntry>;
 
 bool IsNoReshadeClockMarkerEnabled() {
     std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
@@ -30,57 +40,161 @@ bool IsNoReshadeClockMarkerEnabled() {
     return std::filesystem::is_regular_file(dc_root / kNoReshadeClockMarkerFileName, ec) && !ec;
 }
 
+bool StartsWithWindowHeader(const std::string& token) {
+    return token.rfind(kWindowPrefix, 0) == 0;
+}
+
+std::vector<std::string> SplitNullDelimitedTokens(const std::string& value) {
+    std::vector<std::string> tokens;
+    std::string current;
+    current.reserve(value.size());
+    for (char ch : value) {
+        if (ch == '\0') {
+            tokens.push_back(current);
+            current.clear();
+            continue;
+        }
+        current.push_back(ch);
+    }
+    if (!current.empty()) {
+        tokens.push_back(current);
+    }
+    return tokens;
+}
+
+WindowEntry ParseCommaTemplate(const std::string& template_value) {
+    WindowEntry tokens;
+    std::string current;
+    current.reserve(template_value.size());
+    for (char ch : template_value) {
+        if (ch == ',') {
+            tokens.push_back(current);
+            current.clear();
+            continue;
+        }
+        current.push_back(ch);
+    }
+    tokens.push_back(current);
+    return tokens;
+}
+
+WindowEntries ParseWindowEntries(const std::vector<std::string>& tokens) {
+    WindowEntries entries;
+    WindowEntry current_entry;
+    for (const std::string& token : tokens) {
+        if (StartsWithWindowHeader(token) && !current_entry.empty()) {
+            entries.push_back(current_entry);
+            current_entry.clear();
+        }
+        current_entry.push_back(token);
+    }
+    if (!current_entry.empty()) {
+        entries.push_back(current_entry);
+    }
+    return entries;
+}
+
+int FindWindowEntryIndex(const WindowEntries& entries, const std::string& window_header) {
+    for (size_t i = 0; i < entries.size(); ++i) {
+        if (!entries[i].empty() && entries[i][0] == window_header) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+bool EntryHasDockId(const WindowEntry& entry) {
+    return std::any_of(entry.begin(), entry.end(), [](const std::string& token) {
+        return token.rfind("DockId=", 0) == 0;
+    });
+}
+
+std::string BuildWindowEntryForLog(const WindowEntry& entry) {
+    std::string joined;
+    for (size_t i = 0; i < entry.size(); ++i) {
+        if (i > 0) {
+            joined.push_back(',');
+        }
+        joined += entry[i];
+    }
+    return joined;
+}
+
+std::string SerializeWindowEntries(const WindowEntries& entries) {
+    std::string serialized;
+    for (const WindowEntry& entry : entries) {
+        for (const std::string& token : entry) {
+            serialized += token;
+            serialized.push_back('\0');
+        }
+    }
+    return serialized;
+}
+
 // Helpers for OverrideReShadeSettings - each handles one logical block.
 // When runtime is non-null, config is read/written for that runtime's .ini (e.g. ReShade2.ini); otherwise
 // global/current.
 void OverrideReShadeSettings_WindowConfig(reshade::api::effect_runtime* runtime) {
+    LogDebug("[ReShadeOverride] OVERLAY.Window: begin runtime=%p", static_cast<void*>(runtime));
+
     std::string window_config;
     size_t value_size = 0;
     if ((g_reshade_module != nullptr)
         && reshade::get_config_value(runtime, "OVERLAY", "Window", nullptr, &value_size)) {
+        LogDebug("[ReShadeOverride] OVERLAY.Window: existing value_size=%zu (incl. nulls as reported)", value_size);
         window_config.resize(value_size);
         if ((g_reshade_module != nullptr)
             && reshade::get_config_value(runtime, "OVERLAY", "Window", window_config.data(), &value_size)) {
             if (!window_config.empty() && window_config.back() == '\0') {
                 window_config.pop_back();
             }
+            LogDebug("[ReShadeOverride] OVERLAY.Window: read ok, stored_len=%zu", window_config.size());
         } else {
             window_config.clear();
+            LogWarn("[ReShadeOverride] OVERLAY.Window: get_config_value buffer read failed after size query");
         }
+    } else {
+        LogDebug("[ReShadeOverride] OVERLAY.Window: no existing key or empty; starting fresh");
     }
 
+    const WindowEntry default_dc_entry = ParseCommaTemplate(kDefaultDcWindowTemplate);
+    const WindowEntry default_renodx_entry = ParseCommaTemplate(kDefaultRenodxWindowTemplate);
+    std::vector<std::string> tokens = SplitNullDelimitedTokens(window_config);
+    WindowEntries entries = ParseWindowEntries(tokens);
+    LogDebug("[ReShadeOverride] OVERLAY.Window: parsed %zu entries", entries.size());
+
     bool changed_window_config = false;
-    if (window_config.find("[Window][DC]") == std::string::npos) {
-        if (!window_config.empty()) {
-            window_config.push_back('\0');
-        }
-        std::string to_add = "[Window][DC],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
-        for (size_t i = 0; i < to_add.size(); i++) {
-            if (to_add[i] == ',') {
-                window_config.push_back('\0');
-            } else {
-                window_config.push_back(to_add[i]);
-            }
-        }
+    int dc_entry_index = FindWindowEntryIndex(entries, kDcWindowHeader);
+    if (dc_entry_index < 0) {
+        entries.push_back(default_dc_entry);
+        dc_entry_index = static_cast<int>(entries.size()) - 1;
         changed_window_config = true;
-    }
-    if (window_config.find("[Window][RenoDX]") == std::string::npos) {
-        if (!window_config.empty()) {
-            window_config.push_back('\0');
-        }
-        std::string to_add = "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
-        for (size_t i = 0; i < to_add.size(); i++) {
-            if (to_add[i] == ',') {
-                window_config.push_back('\0');
-            } else {
-                window_config.push_back(to_add[i]);
-            }
-        }
+        LogInfo("[ReShadeOverride] OVERLAY.Window: appended default [Window][DC] entry");
+    } else if (!EntryHasDockId(entries[dc_entry_index])) {
+        entries[dc_entry_index].push_back("DockId=0x00000001");
+        entries[dc_entry_index].push_back("");
+        entries[dc_entry_index].push_back("999999");
         changed_window_config = true;
+        LogInfo("[ReShadeOverride] OVERLAY.Window: injected DockId into existing [Window][DC] entry");
+    } else {
+        LogDebug("[ReShadeOverride] OVERLAY.Window: unchanged ([Window][DC] with DockId already present)");
     }
+
+    if (dc_entry_index >= 0) {
+        LogInfo("[ReShadeOverride] OVERLAY.Window: [Window][DC] entry: %s",
+                BuildWindowEntryForLog(entries[dc_entry_index]).c_str());
+    }
+
+    if (FindWindowEntryIndex(entries, kRenodxWindowHeader) < 0) {
+        entries.push_back(default_renodx_entry);
+        changed_window_config = true;
+        LogInfo("[ReShadeOverride] OVERLAY.Window: appended default [Window][RenoDX] entry");
+    }
+
     if (changed_window_config) {
+        window_config = SerializeWindowEntries(entries);
         reshade::set_config_value(runtime, "OVERLAY", "Window", window_config.c_str(), window_config.size());
-        LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
+        LogInfo("[ReShadeOverride] OVERLAY.Window: wrote config (%zu bytes)", window_config.size());
     }
 }
 
