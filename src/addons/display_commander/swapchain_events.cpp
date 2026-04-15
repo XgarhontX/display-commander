@@ -32,6 +32,7 @@
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/perf_measurement.hpp"
+#include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "window_management/window_management.hpp"
 
@@ -309,6 +310,84 @@ std::atomic<LONGLONG> g_render_submit_end_time_ns{0};
 
 // Render submit duration tracking (nanoseconds)
 std::atomic<LONGLONG> g_render_submit_duration_ns{0};
+
+namespace {
+
+constexpr LONGLONG k_fps_limiter_late_frames_bucket_width_ns = 100 * utils::NS_TO_MS;
+constexpr uint32_t k_fps_limiter_late_frames_bucket_count = 300;
+constexpr LONGLONG k_fps_limiter_late_frames_visible_window_seconds = 5;
+
+struct FpsLimiterLateFramesBucket {
+    LONGLONG bucket_id = -1;
+    uint32_t frames_count = 0;
+    uint32_t late_frames_count = 0;
+};
+
+FpsLimiterLateFramesBucket g_fps_limiter_late_frames_buckets[k_fps_limiter_late_frames_bucket_count];
+SRWLOCK g_fps_limiter_late_frames_lock = SRWLOCK_INIT;
+
+void RecordFpsLimiterLateFrameSample(const LONGLONG frame_start_ns, const bool was_late) {
+    if (frame_start_ns <= 0) {
+        return;
+    }
+
+    const LONGLONG bucket_id = frame_start_ns / k_fps_limiter_late_frames_bucket_width_ns;
+    if (bucket_id < 0) {
+        return;
+    }
+    const uint32_t slot = static_cast<uint32_t>(bucket_id % k_fps_limiter_late_frames_bucket_count);
+
+    utils::SRWLockExclusive lock(g_fps_limiter_late_frames_lock);
+    FpsLimiterLateFramesBucket& bucket = g_fps_limiter_late_frames_buckets[slot];
+    if (bucket.bucket_id != bucket_id) {
+        bucket.bucket_id = bucket_id;
+        bucket.frames_count = 0;
+        bucket.late_frames_count = 0;
+    }
+
+    ++bucket.frames_count;
+    if (was_late) {
+        ++bucket.late_frames_count;
+    }
+}
+
+}  // namespace
+
+bool GetFpsLimiterLateFramesPercentage(double* out_percentage) {
+    if (out_percentage == nullptr) {
+        return false;
+    }
+
+    utils::SRWLockShared lock(g_fps_limiter_late_frames_lock);
+    const LONGLONG now_ns = utils::get_now_ns();
+    if (now_ns <= 0) {
+        return false;
+    }
+
+    const LONGLONG current_bucket_id = now_ns / k_fps_limiter_late_frames_bucket_width_ns;
+    const LONGLONG visible_window_bucket_count =
+        (k_fps_limiter_late_frames_visible_window_seconds * utils::SEC_TO_NS) / k_fps_limiter_late_frames_bucket_width_ns;
+    const LONGLONG first_included_bucket_id = current_bucket_id - (visible_window_bucket_count - 1);
+
+    uint32_t frames_count = 0;
+    uint32_t late_frames_count = 0;
+    for (uint32_t i = 0; i < k_fps_limiter_late_frames_bucket_count; ++i) {
+        const FpsLimiterLateFramesBucket& bucket = g_fps_limiter_late_frames_buckets[i];
+        if (bucket.bucket_id < first_included_bucket_id || bucket.bucket_id > current_bucket_id) {
+            continue;
+        }
+
+        frames_count += bucket.frames_count;
+        late_frames_count += bucket.late_frames_count;
+    }
+
+    if (frames_count == 0) {
+        return false;
+    }
+
+    *out_percentage = 100.0 * static_cast<double>(late_frames_count) / static_cast<double>(frames_count);
+    return true;
+}
 
 void HandleRenderStartAndEndTimes() {
     LONGLONG expected = 0;
@@ -1466,6 +1545,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                     // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
                     // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
                     CALL_GUARD(start_time_ns);
+                    bool was_late = false;
                     if (ideal_frame_start_ns - post_sleep_ns > start_time_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
                         LONGLONG wait_target_ns = ideal_frame_start_ns - post_sleep_ns;
@@ -1485,7 +1565,9 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                         // utils::wait_until_ns(ideal_frame_start_ns);
                         late_amount_ns.store(start_time_ns - ideal_frame_start_ns);
                         g_onpresent_sync_pre_sleep_ns.store(0);
+                        was_late = true;
                     }
+                    RecordFpsLimiterLateFrameSample(start_time_ns, was_late);
                     CALL_GUARD(start_time_ns);
                     // Record when frame processing actually started
                     g_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns);

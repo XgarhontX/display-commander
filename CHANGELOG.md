@@ -25,6 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.189 (2026-04-14)
+- [bugfix] [experimental] **Startup cleanup for stale `DC_` ETW sessions** - On startup, Display Commander now stops leftover `DC_` ETW sessions from older runs to reduce conflicts and keep debug tracing state clean.
+- [new feature] [ui] **Overlay FPS limiter late-frames percentage** - Added an optional performance overlay stat that shows how often the FPS limiter is late in recent gameplay, making frame pacing instability easier to spot without opening debug views.
+
 ## v0.13.188
 - [bugfix] [settings] [compatibility] **Auto dock DC window within Reshade** - Rewritten code to auto change reshade's config to automatically dock DC.
 

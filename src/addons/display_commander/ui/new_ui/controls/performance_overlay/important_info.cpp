@@ -394,6 +394,17 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+        bool show_fps_limiter_late_frames_pct = settings::g_mainTabSettings.show_fps_limiter_late_frames_pct.GetValue();
+        if (imgui.Checkbox("Late frames %", &show_fps_limiter_late_frames_pct)) {
+            settings::g_mainTabSettings.show_fps_limiter_late_frames_pct.SetValue(show_fps_limiter_late_frames_pct);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows the percentage of recent frames where OnPresentSync FPS limiter started late. "
+                "Computed from 0.1 second buckets (30s history), showing only the last 5 seconds.");
+        }
+        imgui.NextColumn();
+
         bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
         const bool native_reflex_active = IsNativeReflexActive();
         if (!native_reflex_active) {

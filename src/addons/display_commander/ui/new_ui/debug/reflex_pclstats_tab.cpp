@@ -4,19 +4,26 @@
 #include "../../../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../../../latency/reflex_provider.hpp"
 #include "../../../settings/main_tab_settings.hpp"
+#include "../../../utils/string_utils.hpp"
 #include "../../ui_colors.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
 
 // Libraries <standard C++>
+#include <array>
 #include <cinttypes>
 #include <cstddef>
+#include <cwchar>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 // Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
+
+// Libraries <Windows>
+#include <evntrace.h>
 
 namespace ui::new_ui::debug {
 
@@ -63,6 +70,65 @@ struct LatencyMilestoneRow {
     /** (stamp_ns - sim_start_ns) / 1e6; sim_start row is 0 when valid. */
     double delta_ms_from_sim_start = 0.0;
 };
+
+struct EtwSessionSnapshot {
+    bool queried = false;
+    ULONG status = ERROR_GEN_FAILURE;
+    ULONG total_sessions = 0;
+    ULONG dc_sessions_count = 0;
+    std::vector<std::string> all_sessions;
+};
+
+struct QueryEtwSessionProps {
+    EVENT_TRACE_PROPERTIES props{};
+    wchar_t logger_name[128]{};
+    wchar_t log_file_name[2]{};
+};
+
+EtwSessionSnapshot QueryEtwSessionsContainingDcPrefix() {
+    EtwSessionSnapshot out{};
+
+    constexpr ULONG kMaxSessions = 64;
+    std::array<QueryEtwSessionProps, kMaxSessions> query_props{};
+    std::array<EVENT_TRACE_PROPERTIES*, kMaxSessions> props_ptrs{};
+
+    for (ULONG i = 0; i < kMaxSessions; ++i) {
+        auto& p = query_props[i];
+        p.props.Wnode.BufferSize = sizeof(QueryEtwSessionProps);
+        p.props.LoggerNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, logger_name));
+        p.props.LogFileNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, log_file_name));
+        props_ptrs[i] = &p.props;
+    }
+
+    ULONG session_count = kMaxSessions;
+    const ULONG status = QueryAllTracesW(props_ptrs.data(), kMaxSessions, &session_count);
+    out.queried = true;
+    out.status = status;
+    out.total_sessions = session_count;
+    if (status != ERROR_SUCCESS) {
+        return out;
+    }
+
+    out.all_sessions.reserve(session_count);
+    ULONG all_named_sessions = 0;
+    ULONG dc_named_sessions = 0;
+    for (ULONG i = 0; i < session_count; ++i) {
+        const wchar_t* name = query_props[i].logger_name;
+        if (name == nullptr || name[0] == L'\0') {
+            continue;
+        }
+        ++all_named_sessions;
+        if (std::wcsstr(name, L"DC_") != nullptr) {
+            ++dc_named_sessions;
+        }
+        out.all_sessions.push_back(display_commander::utils::WideToUtf8(name));
+        if (std::wcsstr(name, L"DC_") == nullptr) {
+            continue;
+        }
+    }
+    out.dc_sessions_count = dc_named_sessions;
+    return out;
+}
 
 void BuildLatencyMilestonesVsSimStart(const NvapiLatencyFrame& fr, std::vector<LatencyMilestoneRow>& out_rows) {
     out_rows.clear();
@@ -121,6 +187,8 @@ uint64_t FirstNonzeroPipelineStampNs(const NvapiLatencyFrame& fr) {
 }  // namespace
 
 void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
+    static EtwSessionSnapshot s_etw_session_snapshot{};
+
     imgui.TextColored(::ui::colors::TEXT_DIMMED,
                       "Build with DEBUG_TABS / bd.ps1 -DebugTabs. PCLStats ETW counts include ping + injected markers "
                       "when \"PCL stats for injected reflex\" is on.");
@@ -170,6 +238,17 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4{0.85f, 0.85f, 0.85f, 1.0f}, "PCLStats provider");
     imgui.Indent();
     imgui.Text("PCLStats ETW hooks (advapi32): %s", ArePCLStatsEtwHooksInstalled() ? "installed" : "not installed");
+    const char* owned_dc_session = GetPCLStatsOwnedEtwSessionName();
+    if (owned_dc_session != nullptr && owned_dc_session[0] != '\0') {
+        imgui.Text("Owned DC_ ETW session name: %s", owned_dc_session);
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Owned DC_ ETW session name: (not initialized)");
+    }
+    const ULONG cleanup_status = GetPCLStatsDcEtwCleanupStatus();
+    imgui.Text("Startup DC_ cleanup: removed %u stale session(s)", GetPCLStatsDcEtwCleanupRemovedCount());
+    if (cleanup_status != ERROR_SUCCESS) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Startup DC_ cleanup query status: %lu", cleanup_status);
+    }
     imgui.Text("Foreign PCLStats init observed: %s (skips DC PCLSTATS_INIT)",
                PclStatsForeignInitObserved() ? "yes" : "no");
     const bool pcl_user = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
@@ -185,6 +264,45 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.Text("g_pclstats_frame_id: %" PRIu64,
                static_cast<unsigned long long>(g_pclstats_frame_id.load(std::memory_order_relaxed)));
+    imgui.Unindent();
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    imgui.TextColored(ImVec4{0.85f, 0.85f, 0.85f, 1.0f}, "ETW sessions (all; DC_ highlighted)");
+    imgui.Indent();
+    if (!s_etw_session_snapshot.queried || imgui.Button("Refresh DC_ ETW sessions")) {
+        s_etw_session_snapshot = QueryEtwSessionsContainingDcPrefix();
+    }
+    if (!s_etw_session_snapshot.queried) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Not queried yet.");
+    } else if (s_etw_session_snapshot.status != ERROR_SUCCESS) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "QueryAllTracesW failed (status=%lu).",
+                          s_etw_session_snapshot.status);
+    } else {
+        imgui.Text("Active ETW sessions: %lu", s_etw_session_snapshot.total_sessions);
+        imgui.Text("Sessions containing \"DC_\": %lu", s_etw_session_snapshot.dc_sessions_count);
+        if (s_etw_session_snapshot.all_sessions.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "No active ETW sessions reported.");
+        } else if (imgui.BeginTable("dc_etw_sessions", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            imgui.TableSetupColumn("Index");
+            imgui.TableSetupColumn("DC_");
+            imgui.TableSetupColumn("Session name");
+            imgui.TableHeadersRow();
+            for (std::size_t i = 0; i < s_etw_session_snapshot.all_sessions.size(); ++i) {
+                const bool is_dc = s_etw_session_snapshot.all_sessions[i].find("DC_") != std::string::npos;
+                imgui.TableNextRow();
+                imgui.TableNextColumn();
+                imgui.Text("%zu", i);
+                imgui.TableNextColumn();
+                imgui.TextUnformatted(is_dc ? "yes" : "no");
+                imgui.TableNextColumn();
+                imgui.TextUnformatted(s_etw_session_snapshot.all_sessions[i].c_str());
+            }
+            imgui.EndTable();
+        }
+    }
     imgui.Unindent();
 
     imgui.Spacing();

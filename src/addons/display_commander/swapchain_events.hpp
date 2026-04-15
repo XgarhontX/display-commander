@@ -81,6 +81,7 @@ bool ShouldReflexLowLatencyBeEnabled();
 bool ShouldReflexBoostBeEnabled();
 /** True only when FPS limiter mode is Reflex: use Reflex minimumIntervalUs for FPS limiting. */
 bool ShouldUseReflexAsFpsLimiter();
+bool GetFpsLimiterLateFramesPercentage(double* out_percentage);
 
 // ============================================================================
 // PERFORMANCE MONITORING FUNCTIONS

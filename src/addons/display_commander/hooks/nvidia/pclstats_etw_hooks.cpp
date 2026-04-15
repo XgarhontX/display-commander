@@ -3,15 +3,20 @@
 #include "../../globals.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/string_utils.hpp"
 
 // Libraries <standard C++>
 #include <atomic>
+#include <array>
 #include <cstring>
+#include <cstdio>
+#include <cwchar>
 
 // Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
 
 // Libraries <Windows>
+#include <evntrace.h>
 #include <evntprov.h>
 
 #include <MinHook.h>
@@ -34,9 +39,21 @@ static std::atomic<bool> g_pclstats_etw_hooks_installed{false};
 // REGHANDLE returned when a non–Display Commander module registers the PCLStats provider
 static std::atomic<REGHANDLE> g_pclstats_foreign_reg_handle{REGHANDLE(0)};
 static std::atomic<bool> g_pclstats_foreign_pclstatsinit_seen{false};
+static std::atomic<ULONG> g_dc_cleanup_removed_count{0};
+static std::atomic<ULONG> g_dc_cleanup_status{ERROR_GEN_FAILURE};
+static wchar_t g_owned_dc_session_name_wide[64] = {};
+static char g_owned_dc_session_name_utf8[64] = {};
 
 static constexpr const char kPclStatsInitName[] = "PCLStatsInit";
 static constexpr ULONG kPclStatsInitNameLen = 12;
+static constexpr wchar_t kDcSessionNeedle[] = L"DC_";
+static constexpr wchar_t kDisplayCommanderSessionPrefix[] = L"DisplayCommander_";
+
+struct QueryEtwSessionProps {
+    EVENT_TRACE_PROPERTIES props{};
+    wchar_t logger_name[128]{};
+    wchar_t log_file_name[2]{};
+};
 
 // Scan blob for PCLStatsInit (TraceLogging event name in descriptor payload)
 static bool BlobContainsPclStatsInit(const void* ptr, ULONG size) {
@@ -47,6 +64,75 @@ static bool BlobContainsPclStatsInit(const void* ptr, ULONG size) {
         if (std::memcmp(cur, kPclStatsInitName, kPclStatsInitNameLen) == 0) return true;
     }
     return false;
+}
+
+static bool IsDcNamedSession(const wchar_t* name) {
+    if (name == nullptr || name[0] == L'\0') {
+        return false;
+    }
+    if (std::wcsstr(name, kDcSessionNeedle) != nullptr) {
+        return true;
+    }
+    const std::size_t prefix_len = std::wcslen(kDisplayCommanderSessionPrefix);
+    return std::wcsncmp(name, kDisplayCommanderSessionPrefix, prefix_len) == 0;
+}
+
+static ULONG StopEtwSessionByName(const wchar_t* session_name) {
+    if (session_name == nullptr || session_name[0] == L'\0') {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    QueryEtwSessionProps stop_props{};
+    stop_props.props.Wnode.BufferSize = sizeof(QueryEtwSessionProps);
+    stop_props.props.LoggerNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, logger_name));
+    stop_props.props.LogFileNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, log_file_name));
+    std::wcsncpy(stop_props.logger_name, session_name, _countof(stop_props.logger_name) - 1);
+    return ControlTraceW(0, stop_props.logger_name, &stop_props.props, EVENT_TRACE_CONTROL_STOP);
+}
+
+static void CleanupOtherDcEtwSessionsOnStartup() {
+    constexpr ULONG kMaxSessions = 64;
+    std::array<QueryEtwSessionProps, kMaxSessions> query_props{};
+    std::array<EVENT_TRACE_PROPERTIES*, kMaxSessions> props_ptrs{};
+    for (ULONG i = 0; i < kMaxSessions; ++i) {
+        auto& p = query_props[i];
+        p.props.Wnode.BufferSize = sizeof(QueryEtwSessionProps);
+        p.props.LoggerNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, logger_name));
+        p.props.LogFileNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, log_file_name));
+        props_ptrs[i] = &p.props;
+    }
+
+    ULONG session_count = kMaxSessions;
+    const ULONG query_status = QueryAllTracesW(props_ptrs.data(), kMaxSessions, &session_count);
+    g_dc_cleanup_status.store(query_status, std::memory_order_release);
+    if (query_status != ERROR_SUCCESS) {
+        LogInfo("[PCLStats ETW] startup cleanup: QueryAllTracesW failed (status=%lu)", query_status);
+        return;
+    }
+
+    ULONG removed = 0;
+    for (ULONG i = 0; i < session_count; ++i) {
+        const wchar_t* name = query_props[i].logger_name;
+        if (!IsDcNamedSession(name)) {
+            continue;
+        }
+        if (std::wcscmp(name, g_owned_dc_session_name_wide) == 0) {
+            continue;
+        }
+
+        const ULONG stop_status = StopEtwSessionByName(name);
+        if (stop_status == ERROR_SUCCESS) {
+            ++removed;
+            LogInfo("[PCLStats ETW] startup cleanup: stopped stale DC_ session '%s'",
+                    display_commander::utils::WideToUtf8(name).c_str());
+        } else {
+            LogInfo("[PCLStats ETW] startup cleanup: failed to stop session '%s' (status=%lu)",
+                    display_commander::utils::WideToUtf8(name).c_str(), stop_status);
+        }
+    }
+
+    g_dc_cleanup_removed_count.store(removed, std::memory_order_release);
+    LogInfo("[PCLStats ETW] startup cleanup done: removed %u stale DC_ session(s)", removed);
 }
 
 ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId, PENABLECALLBACK EnableCallback, PVOID CallbackContext,
@@ -136,6 +222,12 @@ bool InstallPCLStatsEtwHooks(HMODULE hModule) {
         EventRegister_Original = nullptr;
         return false;
     }
+
+    const DWORD pid = GetCurrentProcessId();
+    std::swprintf(g_owned_dc_session_name_wide, _countof(g_owned_dc_session_name_wide), L"DC_PCLStats_%lu", pid);
+    std::snprintf(g_owned_dc_session_name_utf8, sizeof(g_owned_dc_session_name_utf8), "DC_PCLStats_%lu", pid);
+    CleanupOtherDcEtwSessionsOnStartup();
+
     g_pclstats_etw_hooks_installed.store(true, std::memory_order_release);
     LogInfo("[PCLStats ETW] hooks installed on advapi32 (foreign init detection)");
     return true;
@@ -157,6 +249,10 @@ void UninstallPCLStatsEtwHooks() {
     }
     g_pclstats_foreign_reg_handle.store(REGHANDLE(0), std::memory_order_relaxed);
     g_pclstats_foreign_pclstatsinit_seen.store(false, std::memory_order_relaxed);
+    g_dc_cleanup_removed_count.store(0, std::memory_order_relaxed);
+    g_dc_cleanup_status.store(ERROR_GEN_FAILURE, std::memory_order_relaxed);
+    g_owned_dc_session_name_wide[0] = L'\0';
+    g_owned_dc_session_name_utf8[0] = '\0';
     LogInfo("[PCLStats ETW] hooks uninstalled");
 }
 
@@ -168,3 +264,9 @@ bool PclStatsForeignInitObserved() {
     }
     return g_pclstats_foreign_pclstatsinit_seen.load(std::memory_order_acquire);
 }
+
+const char* GetPCLStatsOwnedEtwSessionName() { return g_owned_dc_session_name_utf8; }
+
+ULONG GetPCLStatsDcEtwCleanupRemovedCount() { return g_dc_cleanup_removed_count.load(std::memory_order_acquire); }
+
+ULONG GetPCLStatsDcEtwCleanupStatus() { return g_dc_cleanup_status.load(std::memory_order_acquire); }

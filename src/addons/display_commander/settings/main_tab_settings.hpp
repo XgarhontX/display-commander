@@ -182,6 +182,8 @@ class MainTabSettings {
 #endif
     /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */
     ui::new_ui::BoolSetting show_fps_limiter_src;
+    /** Show percentage of recent frames where OnPresentSync FPS limiter started late. */
+    ui::new_ui::BoolSetting show_fps_limiter_late_frames_pct;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;
     /** DXGI GPU video memory used / budget in performance overlay. */

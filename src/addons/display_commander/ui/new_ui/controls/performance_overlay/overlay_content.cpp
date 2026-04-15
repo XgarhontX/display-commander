@@ -270,6 +270,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     const bool show_driver_dlss_rr_preset = false;
 #endif
     bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
+    bool show_fps_limiter_late_frames_pct = settings::g_mainTabSettings.show_fps_limiter_late_frames_pct.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_overlay_ram = settings::g_mainTabSettings.show_overlay_ram.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
@@ -320,6 +321,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
     }
     if (show_fps_limiter_src) {
+        table1_any = true;
+    }
+    if (show_fps_limiter_late_frames_pct) {
         table1_any = true;
     }
     if (show_flip_status) {
@@ -378,6 +382,20 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const char* src_name = GetChosenFpsLimiterSiteName();
             OverlayTableRow_TextUnformatted(imgui, label_mode, "Lim src", "FPS limiter source", src_name, show_tooltips,
                                             "Which hook site is applying the FPS limiter.");
+        }
+        if (show_fps_limiter_late_frames_pct) {
+            double late_frames_pct = 0.0;
+            if (GetFpsLimiterLateFramesPercentage(&late_frames_pct)) {
+                OverlayTableRow_Text(
+                    imgui, label_mode, "Late %", "FPS limiter late frames", show_tooltips,
+                    "Percent of frames marked late by OnPresentSync FPS limiter over the last 5 seconds "
+                    "(computed from 0.1 second buckets kept for up to 30 seconds).",
+                    "%.1f%%", late_frames_pct);
+            } else {
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "Late %", "FPS limiter late frames", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Not enough OnPresentSync limiter samples yet.", "%s", "N/A");
+            }
         }
         if (show_flip_status) {
             auto desc_ptr = g_last_swapchain_desc_post.load();

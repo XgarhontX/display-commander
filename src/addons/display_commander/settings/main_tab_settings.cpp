@@ -152,6 +152,7 @@ MainTabSettings::MainTabSettings()
       show_overlay_presentmon_flip("show_overlay_presentmon_flip", false, "DisplayCommander"),
 #endif
       show_fps_limiter_src("show_fps_limiter_src", false, "DisplayCommander"),
+      show_fps_limiter_late_frames_pct("show_fps_limiter_late_frames_pct", false, "DisplayCommander"),
       show_playtime("show_playtime", false, "DisplayCommander"),
       show_overlay_vu_bars("show_overlay_vu_bars", false, "DisplayCommander"),
       show_overlay_vram("show_overlay_vram", false, "DisplayCommander"),
@@ -300,6 +301,7 @@ MainTabSettings::MainTabSettings()
         &show_overlay_presentmon_flip,
 #endif
         &show_fps_limiter_src,
+        &show_fps_limiter_late_frames_pct,
         &show_playtime,
         &show_overlay_vu_bars,
         &show_overlay_vram,
