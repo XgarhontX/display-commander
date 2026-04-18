@@ -25,6 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.5
+- [settings] [compatibility] **Swapchain creation delay (INI)** - Optional `swapchain_creation_delay` under `[CompatibilityFixes]` in `DisplayCommander.ini` (milliseconds, default 0) sleeps the render thread before ReShade create-swapchain processing; use for games that need a pause during swapchain setup. Not exposed in the UI.
+- [compatibility] **Local addon DLL scan: addon + game folder** - Pre- and post-ReShade companion DLLs (`.dc64`/`.dc`/`.asi` and `.dc64r`/`.dcr`, etc.) are discovered in the Display Commander addon directory and in the **main executable’s directory** (`GetModuleFileNameW(nullptr)`), with duplicate folders skipped so the same path is not scanned twice.
+
 ## v0.14.1
 - [cleanup] [settings] [compatibility] **Cleanup** - removed `.display_commander_installer_marker.json`, which is no longer needed.
 

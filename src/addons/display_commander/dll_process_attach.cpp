@@ -111,6 +111,24 @@ std::wstring GetFileProductNameW(const std::wstring& path_w) {
     return result;
 }
 
+void AppendUniqueLocalAddonRoot(std::vector<std::filesystem::path>& roots, const std::filesystem::path& candidate) {
+    if (candidate.empty()) return;
+    std::error_code eq_ec;
+    for (const auto& existing : roots) {
+        if (std::filesystem::equivalent(existing, candidate, eq_ec)) return;
+    }
+    roots.push_back(candidate);
+}
+
+void CollectLocalAddonDllRootDirs(HMODULE h_module, std::vector<std::filesystem::path>& roots) {
+    roots.clear();
+    WCHAR path_buf[MAX_PATH] = {};
+    if (GetModuleFileNameW(h_module, path_buf, MAX_PATH) > 0)
+        AppendUniqueLocalAddonRoot(roots, std::filesystem::path(path_buf).parent_path());
+    if (GetModuleFileNameW(nullptr, path_buf, MAX_PATH) > 0)
+        AppendUniqueLocalAddonRoot(roots, std::filesystem::path(path_buf).parent_path());
+}
+
 void RenameUnusedDcProxyDlls(HMODULE h_module) {
     if (h_module == nullptr) return;
 
@@ -205,30 +223,42 @@ void RenameUnusedDcProxyDlls(HMODULE h_module) {
 }
 
 void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
-    WCHAR addon_path[MAX_PATH];
-    if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) <= 0) return;
-    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
 #ifdef _WIN64
     const std::wstring ext_list[] = {L".dc64", L".dc", L".asi"};
 #else
     const std::wstring ext_list[] = {L".dc32", L".dc", L".asi"};
 #endif
     const std::set<std::wstring> ext_match(ext_list, ext_list + 3);
-    std::error_code ec;
-    for (const auto& entry : std::filesystem::directory_iterator(
-             addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
-        if (ec) break;
-        if (!entry.is_regular_file()) continue;
-        std::wstring ext = entry.path().extension().wstring();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
-        if (!ext_match.contains(ext)) continue;
-        const std::wstring path_w = entry.path().wstring();
+    std::vector<std::filesystem::path> roots;
+    CollectLocalAddonDllRootDirs(h_module, roots);
+    if (roots.empty()) return;
+
+    std::vector<std::filesystem::path> to_load;
+    for (const auto& addon_dir : roots) {
+        std::error_code ec;
+        for (const auto& entry : std::filesystem::directory_iterator(
+                 addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+            if (ec) break;
+            if (!entry.is_regular_file()) continue;
+            std::wstring ext = entry.path().extension().wstring();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+            if (!ext_match.contains(ext)) continue;
+            to_load.push_back(entry.path());
+        }
+    }
+    if (to_load.empty()) return;
+    std::sort(to_load.begin(), to_load.end(),
+              [](const std::filesystem::path& a, const std::filesystem::path& b) {
+                  return a.filename().wstring() < b.filename().wstring();
+              });
+    for (const auto& path : to_load) {
+        const std::wstring path_w = path.wstring();
         const std::wstring product = GetFileProductNameW(path_w);
         if (!product.empty() && _wcsicmp(product.c_str(), L"ReShade") == 0 && g_reshade_module != nullptr) continue;
         if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
         HMODULE mod = LoadLibraryW(path_w.c_str());
         if (mod != nullptr) {
-            std::string name = entry.path().filename().string();
+            std::string name = path.filename().string();
             char msg[384];
             snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64/.dc32/.dc/.asi DLL: %s\n", name.c_str());
             OutputDebugStringA(msg);
@@ -237,27 +267,30 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
 }
 
 void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
-    WCHAR addon_path[MAX_PATH];
-    if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) <= 0) return;
-    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
 #ifdef _WIN64
-    const std::wstring ext_list[] = {L".dc64r", L".dcr"};
+    const std::wstring ext_list[] = {L".dc64r", L".dcr", L".addon64"};
 #else
-    const std::wstring ext_list[] = {L".dc32r", L".dcr"};
+    const std::wstring ext_list[] = {L".dc32r", L".dcr", L".addon32"};
 #endif
-    const std::set<std::wstring> ext_match(ext_list, ext_list + 2);
-    std::error_code ec;
+    const std::set<std::wstring> ext_match(ext_list, ext_list + 3);
+    std::vector<std::filesystem::path> roots;
+    CollectLocalAddonDllRootDirs(h_module, roots);
+    if (roots.empty()) return;
+
     std::vector<std::filesystem::path> to_load;
-    for (const auto& entry : std::filesystem::directory_iterator(
-             addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
-        if (ec) break;
-        if (!entry.is_regular_file()) continue;
-        std::wstring ext = entry.path().extension().wstring();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
-        if (!ext_match.contains(ext)) continue;
-        to_load.push_back(entry.path());
+    for (const auto& addon_dir : roots) {
+        std::error_code ec;
+        for (const auto& entry : std::filesystem::directory_iterator(
+                 addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+            if (ec) break;
+            if (!entry.is_regular_file()) continue;
+            std::wstring ext = entry.path().extension().wstring();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+            if (!ext_match.contains(ext)) continue;
+            to_load.push_back(entry.path());
+        }
     }
-    if (ec || to_load.empty()) {
+    if (to_load.empty()) {
         return;
     }
     std::sort(to_load.begin(), to_load.end(),

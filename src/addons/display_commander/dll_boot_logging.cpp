@@ -69,6 +69,7 @@ void ChooseAndSetDcConfigPath(HMODULE h_module) {
                 config_path_w = default_global.wstring();
                 bool config_path_from_marker = false;
 
+                /*
                 const std::filesystem::path game_root = GetGameInstallRootPathFromProcess();
                 if (!game_root.empty()) {
                     const auto from_marker =
@@ -87,7 +88,7 @@ void ChooseAndSetDcConfigPath(HMODULE h_module) {
                 if (!game_root.empty()) {
                     display_commander::features::installer_marker::WriteInstallerMarkerJson(
                         use_global_config, game_root, config_path_w, game_name, config_path_from_marker);
-                }
+                }*/
             }
         }
         if (config_path_w.empty() &&
