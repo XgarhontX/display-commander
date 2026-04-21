@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.6
+** [cleanup] **Remove usage and creation of display_commander_installer_marker.json**
+
 ## v0.14.5
 - [settings] [compatibility] **Swapchain creation delay (INI)** - Optional `swapchain_creation_delay` under `[CompatibilityFixes]` in `DisplayCommander.ini` (milliseconds, default 0) sleeps the render thread before ReShade create-swapchain processing; use for games that need a pause during swapchain setup. Not exposed in the UI.
 - [compatibility] **Local addon DLL scan: addon + game folder** - Pre- and post-ReShade companion DLLs (`.dc64`/`.dc`/`.asi` and `.dc64r`/`.dcr`, etc.) are discovered in the Display Commander addon directory and in the **main executable’s directory** (`GetModuleFileNameW(nullptr)`), with duplicate folders skipped so the same path is not scanned twice.
@@ -123,17 +126,9 @@ Planned:
 ## v0.13.163 (2026-04-07)
 - [bugfix] [ui] **Native FPS now works even when FPS Counter is off** - You can enable **Native FPS** independently, so the native Reflex-based FPS line still appears even if the regular **FPS Counter** line is disabled.
 
-## v0.13.162 (2026-04-07)
-- [new feature] [settings] [compatibility] **Installer marker now reports resolved source and roots** - `.display_commander_installer_marker.json` now includes additional fields so installers can reliably tell which folder naming/path logic was used: game install root, derived games folder name, and whether the active config path came from default logic or from marker override.
-  **Details:** `WriteInstallerMarkerJson` / `ChooseAndSetDcConfigPath` in `dll_boot_logging.cpp`; README flag-file docs.
-
 ## v0.13.161 (2026-04-07)
 - [new feature] [hooks] [compatibility] **Foreground Alt keydown when Continue rendering is on** - After you return to the game from the background, if **Continue rendering in background** is enabled and you are not already holding Alt, Display Commander sends one synthetic **left Alt key-down** (via the unhooked input path) so some games can resync their menu/input state after alt-tab. **Note:** Only the key-down is sent, so Alt can remain logically “down” until something releases it; games that only use Raw Input may not react.
   **Details:** `check_is_background()` in `continuous_monitoring.cpp` (`GetAsyncKeyState_Direct` for `VK_LMENU`/`VK_RMENU`, `SendInput_Original`).
-
-## v0.13.160 (2026-04-07)
-- [new feature] [settings] [compatibility] **Installer marker for `.DC_CONFIG_GLOBAL`** - When global per-game config is active, Display Commander writes `.display_commander_installer_marker.json` in the game install root (same folder logic as the derived game name, e.g. `…\Steam\common\Wuthering Waves\`). The file lists the resolved config directory and display name so an installer can see which folder is in use. You can set **`display_commander_config_directory`** in that JSON to an absolute UTF-8 path before launch to redirect config; the addon refreshes the file when the game runs so it stays in sync.
-  **Details:** `GetGameInstallRootPathFromProcess` in `general_utils.cpp`; read/write and boot log in `dll_boot_logging.cpp` (`ChooseAndSetDcConfigPath`).
 
 ## v0.13.159 (2026-04-07)
 - [bugfix] [settings] **Resident Evil 2 (`re2.exe`) and ReShade input blocking** - Default overrides no longer turn on **Continue rendering in background** for `re2.exe`, so the game does not keep receiving input when ReShade would block it (overlay / click-through behavior matches expectations).

@@ -1,7 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "dll_boot_logging.hpp"
 
-#include "features/installer_marker/installer_marker.hpp"
 #include "globals.hpp"
 #include "utils/general_utils.hpp"
 
@@ -67,28 +66,6 @@ void ChooseAndSetDcConfigPath(HMODULE h_module) {
                 if (game_name.empty()) game_name = "Game";
                 const std::filesystem::path default_global = base / L"Games" / std::filesystem::path(game_name);
                 config_path_w = default_global.wstring();
-                bool config_path_from_marker = false;
-
-                /*
-                const std::filesystem::path game_root = GetGameInstallRootPathFromProcess();
-                if (!game_root.empty()) {
-                    const auto from_marker =
-                        display_commander::features::installer_marker::TryReadInstallerMarkerConfigDirectory(
-                            use_global_config, game_root / L".display_commander_installer_marker.json");
-                    if (from_marker && !from_marker->empty()) {
-                        config_path_w = *from_marker;
-                        config_path_from_marker = true;
-                        LogBoot("[DC] config path from .display_commander_installer_marker.json under game root");
-                    }
-                }
-
-                ec.clear();
-                std::filesystem::create_directories(std::filesystem::path(config_path_w), ec);
-
-                if (!game_root.empty()) {
-                    display_commander::features::installer_marker::WriteInstallerMarkerJson(
-                        use_global_config, game_root, config_path_w, game_name, config_path_from_marker);
-                }*/
             }
         }
         if (config_path_w.empty() &&
