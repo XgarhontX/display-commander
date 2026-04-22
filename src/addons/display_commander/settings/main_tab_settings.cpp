@@ -68,14 +68,14 @@ MainTabSettings::MainTabSettings()
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
       delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled_doff", false, "DisplayCommander"),
       delay_present_start_frames("delay_present_start_frames", 1.0f, 0.0f, 3.0f, "DisplayCommander"),
-      safe_mode_fps_limiter("safe_mode_fps_limiter", false, "DisplayCommander"),
+      safe_mode_fps_limiter("safe_mode_fps_limiter", true, "DisplayCommander"),
       selected_reshade_runtime_index("selected_reshade_runtime_index", 0, 0, 31, "DisplayCommander"),
-      vsync_override("vsync_override", 0,
+      vsync_override("vsync_override", 5,
                      {"No override", "Force ON", "FORCED 1/2 (NO VRR)", "FORCED 1/3 (NO VRR)", "FORCED 1/4 (NO VRR)",
                       "FORCED OFF"},
                      "DisplayCommander"),
       max_frame_latency_override(
-          "max_frame_latency_override", 0,
+          "max_frame_latency_override", 1,
           {"No override", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
           "DisplayCommander"),
       force_vsync_on("force_vsync_on", false, "DisplayCommander"),
@@ -203,7 +203,8 @@ MainTabSettings::MainTabSettings()
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander"),
       auto_enable_windows_hdr("auto_enable_windows_hdr", false, "DisplayCommander"),
-      auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
+      auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander"), 
+      megamix__is_menu_fps_clamp("megamix__is_menu_fps_clamp", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &window_mode,
@@ -345,6 +346,7 @@ MainTabSettings::MainTabSettings()
         &auto_reshade_config_backup,
         &auto_enable_windows_hdr,
         &auto_apply_maxmdl_1000_hdr_metadata,
+        &megamix__is_menu_fps_clamp,
     };
 }
 

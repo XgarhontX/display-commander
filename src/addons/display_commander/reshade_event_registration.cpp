@@ -5,6 +5,7 @@
 #include "swapchain_events.hpp"
 #include "ui/new_ui/controls/performance_overlay/reshade_overlay_event.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "megamix_main.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <reshade.hpp>
@@ -60,4 +61,9 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
+
+    //Megamix
+    reshade::register_event<reshade::addon_event::create_device>(MegaMix::HighFPS::OnCreateDevice);
+    reshade::register_event<reshade::addon_event::present>(MegaMix::HighFPS::OnPresentBefore);
+    reshade::register_event<reshade::addon_event::finish_present>(MegaMix::HighFPS::OnPresentAfter);
 }
