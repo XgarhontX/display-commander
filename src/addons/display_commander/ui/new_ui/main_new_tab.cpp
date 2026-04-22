@@ -610,6 +610,25 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
     }
 
+    // Megamix Section
+    g_rendering_ui_section.store("ui:tab:main_new:megamix", std::memory_order_release);
+    ui::colors::PushHeaderColors(&imgui);
+    const bool megamix_open = imgui.CollapsingHeader("Megamix", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (megamix_open) {
+        imgui.Indent();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "(This is a custom build for MegaMix)");
+        CheckboxSetting(settings::g_mainTabSettings.megamix__is_menu_fps_clamp, "60FPS Menus", imgui);
+        imgui.TextColored(ui::colors::TEXT_LABEL, "- VSync is off for a chance at Independent Flip.");
+        imgui.TextColored(ui::colors::TEXT_LABEL, "- Attribution: Memory addresses from");
+        imgui.SameLine(); if (imgui.Button("SpecialK")) {
+            ShellExecuteA(nullptr, "open", "https://github.com/SpecialKO/SpecialK/blob/6fe51ee1eca4aee26a59e227ee5402ad3b55fcc0/src/plugins/unclassified.cpp#L1264", nullptr, nullptr, SW_SHOW);
+        }
+        imgui.Unindent();
+    }
+
+    imgui.Spacing();
+
     // Display Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);

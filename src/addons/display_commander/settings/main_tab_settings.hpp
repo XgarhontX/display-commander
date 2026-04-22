@@ -272,6 +272,9 @@ class MainTabSettings {
     ui::new_ui::IntSetting max_anisotropy;
     ui::new_ui::FloatSetting force_mipmap_lod_bias;
 
+    //MegaMix
+    ui::new_ui::BoolSetting megamix__is_menu_fps_clamp;
+
    private:
     std::vector<ui::new_ui::SettingBase*> all_settings_;
 };
