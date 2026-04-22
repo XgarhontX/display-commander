@@ -59,7 +59,6 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 #endif
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -76,11 +75,6 @@ static constexpr int MIN_CPU_CORES_SELECTABLE = 6;
 namespace ui::new_ui {
 
 namespace {
-
-// ReShade ADDON LoadFromDllMain: read once per process after g_reshade_module is set (avoids ini parse every frame).
-// Warn when legacy LoadFromDllMain=1 or when a non-empty add-on list is configured (early load from DllMain).
-std::atomic<bool> s_load_from_dll_main_fetched{false};
-std::atomic<bool> s_load_from_dll_main_warn{false};
 
 // Draw DXGI overlay subsection (show DXGI VRR status, show DXGI refresh rate). Uses RefreshRateMonitor when
 // enable_dxgi_refresh_rate_vrr_detection is on (Debug DXGI refresh tab in -DebugTabs builds, or config). Checkboxes are
@@ -527,49 +521,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.SetTooltipEx(
                 "Recommendation: use Display Commander as dxgi.dll, d3d12.dll, d3d11.dll, or version.dll and ReShade "
                 "as Reshade64.dll so our hooks are active before NGX loads. ");
-        }
-        imgui.Spacing();
-    }
-
-    g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
-    // LoadFromDllMain warning (config read once; requires restart to pick up ini changes)
-    bool show_load_from_dll_main_warning = false;
-    if (g_reshade_module != nullptr) {
-        if (!s_load_from_dll_main_fetched.load(std::memory_order_acquire)) {
-            bool warn = false;
-            int32_t legacy_int = 0;
-            if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", legacy_int) && legacy_int == 1) {
-                warn = true;
-            } else {
-                char buf[4096] = {0};
-                size_t sz = sizeof(buf);
-                if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", buf, &sz)) {
-                    const char* ptr = buf;
-                    while (*ptr != '\0' && ptr < buf + sz) {
-                        std::string entry(ptr);
-                        const size_t len = entry.length();
-                        if (!entry.empty() && entry != "0" && entry != "1") {
-                            warn = true;
-                            break;
-                        }
-                        ptr += len + 1;
-                    }
-                }
-            }
-            s_load_from_dll_main_warn.store(warn, std::memory_order_relaxed);
-            s_load_from_dll_main_fetched.store(true, std::memory_order_release);
-        }
-        show_load_from_dll_main_warning = s_load_from_dll_main_warn.load(std::memory_order_relaxed);
-    }
-    if (show_load_from_dll_main_warning) {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          ICON_FK_WARNING " WARNING: ReShade ADDON LoadFromDllMain is enabled (early add-on load)");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "LoadFromDllMain lists add-ons that ReShade loads from DllMain. That can improve early load timing "
-                "but may cause compatibility issues with some games and add-ons. Edit or clear [ADDON] "
-                "LoadFromDllMain in ReShade.ini if you experience problems (restart required).");
         }
         imgui.Spacing();
     }

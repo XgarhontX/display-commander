@@ -27,6 +27,7 @@ Planned:
 
 ## v0.14.13
 - [removal] [build] **Display Commander Lite (`DC_LITE`) removed** - One addon binary again; the old Lite vs full split is replaced by **modules**, which are turned off by default.
+- [removal] [ui] **Main tab ReShade LoadFromDllMain warning removed** - The banner about `[ADDON] LoadFromDllMain` in ReShade.ini is no longer shown on the Main tab.
 
 ## v0.14.12
 - [hooks] **Potencial workarounnd for DC being loaded late** - Added workaround which should solve issues related to not detecting DLSS-FG when dc is loaded as .addon64.
