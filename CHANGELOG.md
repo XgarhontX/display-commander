@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.13
+- [removal] [build] **Display Commander Lite (`DC_LITE`) removed** - One addon binary again; the old Lite vs full split is replaced by **modules**, which are turned off by default.
+
 ## v0.14.12
-- [hooks] **NGX GetParameters prime after export hooks** - After DC installs NGX export hooks, try D3D12, D3D11, and Vulkan `GetParameters` once through the trampoline; if NGX was already initialized, parameter vtable hooks can attach without waiting for the next game call.
+- [hooks] **Potencial workarounnd for DC being loaded late** - Added workaround which should solve issues related to not detecting DLSS-FG when dc is loaded as .addon64.
 
 ## v0.14.11
 - [ui] [hooks] **Main tab NGX late-load warning** - Add a warning when DC is loaded too late, and DLSS stats aren't available. Spec: `docs/specs/main_tab_ngx_late_load_warning.md`.
