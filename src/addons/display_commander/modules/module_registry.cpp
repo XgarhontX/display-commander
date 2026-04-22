@@ -82,6 +82,11 @@ const ModuleEntry* FindModuleEntryConst(std::string_view module_id) {
     return &(*it);
 }
 
+void FinalizeModuleDescriptorCapabilities(ModuleEntry& entry) {
+    entry.descriptor.has_tab = (entry.draw_tab_fn != nullptr);
+    entry.descriptor.has_overlay = (entry.draw_overlay_fn != nullptr);
+}
+
 void AddModuleEntry(ModuleEntry&& entry) {
     if (entry.descriptor.id.empty()) {
         return;
@@ -89,6 +94,7 @@ void AddModuleEntry(ModuleEntry&& entry) {
     if (FindModuleEntryConst(entry.descriptor.id) != nullptr) {
         return;
     }
+    FinalizeModuleDescriptorCapabilities(entry);
     g_modules.push_back(std::move(entry));
 }
 

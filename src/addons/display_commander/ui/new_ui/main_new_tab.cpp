@@ -422,7 +422,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     imgui.SetTooltipEx("Show the %s tab in the overlay tab bar.", module.tab_name.c_str());
                 }
             }
-            if (enabled) {
+            if (enabled && module.has_overlay) {
                 imgui.SameLine();
                 bool show_overlay = module.show_in_overlay;
                 const std::string overlay_label = "Overlay##" + module.id;

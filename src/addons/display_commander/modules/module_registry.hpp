@@ -33,6 +33,8 @@ struct ModuleDescriptor {
     /** When false, the module's top-level overlay tab is hidden (module may still run if enabled). */
     bool show_tab = true;
     bool has_tab = false;
+    /** True when the module registers overlay UI (`draw_overlay_fn`). */
+    bool has_overlay = false;
     std::string tab_name;
     std::string tab_id;
     bool is_advanced_tab = true;
