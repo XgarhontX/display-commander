@@ -12,6 +12,7 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
+#include "nvapi/gpu_temperature.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/swapchain_tab_settings.hpp"
 #include "swapchain_events.hpp"
@@ -110,9 +111,9 @@ void OverlayTableRow_TextColored(display_commander::ui::IImGuiWrapper& imgui, Ov
 }
 
 void DrawOverlayGpuMemoryTable(display_commander::ui::IImGuiWrapper& imgui, OverlayLabelMode label_mode,
-                               bool show_tooltips, bool show_overlay_nvapi_gpu_util, bool show_overlay_vram,
-                               bool show_overlay_ram) {
-    const bool table_any = show_overlay_nvapi_gpu_util || show_overlay_vram || show_overlay_ram;
+                               bool show_tooltips, bool show_overlay_nvapi_gpu_util, bool show_overlay_nvapi_gpu_temp,
+                               bool show_overlay_vram, bool show_overlay_ram) {
+    const bool table_any = show_overlay_nvapi_gpu_util || show_overlay_nvapi_gpu_temp || show_overlay_vram || show_overlay_ram;
     if (!table_any) {
         return;
     }
@@ -139,6 +140,21 @@ void DrawOverlayGpuMemoryTable(display_commander::ui::IImGuiWrapper& imgui, Over
                 "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
                 "first physical GPU).",
                 "%.1f%%", displayed_nv_gpu_util);
+        }
+    }
+    if (show_overlay_nvapi_gpu_temp) {
+        nvapi::RequestGpuTemperatureFromOverlay(true);
+        unsigned gpu_temp_c = 0;
+        if (nvapi::GetCachedGpuTemperatureCelsius(gpu_temp_c)) {
+            OverlayTableRow_Text(
+                imgui, label_mode, "GPU T", "GPU temp", show_tooltips,
+                "NVIDIA GPU temperature from NvAPI_GPU_GetThermalSettings (first physical GPU).",
+                "%u C", gpu_temp_c);
+        } else {
+            OverlayTableRow_TextColored(
+                imgui, label_mode, "GPU T", "GPU temp", ui::colors::TEXT_DIMMED, show_tooltips,
+                "NVIDIA GPU temperature is currently unavailable from NVAPI on this system.",
+                "%s", "N/A");
         }
     }
     if (show_overlay_vram) {
@@ -253,6 +269,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
+    bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
 #if !defined(DC_LITE)
     bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
@@ -606,7 +623,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     // ----- Table: GPU + memory -----
-    DrawOverlayGpuMemoryTable(imgui, label_mode, show_tooltips, show_overlay_nvapi_gpu_util, show_overlay_vram,
+    DrawOverlayGpuMemoryTable(imgui, label_mode, show_tooltips, show_overlay_nvapi_gpu_util, show_overlay_nvapi_gpu_temp,
+                             show_overlay_vram,
                              show_overlay_ram);
 
     // ----- DLSS / FG (table) -----

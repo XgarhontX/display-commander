@@ -609,6 +609,10 @@ inline constexpr LONGLONG kPerformanceOverlayPostFirstFrameDelayNs = 2'000'000'0
 extern std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id;
 /** `g_global_frame_id` when `NvAPI_GPU_GetDynamicPstatesInfoEx` was last run for overlay GPU util. */
 extern std::atomic<uint64_t> g_nvapi_gpu_util_last_query_frame_id;
+/** `g_global_frame_id` when the performance overlay last requested an NVAPI GPU temperature sample; 0 = no active request. */
+extern std::atomic<uint64_t> g_nvapi_gpu_temp_request_frame_id;
+/** `g_global_frame_id` when `NvAPI_GPU_GetThermalSettings` was last run for overlay GPU temperature. */
+extern std::atomic<uint64_t> g_nvapi_gpu_temp_last_query_frame_id;
 
 // QPC ns when a Windows message was last processed in the game window's WndProc; for stuck-detection log.
 extern std::atomic<LONGLONG> g_last_window_message_processed_ns;

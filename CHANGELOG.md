@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.8
+- [new feature] [ui] **GPU temperature in OSD** - Added new entry.
+
+## v0.14.7
+** [crashfix] **Fix crash when smoothmotion is enabled**
+
 ## v0.14.6
 ** [cleanup] **Remove usage and creation of display_commander_installer_marker.json**
 

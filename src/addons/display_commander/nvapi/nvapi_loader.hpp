@@ -30,6 +30,8 @@ using NvAPI_Disp_GetVRRInfo_pfn = NvAPI_Status(__cdecl*)(NvU32 displayId, NV_GET
 using NvAPI_EnumPhysicalGPUs_pfn = NvAPI_Status(__cdecl*)(NvPhysicalGpuHandle* nvGPUHandle, NvU32* pGpuCount);
 using NvAPI_GPU_GetDynamicPstatesInfoEx_pfn =
     NvAPI_Status(__cdecl*)(NvPhysicalGpuHandle hPhysicalGpu, NV_GPU_DYNAMIC_PSTATES_INFO_EX* pDynamicPstatesInfoEx);
+using NvAPI_GPU_GetThermalSettings_pfn =
+    NvAPI_Status(__cdecl*)(NvPhysicalGpuHandle hPhysicalGpu, NvU32 sensorIndex, void* pThermalSettings);
 
 using NvAPI_DRS_CreateSession_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle* phSession);
 using NvAPI_DRS_DestroySession_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession);
@@ -77,6 +79,7 @@ struct NvApiPtrs {
     NvAPI_Disp_GetVRRInfo_pfn Disp_GetVRRInfo = nullptr;
     NvAPI_EnumPhysicalGPUs_pfn EnumPhysicalGPUs = nullptr;
     NvAPI_GPU_GetDynamicPstatesInfoEx_pfn GPU_GetDynamicPstatesInfoEx = nullptr;
+    NvAPI_GPU_GetThermalSettings_pfn GPU_GetThermalSettings = nullptr;
 
     NvAPI_DRS_CreateSession_pfn DRS_CreateSession = nullptr;
     NvAPI_DRS_DestroySession_pfn DRS_DestroySession = nullptr;

@@ -144,6 +144,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_cpu_usage;
     /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
+    /** NVIDIA GPU temperature in Celsius in performance overlay (NvAPI_GPU_GetThermalSettings; first physical GPU). */
+    ui::new_ui::BoolSetting show_overlay_nvapi_gpu_temp;
     /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) in the performance overlay. */
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
     /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). Debug PresentMon tab. */

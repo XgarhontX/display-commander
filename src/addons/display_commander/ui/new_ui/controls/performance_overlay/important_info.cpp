@@ -138,9 +138,17 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows NVIDIA GPU engine busy %% in the performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; "
-            "driver-reported ~1 s rolling average). Uses the first enumerated physical GPU. "
-            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+            "Shows NVIDIA GPU engine busy %%. ");
+    }
+    imgui.NextColumn();
+
+    bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
+    if (imgui.Checkbox("GPU temp", &show_overlay_nvapi_gpu_temp)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.SetValue(show_overlay_nvapi_gpu_temp);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Shows NVIDIA GPU temperature (Celsius).");
     }
     imgui.NextColumn();
 
