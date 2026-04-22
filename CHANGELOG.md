@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.9
+- [new feature] [ui] **CPU process/system load in OSD** - Added optional `CPU process` and `CPU system` overlay metrics sourced from Windows CPU telemetry APIs.
+
 ## v0.14.8
 - [new feature] [ui] **GPU temperature in OSD** - Added new entry.
 

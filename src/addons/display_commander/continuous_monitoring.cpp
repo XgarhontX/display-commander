@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "display/display_cache.hpp"
+#include "feature/cpu_telemetry/cpu_telemetry.hpp"
 #include "process_exit_hooks.hpp"
 #include "globals.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
@@ -746,6 +747,7 @@ void ContinuousMonitoringThread() {
 
             nvapi::ProcessGpuDynamicUtilizationRequestInContinuousMonitoring();
             nvapi::ProcessGpuTemperatureRequestInContinuousMonitoring();
+            display_commander::feature::cpu_telemetry::ProcessCpuLoadRequestsInContinuousMonitoring();
         }
         g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 

@@ -227,6 +227,8 @@ std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id{0};
 std::atomic<uint64_t> g_nvapi_gpu_util_last_query_frame_id{0};
 std::atomic<uint64_t> g_nvapi_gpu_temp_request_frame_id{0};
 std::atomic<uint64_t> g_nvapi_gpu_temp_last_query_frame_id{0};
+std::atomic<uint64_t> g_cpu_telemetry_request_frame_id{0};
+std::atomic<uint64_t> g_cpu_telemetry_last_query_frame_id{0};
 
 // When a Windows message was last processed in the game window's WndProc (QPC ns)
 std::atomic<LONGLONG> g_last_window_message_processed_ns{0};

@@ -6,6 +6,7 @@
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #include "features/presentmon/presentmon_minimal_etw.hpp"
 #endif
+#include "feature/cpu_telemetry/cpu_telemetry.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "latency/reflex_provider.hpp"
@@ -268,6 +269,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool show_overlay_cpu_process_load = settings::g_mainTabSettings.show_overlay_cpu_process_load.GetValue();
+    bool show_overlay_cpu_system_load = settings::g_mainTabSettings.show_overlay_cpu_system_load.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
@@ -782,7 +785,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         have_nv_latency_params = g_reflexProvider->GetLatencyParamsV1(nv_latency_params);
     }
 
-    const bool table4_public_any = show_gpu_measurement || show_cpu_usage || show_volume;
+    const bool table4_public_any =
+        show_gpu_measurement || show_cpu_usage || show_overlay_cpu_process_load || show_overlay_cpu_system_load || show_volume;
     if (table4_public_any) {
         OverlayScalarTableBegin(imgui);
 
@@ -849,6 +853,36 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 }
                 OverlayTableRow_Text(imgui, label_mode, "CPU%", "CPU busy", show_tooltips, nullptr,
                                      "%.1f%% (max %.1f%%)", displayed_cpu_usage, max_cpu_usage);
+            }
+        }
+        if (show_overlay_cpu_process_load) {
+            display_commander::feature::cpu_telemetry::RequestProcessCpuLoadFromOverlay(true);
+            double process_cpu_percent = 0.0;
+            if (display_commander::feature::cpu_telemetry::GetCachedProcessCpuLoadPercent(process_cpu_percent)) {
+                OverlayTableRow_Text(
+                    imgui, label_mode, "CPU P", "CPU proc", show_tooltips,
+                    "Process CPU load for this game process (GetProcessTimes normalized by GetSystemTimes).", "%.1f%%",
+                    process_cpu_percent);
+            } else {
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "CPU P", "CPU proc", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Process CPU load is not available yet (needs at least one completed telemetry interval).", "%s",
+                    "N/A");
+            }
+        }
+        if (show_overlay_cpu_system_load) {
+            display_commander::feature::cpu_telemetry::RequestSystemCpuLoadFromOverlay(true);
+            double system_cpu_percent = 0.0;
+            if (display_commander::feature::cpu_telemetry::GetCachedSystemCpuLoadPercent(system_cpu_percent)) {
+                OverlayTableRow_Text(
+                    imgui, label_mode, "CPU S", "CPU sys", show_tooltips,
+                    "System CPU load from GetSystemTimes (busy time over total elapsed CPU time).", "%.1f%%",
+                    system_cpu_percent);
+            } else {
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "CPU S", "CPU sys", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "System CPU load is not available yet (needs at least one completed telemetry interval).", "%s",
+                    "N/A");
             }
         }
         if (show_volume) {

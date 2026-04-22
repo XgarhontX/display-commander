@@ -476,33 +476,29 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 
         imgui.Columns(1);
         imgui.Separator();
-        #if 0
         imgui.TextUnformatted("CPU / limiter");
         imgui.Columns(4, "overlay_checkboxes", false);
-        bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-        if (imgui.Checkbox("Cpu busy", &show_cpu_usage)) {
-            settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
+        bool show_overlay_cpu_process_load = settings::g_mainTabSettings.show_overlay_cpu_process_load.GetValue();
+        if (imgui.Checkbox("CPU process", &show_overlay_cpu_process_load)) {
+            settings::g_mainTabSettings.show_overlay_cpu_process_load.SetValue(show_overlay_cpu_process_load);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "100%% minus the %% of frame time the FPS limiter spends sleeping. "
-                "Not actual CPU usage: measures how much headroom the game has. 100%% = CPU limited.");
+                "Shows this process CPU load from Windows CPU telemetry APIs. "
+                "Unlike CPU busy, this is OS-reported process utilization.");
         }
         imgui.NextColumn();
-        bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
-        if (imgui.Checkbox("FPS limiter", &show_fps_limiter_src)) {
-            settings::g_mainTabSettings.show_fps_limiter_src.SetValue(show_fps_limiter_src);
+        bool show_overlay_cpu_system_load = settings::g_mainTabSettings.show_overlay_cpu_system_load.GetValue();
+        if (imgui.Checkbox("CPU system", &show_overlay_cpu_system_load)) {
+            settings::g_mainTabSettings.show_overlay_cpu_system_load.SetValue(show_overlay_cpu_system_load);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows which hook is currently applying the FPS limiter in the performance overlay (same text as "
-                "FPS limiter source on the Main tab).");
+            imgui.SetTooltipEx("Shows total system CPU load from Windows CPU telemetry APIs.");
         }
         imgui.NextColumn();
 
         imgui.Columns(1);
         imgui.Separator();
-        #endif
         imgui.TextUnformatted("DLSS / NGX");
         imgui.Columns(4, "overlay_checkboxes", false);
 

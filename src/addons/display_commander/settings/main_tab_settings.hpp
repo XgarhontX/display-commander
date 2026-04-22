@@ -142,6 +142,10 @@ class MainTabSettings {
      * refresh rate / VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
+    /** Process CPU load (%) in performance overlay (GetProcessTimes + GetSystemTimes; cached by cpu_telemetry). */
+    ui::new_ui::BoolSetting show_overlay_cpu_process_load;
+    /** System CPU load (%) in performance overlay (GetSystemTimes; cached by cpu_telemetry). */
+    ui::new_ui::BoolSetting show_overlay_cpu_system_load;
     /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
     /** NVIDIA GPU temperature in Celsius in performance overlay (NvAPI_GPU_GetThermalSettings; first physical GPU). */
