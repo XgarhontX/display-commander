@@ -15,6 +15,9 @@ enum class NGXCounterKind : int;
 bool InstallNGXHooks(HMODULE ngx_module);
 void CleanupNGXHooks();
 
+// True after InstallNGXHooks successfully installed NGX export detours on _nvngx.dll (not merely module load).
+bool AreNGXInitializationHooksInstalled();
+
 // Internal vtable hooking function (context is logged when installing hooks, e.g. "D3D12_CreateFeature")
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context);
 

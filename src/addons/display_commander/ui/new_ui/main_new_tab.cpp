@@ -515,6 +515,25 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     ShowMainTabTopWarnings(imgui);
 
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:ngx_late_load", std::memory_order_release);
+    if (AreNGXInitializationHooksInstalled() && !AreNGXParameterVTableHooksInstalled()
+        && ShouldShowDlssInformationSection()) {
+        imgui.Spacing();
+        imgui.TextColored(
+            ui::colors::TEXT_WARNING,
+            ICON_FK_WARNING
+            " Display Commander was loaded too late for NGX parameter hooks (consider loading DC as a DLL proxy).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was already "
+                "loaded). "
+                "Recommendation: use Display Commander as dxgi.dll, d3d12.dll, d3d11.dll, or version.dll and ReShade "
+                "as Reshade64.dll so our hooks are active before NGX loads. "
+                "Parameter overrides and DLSS preset controls may not apply until then.");
+        }
+        imgui.Spacing();
+    }
+
     g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
     // LoadFromDllMain warning (config read once; requires restart to pick up ini changes)
     bool show_load_from_dll_main_warning = false;

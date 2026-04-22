@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.11
+- [ui] [hooks] **Main tab NGX late-load warning** - When NGX export hooks are installed but Parameter vtable hooks never ran and DLSS/NGX activity is detected, the Main tab shows a warning to load DC earlier (e.g. DLL proxy). Spec: `src/addons/display_commander/docs/specs/main_tab_ngx_late_load_warning.md`.
+
 ## v0.14.10
 - [ui] **OSD naming** - User-facing labels, tooltips, and hotkey text now say **OSD** instead of **Performance overlay**. Saved config keys (for example `show_performance_overlay`) are unchanged.
 

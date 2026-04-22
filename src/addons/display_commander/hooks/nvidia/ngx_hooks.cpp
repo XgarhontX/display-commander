@@ -520,6 +520,8 @@ struct NGXHookEntry {
 
 // Global flag to track if vtable hooks are installed
 static bool g_ngx_vtable_hooks_installed = false;
+// True after InstallNGXHooks successfully applied export hooks (not suppressed / not null module).
+static bool g_ngx_init_hooks_installed = false;
 
 // DLSS preset parameter names arrays
 static const std::vector<std::string> g_dlss_sr_preset_params = {
@@ -2581,12 +2583,11 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
         return false;
     }
 
-    static bool g_ngx_hooks_installed = false;
-    if (g_ngx_hooks_installed) {
+    if (g_ngx_init_hooks_installed) {
         LogInfo("NGX hooks already installed");
         return true;
     }
-    g_ngx_hooks_installed = true;
+    g_ngx_init_hooks_installed = true;
 
     LogInfo("Installing NGX initialization hooks...");
 
@@ -2619,6 +2620,8 @@ void CleanupNGXHooks() {
     LogInfo("Cleaning up NGX hooks and handle tracking");
     CleanupNGXHandleTracking();
 }
+
+bool AreNGXInitializationHooksInstalled() { return g_ngx_init_hooks_installed; }
 
 bool AreNGXParameterVTableHooksInstalled() { return g_ngx_vtable_hooks_installed; }
 
