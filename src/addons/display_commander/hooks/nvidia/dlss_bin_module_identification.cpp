@@ -17,7 +17,7 @@ namespace display_commanderhooks {
 namespace {
 
 // True if the module was loaded from under an NVIDIA NGX directory (e.g. ProgramData\NVIDIA\NGX\models\...).
-// See display_commander/docs/specs/dlss_bin_module_identification.md (path gate).
+// See docs/specs/dlss_bin_module_identification.md (path gate).
 bool DlssBinModulePathUnderNgx(HMODULE hMod) {
     wchar_t path_buf[MAX_PATH];
     if (GetModuleFileNameW(hMod, path_buf, MAX_PATH) == 0) {
@@ -31,7 +31,7 @@ bool DlssBinModulePathUnderNgx(HMODULE hMod) {
 }  // namespace
 
 std::optional<DlssTrackedKind> IdentifyDlssBinKind(HMODULE hMod) {
-    // Spec: display_commander/docs/specs/dlss_bin_module_identification.md
+    // Spec: docs/specs/dlss_bin_module_identification.md
     if (!DlssBinModulePathUnderNgx(hMod)) {
         return std::nullopt;
     }

@@ -1626,7 +1626,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     modules::NotifyEnabledModulesOnLibraryLoaded(hModule, lowerModuleName.c_str());
 
     // DLSS tracking: set global module/path for nvngx_dlss.dll, nvngx_dlssg.dll, nvngx_dlssd.dll, or NGX model .bin
-    // (identification rules: display_commander/docs/specs/dlss_bin_module_identification.md)
+    // (identification rules: docs/specs/dlss_bin_module_identification.md)
     {
         std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
         std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
@@ -1644,7 +1644,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule,
                     GetModulePathUtf8(hModule).c_str());
         } else if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, L".bin") == 0) {
-            // NGX model .bin: hooks/nvidia/dlss_bin_module_identification.cpp; spec: display_commander/docs/specs/dlss_bin_module_identification.md
+            // NGX model .bin: hooks/nvidia/dlss_bin_module_identification.cpp; spec: docs/specs/dlss_bin_module_identification.md
             std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
             if (kind.has_value()) {
                 g_dlss_from_nvidia_app_bin.store(true);

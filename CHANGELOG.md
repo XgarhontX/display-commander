@@ -26,7 +26,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.14.11
-- [ui] [hooks] **Main tab NGX late-load warning** - When NGX export hooks are installed but Parameter vtable hooks never ran and DLSS/NGX activity is detected, the Main tab shows a warning to load DC earlier (e.g. DLL proxy). Spec: `src/addons/display_commander/docs/specs/main_tab_ngx_late_load_warning.md`.
+- [ui] [hooks] **Main tab NGX late-load warning** - Add a warning when DC is loaded too late, and DLSS stats aren't available. Spec: `docs/specs/main_tab_ngx_late_load_warning.md`.
 
 ## v0.14.10
 - [ui] **OSD naming** - User-facing labels, tooltips, and hotkey text now say **OSD** instead of **Performance overlay**. Saved config keys (for example `show_performance_overlay`) are unchanged.
@@ -88,7 +88,7 @@ Planned:
 - [bugfix] **Auto Enable Windows HDR in Red Dead Redemption 2** - Fixed code that prevented RDR2 from starting when this feature is enabled (no HDR revert on swapchain/device destroy; exit still reverts).
 
 ## v0.13.179 (2026-04-12)
-- [hooks] **DLSS .bin identification** - Only scan `.bin` modules for embedded `nvngx_*` strings when the file path is under `NVIDIA\NGX`, so unrelated binaries are not misclassified. Logic lives in `hooks/nvidia/dlss_bin_module_identification.*`; behavior is documented in `src/addons/display_commander/docs/specs/dlss_bin_module_identification.md`.
+- [hooks] **DLSS .bin identification** - Only scan `.bin` modules for embedded `nvngx_*` strings when the file path is under `NVIDIA\NGX`, so unrelated binaries are not misclassified. Logic lives in `hooks/nvidia/dlss_bin_module_identification.*`; behavior is documented in `docs/specs/dlss_bin_module_identification.md`.
 
 ## v0.13.178 (2026-04-12)
 - [ui] **Performance overlay labels** - Renamed overlay background and frame chart sliders from “Transparency” to “Opacity” so the label matches the value (higher = more opaque).

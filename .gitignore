@@ -142,13 +142,6 @@ private_docs
 !src/addons/display_commander/res/effects/ReShade.fxh
 !src/addons/display_commander/res/effects/color.fxh
 
-!src/addons/display_commander/docs/specs/dlss_bin_module_identification.md
-!src/addons/display_commander/docs/specs/settings_wrapper.md
-!src/addons/display_commander/docs/specs/pclstats_debug_dc_etw_sessions.md
-!src/addons/display_commander/docs/specs/fps_limiter_late_percentage_overlay.md
-!src/addons/display_commander/docs/specs/main_tab_ngx_late_load_warning.md
-
-
 #  git ls-files -ic --exclude-standard
 external-private/
 external-private/display-commander2-modules
