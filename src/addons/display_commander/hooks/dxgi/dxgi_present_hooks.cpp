@@ -354,16 +354,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     if (This != nullptr) {
         display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(This, &data);
     }
+    CALL_GUARD_NO_TS();
 
     if (g_dxgi_present_nested_depth.load() > 0) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
+    CALL_GUARD_NO_TS();
     if (ShouldActivateFg2Limiter()) {
         HandleFpsLimiterFg2Pre();
     }
+    CALL_GUARD_NO_TS();
     // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
     const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
     const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
+    CALL_GUARD_NO_TS();
     if (override_val >= 1) {
         PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
     } else if (override_val == 0) {
@@ -374,40 +378,53 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     CALL_GUARD(now_ns);
 
     // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
+    CALL_GUARD_NO_TS();
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
-        if (data.command_queue != nullptr) {
+        // don't do it if smooth motion is enabled
+        const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        if (!smooth_motion_loaded && data.command_queue != nullptr) {
             data.command_queue->flush_immediate_command_list();
         }
     }
+    CALL_GUARD_NO_TS();
 
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_swapchain);
+    CALL_GUARD_NO_TS();
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
     // Skip common present logic if wrapper is handling it
+    CALL_GUARD_NO_TS();
     if (use_fps_limiter) {
         ::OnPresentFlags2(true, false);  // Called from present_detour
         RecordNativeFrameTime();
     }
 
 
+    CALL_GUARD_NO_TS();
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
 
+    CALL_GUARD_NO_TS();
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
         return This->Present(effective_interval, PresentFlags);
     }
+    CALL_GUARD_NO_TS();
 
+    CALL_GUARD_NO_TS();
     auto res = IDXGISwapChain_Present_Original(This, effective_interval, PresentFlags);
+    CALL_GUARD_NO_TS();
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGISwapChain::Present", res, &s_err_count);
     }
+    CALL_GUARD_NO_TS();
     if (use_fps_limiter) {
         // Handle common after logic
         HandlePresentAfter(false);
     }
     if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
+        CALL_GUARD_NO_TS();
         IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
         ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
     }
@@ -439,7 +456,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 
     // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
-        if (data.command_queue != nullptr) {
+        // don't do it if smooth motion is enabled
+        const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        if (!smooth_motion_loaded && data.command_queue != nullptr) {
             data.command_queue->flush_immediate_command_list();
         }
     }
