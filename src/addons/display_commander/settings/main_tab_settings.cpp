@@ -34,7 +34,7 @@ MainTabSettings::MainTabSettings()
       fps_limit_background("fps_limit_background", 60.0f, 0.0f, 1000.0f, "DisplayCommander", true),
       background_fps_enabled("background_fps_enabled", false, "DisplayCommander"),
       fps_limiter_fg2_enabled("fps_limiter_fg2_enabled", false, "DisplayCommander"),
-      fps_limiter_fg2_target_boost_percent("fps_limiter_fg2_target_boost_percent", 0.3f, -90.0f, 690.0f,
+      fps_limiter_fg2_target_boost_percent("fps_limiter_fg2_target_boost_percent", 0.3f, -3.0f, 3.0f,
                                            "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       inject_reflex("inject_reflex", false, "DisplayCommander"),
@@ -360,16 +360,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.safe_mode_fps_limiter = false;
             out.fps_limiter_fg2_enabled = false;
             break;
-        case FpsLimiterPreset::kLowLatencyNativePacingV2:
-            out.limit_real_frames = true;
-            out.use_reflex_markers_as_fps_limiter = true;
-            out.reflex_fps_limiter_max_queued_frames = 0;
-            out.use_streamline_proxy_fps_limiter = false;
-            out.native_pacing_sim_start_only = true;
-            out.delay_present_start_after_sim_enabled = false;
-            out.safe_mode_fps_limiter = false;
-            out.fps_limiter_fg2_enabled = true;
-            break;
         case FpsLimiterPreset::kDCPaceLockQ1:
             out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
@@ -423,6 +413,17 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
         case FpsLimiterPreset::kCustom:
             // No overrides; caller should use config values
             break;
+        case FpsLimiterPreset::kLowLatencyNativePacingV2:
+            out.limit_real_frames = true;
+            out.use_reflex_markers_as_fps_limiter = true;
+            out.reflex_fps_limiter_max_queued_frames = 0;
+            out.use_streamline_proxy_fps_limiter = false;
+            out.native_pacing_sim_start_only = true;
+            out.delay_present_start_after_sim_enabled = false;
+            out.safe_mode_fps_limiter = false;
+            out.fps_limiter_fg2_enabled = true;
+            break;
+
     }
 }
 

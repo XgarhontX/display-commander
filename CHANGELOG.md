@@ -3,6 +3,7 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[critical]` – Severe bug (crashes, wrong module/DLL, data loss risk). `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 Known issues:
+- FPS limiter **Low latency mode - experimental** is not working.
 - Sometimes config .toml file gets deleted during save.
 - Dishonored renodx d3d9 -> d3d11 requires to set fps to 2x.
 - Injustice 2/Mortal Kombat 11, alt-tab with prevent fullscreen + continue rendering: prevent minimize doesn't work.
@@ -24,6 +25,9 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
+
+## v0.14.15
+- [bugfix] [ui] [experimental] **FPS limiter "low latency mode - experimental"** — This option is not working; treat it as broken until a follow-up fix.
 
 ## v0.14.14
 - [bugfix] [hooks] **Late-load Streamline hook bootstrap** - Fix hooking to streamline when DC is loaded as .addon64 / .addon32.
@@ -147,7 +151,7 @@ Planned:
 - [ui] [hooks] [compatibility] **Vulkan init timing warning** - The main UI now warns when `vulkan-1.dll` was not present during `DLL_PROCESS_ATTACH` init but appears by the first UI draw, helping to explain that Display Commander is misconfigured.
 
 ## v0.13.164 (2026-04-07)
-- [ui] **Added experimental fps limiter** -- Added "low latency mode - experimental", seems to work well in Death Stranding 2, Wuthering Waves, Crimson Desert
+- [ui] **Added experimental fps limiter** — Added "low latency mode - experimental" (see **v0.14.15** and **Known issues** for current status).
 
 ## v0.13.163 (2026-04-07)
 - [bugfix] [ui] **Native FPS now works even when FPS Counter is off** - You can enable **Native FPS** independently, so the native Reflex-based FPS line still appears even if the regular **FPS Counter** line is disabled.

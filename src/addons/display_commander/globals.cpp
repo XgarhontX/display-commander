@@ -446,7 +446,7 @@ namespace {
 bool UsePresetOverrides() {
     if (!IsNativeFramePacingInSync()) return false;
     const int preset_raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-    return preset_raw >= 0 && preset_raw < static_cast<int>(FpsLimiterPreset::kCustom);
+    return preset_raw >= 0 && preset_raw != static_cast<int>(FpsLimiterPreset::kCustom);
 }
 }  // namespace
 
