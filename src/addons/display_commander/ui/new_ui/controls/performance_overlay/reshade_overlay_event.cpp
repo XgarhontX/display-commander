@@ -15,7 +15,17 @@
 #include <reshade.hpp>
 
 // Libraries <standard C++>
+#include <algorithm>
 #include <array>
+#include <cfloat>
+
+namespace {
+
+/** Shared minimum for Display Commander UI in ReShade addon overlay and in-game overlay window. */
+constexpr float kDisplayCommanderMinWindowW = 900.f;
+constexpr float kDisplayCommanderMinWindowH = 600.f;
+
+}  // namespace
 
 namespace reshade_overlay_detail {
 
@@ -85,6 +95,8 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
         }
     }
     overlay_wrapper.SetNextWindowSize(ImVec2(fixed_width, 2160.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(kDisplayCommanderMinWindowW, kDisplayCommanderMinWindowH),
+                                        ImVec2(FLT_MAX, FLT_MAX), nullptr, nullptr);
 
     bool window_open = true;
     if (overlay_wrapper.Begin("Display Commander", &window_open,
@@ -150,6 +162,8 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     reshade_overlay_detail::OnPerformanceOverlay_TestWindow(runtime, show_tooltips);
 }
 
+// ReShade invokes this while the addon overlay tab "DC" is open (see reshade::register_overlay in addon.cpp).
+// ImGui is already inside ReShade's host window; enforce a usable minimum before TabManager opens child regions.
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     CALL_GUARD_NO_TS();
     if (runtime != nullptr) {
@@ -160,6 +174,12 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
     {
+        const ImVec2 host_sz = ImGui::GetWindowSize();
+        if (host_sz.x < kDisplayCommanderMinWindowW || host_sz.y < kDisplayCommanderMinWindowH) {
+            ImGui::SetWindowSize(ImVec2((std::max)(host_sz.x, kDisplayCommanderMinWindowW),
+                                        (std::max)(host_sz.y, kDisplayCommanderMinWindowH)),
+                                 ImGuiCond_Always);
+        }
         display_commander::ui::ImGuiWrapperReshade gui_wrapper;
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime, gui_wrapper);
     }

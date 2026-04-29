@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.16
+- [ui] **Add safety checks to ensure window size is at least 900x600 on start**
+
 ## v0.14.15
 - [bugfix] [ui] [experimental] **FPS limiter "low latency mode - experimental"** — This option is not working; treat it as broken until a follow-up fix.
 
