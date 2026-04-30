@@ -9,7 +9,7 @@
 std::atomic<bool> s_reflex_enable_current_frame{false};
 
 // Hotkeys: synced from Hotkeys tab for fast read path
-std::atomic<bool> s_enable_hotkeys{true};
+std::atomic<bool> s_enable_hotkeys{false};
 
 // Input blocking toggle state (controlled by Ctrl+I)
 std::atomic<bool> s_input_blocking_toggle{false};
