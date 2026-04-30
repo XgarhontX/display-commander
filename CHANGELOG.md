@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.17
+- [ui] **FPS Limiter enabler checkbox UI fix**
+
 ## v0.14.16
 - [ui] **Add safety checks to ensure window size is at least 900x600 on start**
 

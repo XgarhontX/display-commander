@@ -274,9 +274,9 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     }
     int prev_item = current_item;
 
-    bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
-    bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
+ //..   bool fps_limit_enabled =
+  //      (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
     const auto get_fps_limiter_control_width = [&imgui]() -> float {
         // Keep controls stable for fixed-width clients while avoiding overflow on narrower layouts.
         const float avail = imgui.GetContentRegionAvail().x;
@@ -285,10 +285,10 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
     const float fps_limiter_checkbox_column_gutter = GetMainTabCheckboxColumnGutter(imgui);
     // (enable checkbox) fps limit slider
-    if (imgui.Checkbox("##FPS limiter", &enabled)) {
-        settings::g_mainTabSettings.fps_limiter_enabled.SetValue(enabled);
-        s_fps_limiter_enabled.store(enabled);
-        LogInfo("FPS Limiter: %s", enabled ? "enabled" : "disabled (no limiting)");
+    if (imgui.Checkbox("##FPS limiter", &fps_limit_enabled)) {
+        settings::g_mainTabSettings.fps_limiter_enabled.SetValue(fps_limit_enabled);
+        s_fps_limiter_enabled.store(fps_limit_enabled);
+        LogInfo("FPS Limiter: %s", fps_limit_enabled ? "enabled" : "disabled (no limiting)");
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("When checked, the selected mode is active. When unchecked, no FPS limiting.");
@@ -313,7 +313,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         imgui.EndDisabled();
     }
 
-    if (enabled) {
+    if (fps_limit_enabled) {
         DrawQuickFpsLimitChanger(imgui);
     }
 
@@ -349,7 +349,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
     // (fps limiter mode selection) — align with slider rows (checkbox + SameLine offset above)
     PushFpsLimiterSliderColumnAlign(imgui, fps_limiter_checkbox_column_gutter);
-    if (!enabled) {
+    if (!fps_limit_enabled) {
         imgui.BeginDisabled();
     }
     imgui.SetNextItemWidth(get_fps_limiter_control_width());
@@ -381,7 +381,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             GetChosenFpsLimiterSiteName());
     }
 
-    if (!enabled) {
+    if (!fps_limit_enabled) {
         imgui.EndDisabled();
     }
 
@@ -390,7 +390,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     {
         const DLSSGSummaryLite fg2_lite = GetDLSSGSummaryLite();
         const bool fg2_dlss_g = fg2_lite.fg_mode >= 2;
-        const bool fg2_ui_ok = enabled && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+        const bool fg2_ui_ok = fps_limit_enabled && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
                                && static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue())
                                       == FrameTimeMode::kPresent;
         const auto current_preset = static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue());
@@ -427,7 +427,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
     // After Reflex / advanced FPS UI so FPS Limiter Mode sits next to Reflex without a debug header in between.
     if (enabled_experimental_features) {
-        if (!enabled) {
+        if (!fps_limit_enabled) {
             imgui.BeginDisabled();
         }
         ui::colors::PushHeader2Colors(&imgui);
@@ -503,7 +503,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             }
             imgui.Columns(1);
         }
-        if (!enabled) {
+        if (!fps_limit_enabled) {
             imgui.EndDisabled();
         }
     }
