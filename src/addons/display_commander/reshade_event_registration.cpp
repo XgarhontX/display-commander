@@ -64,6 +64,6 @@ void RegisterReShadeEvents(HMODULE h_module) {
 
     //Megamix
     reshade::register_event<reshade::addon_event::create_device>(MegaMix::HighFPS::OnCreateDevice);
-    reshade::register_event<reshade::addon_event::present>(MegaMix::HighFPS::OnPresentBefore);
+    // reshade::register_event<reshade::addon_event::present>(MegaMix::HighFPS::OnPresentBefore);
     reshade::register_event<reshade::addon_event::finish_present>(MegaMix::HighFPS::OnPresentAfter);
 }
