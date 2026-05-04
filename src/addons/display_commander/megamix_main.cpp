@@ -59,10 +59,10 @@ namespace HighFPS {
       return true;
    }
 
-   void OnPresentBefore(reshade::api::command_queue* /* command_queue */, reshade::api::swapchain* /* swapchain */, const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/, uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/)
-   {
-      Patch();
-   }
+   // void OnPresentBefore(reshade::api::command_queue* /* command_queue */, reshade::api::swapchain* /* swapchain */, const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/, uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/)
+   // {
+   //    Patch();
+   // }
 
    void OnPresentAfter(reshade::api::command_queue* /* queue */, reshade::api::swapchain* /* swapchain */) {
       Patch();
